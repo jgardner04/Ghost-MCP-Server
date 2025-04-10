@@ -1,0 +1,63 @@
+<context>
+# Overview
+The MCP server is designed to manage a Ghost CMS site via an AI tool like Claude desktop or Cursor. It aims to streamline content creation and management by automating tasks such as post creation, image handling, and metadata management. This tool is valuable for content creators and site administrators who want to enhance productivity and maintain consistency across their posts.
+
+# Core Features
+- **Post Creation and Management**
+  - **What it does:** Automates the creation of new posts with comprehensive metadata and content, including setting post titles, adding content, setting publish dates, adding post excerpts, and publishing posts directly to the Ghost CMS.
+  - **Why it's important:** Saves time and ensures consistency in post formatting and metadata.
+  - **How it works:** Utilizes AI to input post details, set publish dates, and manage tags.
+
+- **Image Handling**
+  - **What it does:** Adds featured images with alt text to posts.
+  - **Why it's important:** Enhances SEO and accessibility.
+  - **How it works:** Allows users to upload images and input alt text through a user-friendly interface.
+
+- **Metadata Management**
+  - **What it does:** Sets metadata titles and descriptions for posts to optimize for search engines and social sharing.
+  - **Why it's important:** Improves search engine visibility and click-through rates.
+  - **How it works:** Provides fields for metadata input during post creation, ensuring all SEO elements are properly configured.
+
+- **Tag Management**
+  - **What it does:** Creates and manages tags for posts, allowing for both new tag creation and application of existing tags.
+  - **Why it's important:** Organizes content and improves site navigation.
+  - **How it works:** Offers a simple interface for adding and editing tags.
+
+# User Experience
+- **User Personas:** Content creators, site administrators.
+- **Key User Flows:** Post creation, image upload, metadata input, tag management, post publishing.
+- **UI/UX Considerations:** Intuitive interface, responsive design, accessibility features.
+
+</context>
+<PRD>
+# Technical Architecture
+- **System Components:** MCP server, Ghost CMS API, AI integration.
+- **Data Models:** Post, Image, Metadata, Tag.
+- **APIs and Integrations:** Ghost Admin API for content creation and management, AI tool API.
+- **Infrastructure Requirements:** Cloud hosting, database for storing post data.
+
+# Development Roadmap
+- **MVP Requirements:**
+  - Implement post creation with title, content, and excerpt functionality
+  - Add image handling with featured image upload and alt text support
+  - Enable metadata management (title, description)
+  - Implement tag creation and management
+  - Add publish date setting and direct publishing capabilities
+
+- **Future Enhancements:** Advanced analytics, user role management, multi-language support.
+
+# Logical Dependency Chain
+- **Foundation Features:** Post creation and image handling.
+- **Usable Front End:** Metadata management and tag management.
+- **Improvement Phases:** Advanced features and enhancements.
+
+# Risks and Mitigations
+- **Technical Challenges:** API integration, data consistency, image processing and upload management.
+- **MVP Development:** Focus on core features first.
+- **Resource Constraints:** Optimize for minimal resource usage.
+
+# Appendix
+- **Research Findings:** Best practices for Ghost CMS management.
+- **Technical Specifications:** API documentation, data model diagrams.
+
+</PRD>

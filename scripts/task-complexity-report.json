@@ -1,0 +1,91 @@
+{
+  "meta": {
+    "generatedAt": "2025-04-10T22:21:33.779Z",
+    "tasksAnalyzed": 10,
+    "thresholdScore": 5,
+    "projectName": "Your Project Name",
+    "usedResearch": false
+  },
+  "complexityAnalysis": [
+    {
+      "taskId": 1,
+      "taskTitle": "Set up Project Structure and Environment",
+      "complexityScore": 4,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the project setup task into detailed steps covering project initialization, directory structure creation, dependency installation, and server configuration with specific technical requirements for each step.",
+      "reasoning": "This is a foundational task with moderate complexity. While project setup is generally straightforward, it involves multiple components (directory structure, dependencies, environment configuration) that should be properly organized for the rest of the project to build upon."
+    },
+    {
+      "taskId": 2,
+      "taskTitle": "Implement Ghost CMS API Integration",
+      "complexityScore": 6,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Detail the specific subtasks for implementing the Ghost API service module, including authentication methods, API operation functions, error handling mechanisms, logging implementation, and rate limit handling with specific technical considerations for each.",
+      "reasoning": "This task involves external API integration with several technical considerations including authentication, error handling, retry logic, and rate limiting. The complexity is elevated because this module will be foundational for many other features."
+    },
+    {
+      "taskId": 3,
+      "taskTitle": "Develop Post Creation Core Functionality",
+      "complexityScore": 5,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the post creation functionality into specific components including route definition, validation implementation, service layer development, and error handling with technical specifications for each component.",
+      "reasoning": "This task requires creating multiple components (controllers, routes, services) and implementing data validation and transformation. It's a core functionality with moderate complexity that other features will build upon."
+    },
+    {
+      "taskId": 4,
+      "taskTitle": "Implement Image Upload and Processing",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Detail the subtasks for image upload functionality including route/controller implementation, image processing operations, validation rules, storage strategy development, and post-image association with specific technical requirements for each component.",
+      "reasoning": "Image handling involves multiple technical challenges including file uploads, processing libraries, storage considerations, and integration with posts. The various formats, optimization needs, and error cases make this more complex than standard data operations."
+    },
+    {
+      "taskId": 5,
+      "taskTitle": "Create Metadata Management System",
+      "complexityScore": 4,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down the metadata management implementation into specific steps covering field extension in the API, validation rules development, and metadata suggestion generation with technical details for each component.",
+      "reasoning": "This task extends existing functionality rather than creating entirely new systems. The complexity is moderate, involving validation and formatting requirements, but leverages already-implemented post handling systems."
+    },
+    {
+      "taskId": 6,
+      "taskTitle": "Develop Tag Management System",
+      "complexityScore": 5,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Detail the specific components needed for tag management including route/controller implementation, tag CRUD operations, validation mechanisms, and search functionality with technical specifications for each component.",
+      "reasoning": "Tag management involves creating a complete CRUD system with search capabilities and integration with posts. The complexity comes from handling relationships between tags and posts and implementing efficient search functionality."
+    },
+    {
+      "taskId": 7,
+      "taskTitle": "Implement Publish Date and Scheduling",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down the scheduling functionality into specific components covering date handling implementation, Ghost CMS scheduling integration, and scheduled post management with technical requirements for each.",
+      "reasoning": "This task involves date handling with timezone considerations and integration with Ghost CMS scheduling capabilities. The complexity is moderate due to the need for precise date handling and potential edge cases in scheduling logic."
+    },
+    {
+      "taskId": 8,
+      "taskTitle": "Integrate AI Assistant Capabilities",
+      "complexityScore": 8,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Detail the AI integration components including API connection implementation, prompt engineering system, content generation functionality, metadata suggestion mechanisms, and feedback loop development with specific technical considerations for each.",
+      "reasoning": "AI integration involves complex external API interactions, sophisticated prompt engineering, and creating systems to handle AI-generated content. The feedback loop and context management add significant complexity to this task."
+    },
+    {
+      "taskId": 9,
+      "taskTitle": "Implement User Interface for MCP Server",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the UI implementation into specific components covering overall design system, form implementations for different features, search interface development, preview functionality, and responsive design with technical specifications for each.",
+      "reasoning": "Creating a complete UI requires designing and implementing multiple interactive components that connect to all previously built backend functionality. The complexity comes from ensuring usability, accessibility, and handling the various user interactions and previews."
+    },
+    {
+      "taskId": 10,
+      "taskTitle": "Create System Documentation and Deployment Guide",
+      "complexityScore": 6,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Detail the documentation components including API reference creation, user guide development, deployment instruction documentation, and troubleshooting guide preparation with specific content requirements for each.",
+      "reasoning": "Comprehensive documentation requires detailed knowledge of all system components and creating clear instructions for different audiences. The complexity comes from ensuring completeness, accuracy, and usability of the documentation across various use cases."
+    }
+  ]
+}
