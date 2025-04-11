@@ -1,7 +1,10 @@
 # Task Master
+
 ### by [@eyaltoledano](https://x.com/eyaltoledano)
 
 A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
+
+This specific project (`ghost-mcp-server`) implements a **Model Context Protocol (MCP) Server** that allows an MCP client (like Cursor or Claude Desktop) to interact with a Ghost CMS instance via defined tools.
 
 ## Requirements
 
@@ -10,14 +13,128 @@ A task management system for AI-driven development with Claude, designed to work
 - Anthropic SDK version 0.39.0 or higher
 - OpenAI SDK (for Perplexity API integration, optional)
 
+## Ghost MCP Server
+
+This server exposes Ghost CMS management functions as MCP tools, allowing an AI client like Cursor or Claude Desktop to manage a Ghost blog.
+
+An MCP client can discover these resources and tools by querying the running MCP server (typically listening on port 3001 by default) at its root endpoint (e.g., `http://localhost:3001/`). The server responds with its capabilities according to the Model Context Protocol specification.
+
+### Resources Defined
+
+- **`ghost/tag`**: Represents a tag in Ghost CMS. Contains `id`, `name`, `slug`, `description`.
+- **`ghost/post`**: Represents a post in Ghost CMS. Contains `id`, `title`, `slug`, `html`, `status`, `feature_image`, `published_at`, `tags` (array of `ghost/tag`), metadata fields, etc.
+
+_(Refer to `src/mcp_server.js` for full resource schemas.)_
+
+### Tools Defined
+
+Below is a guide for using the available MCP tools:
+
+1.  **`ghost_create_tag`**
+
+    - **Purpose**: Creates a new tag.
+    - **Inputs**:
+      - `name` (string, required): The name for the new tag.
+      - `description` (string, optional): A description for the tag.
+      - `slug` (string, optional): A URL-friendly slug (auto-generated if omitted).
+    - **Output**: The created `ghost/tag` resource.
+
+2.  **`ghost_get_tags`**
+
+    - **Purpose**: Retrieves existing tags. Can be used to find a tag ID or check if a tag exists before creation.
+    - **Inputs**:
+      - `name` (string, optional): Filter tags by exact name.
+    - **Output**: An array of `ghost/tag` resources matching the filter (or all tags if no name is provided).
+
+3.  **`ghost_upload_image`**
+
+    - **Purpose**: Uploads an image to Ghost for use, typically as a post's featured image.
+    - **Inputs**:
+      - `imageUrl` (string URL, required): A publicly accessible URL of the image to upload.
+      - `alt` (string, optional): Alt text for the image (a default is generated if omitted).
+    - **Output**: An object containing the final `url` (the Ghost URL for the uploaded image) and the determined `alt` text.
+    - **Usage Note**: Call this tool first to get a Ghost image URL before creating a post that needs a featured image.
+
+4.  **`ghost_create_post`**
+    - **Purpose**: Creates a new post.
+    - **Inputs**:
+      - `title` (string, required): The title of the post.
+      - `html` (string, required): The main content of the post in HTML format.
+      - `status` (string, optional, default: 'draft'): Set status to 'draft', 'published', or 'scheduled'.
+      - `tags` (array of strings, optional): List of tag _names_ to associate. Tags will be looked up or created automatically.
+      - `published_at` (string ISO date, optional): Date/time to publish or schedule. Required if status is 'scheduled'.
+      - `custom_excerpt` (string, optional): A short summary.
+      - `feature_image` (string URL, optional): The URL of the featured image (use the `url` output from `ghost_upload_image`).
+      - `feature_image_alt` (string, optional): Alt text for the feature image.
+      - `feature_image_caption` (string, optional): Caption for the feature image.
+      - `meta_title` (string, optional): Custom SEO title.
+      - `meta_description` (string, optional): Custom SEO description.
+    - **Output**: The created `ghost/post` resource.
+
+## Installation and Running
+
+1.  **Clone the Repository**:
+
+    ```bash
+    git clone <repository_url>
+    cd ghost-mcp-server
+    ```
+
+2.  **Install Dependencies**:
+
+    ```bash
+    npm install
+    ```
+
+3.  **Configure Environment Variables**:
+    Create a `.env` file in the project root and add your Ghost Admin API credentials:
+
+    ```dotenv
+    # Required:
+    GHOST_ADMIN_API_URL=https://your-ghost-site.com
+    GHOST_ADMIN_API_KEY=your_admin_api_key
+
+    # Optional:
+    # PORT=3000 # Port for the (optional) Express REST API server
+    # MCP_PORT=3001 # Port for the MCP server
+    # NODE_ENV=development # Set to 'production' for production deployments
+    # LOG_LEVEL=info # Set logging level (debug, info, warn, error)
+
+    # If using 1Password CLI for secrets:
+    # You might store the API key in 1Password and use `op run --env-file=.env -- ...`
+    ```
+
+    - Find your Ghost Admin API URL and Key in your Ghost Admin settings under Integrations -> Custom Integrations.
+
+4.  **Run the Server**:
+
+    ```bash
+    npm start
+    # OR directly:
+    # node src/index.js
+    ```
+
+    This command will start both the Express server (if routes are still mounted) and the MCP server.
+
+    - The MCP server will typically be available at `http://localhost:3001` (or the `MCP_PORT` you specified).
+    - An MCP client can connect to this address to discover and use the tools.
+
+5.  **Development Mode (using nodemon)**:
+    For development with automatic restarting:
+    ```bash
+    npm run dev
+    ```
+
 ## Configuration
 
 The script can be configured through environment variables in a `.env` file at the root of the project:
 
 ### Required Configuration
+
 - `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude
 
 ### Optional Configuration
+
 - `MODEL`: Specify which Claude model to use (default: "claude-3-7-sonnet-20250219")
 - `MAX_TOKENS`: Maximum tokens for model responses (default: 4000)
 - `TEMPERATURE`: Temperature for model responses (default: 0.7)
@@ -80,21 +197,10 @@ task-master generate
 
 ## Troubleshooting
 
-### If `task-master init` doesn't respond:
-
-Try running it with Node directly:
-
-```bash
-node node_modules/claude-task-master/scripts/init.js
-```
-
-Or clone the repository and run:
-
-```bash
-git clone https://github.com/eyaltoledano/claude-task-master.git
-cd claude-task-master
-node scripts/init.js
-```
+- **401 Unauthorized Error from Ghost:** Check that your `GHOST_ADMIN_API_URL` and `GHOST_ADMIN_API_KEY` in the `.env` file are correct and that the Custom Integration in Ghost is enabled.
+- **MCP Server Connection Issues:** Ensure the MCP server is running (check console logs). Verify the port (`MCP_PORT`, default 3001) is not blocked by a firewall. Check that the client is connecting to the correct address and port.
+- **Tool Execution Errors:** Check the server console logs for detailed error messages from the specific tool implementation (e.g., `ghost_create_post`, `ghost_upload_image`). Common issues include invalid input (check against tool schemas in `src/mcp_server.js` and the README guide), problems downloading from `imageUrl`, image processing failures, or upstream errors from the Ghost API.
+- **Dependency Installation Issues:** Ensure you have a compatible Node.js version installed (see Requirements section). Try removing `node_modules` and `package-lock.json` and running `npm install` again.
 
 ## Task Structure
 
@@ -132,11 +238,13 @@ Please use the task-master parse-prd command to generate tasks from my PRD. The 
 ```
 
 The agent will execute:
+
 ```bash
 task-master parse-prd scripts/prd.txt
 ```
 
 This will:
+
 - Parse your PRD document
 - Generate a structured `tasks.json` file with tasks, dependencies, priorities, and test strategies
 - The agent will understand this process due to the Cursor rules
@@ -150,6 +258,7 @@ Please generate individual task files from tasks.json
 ```
 
 The agent will execute:
+
 ```bash
 task-master generate
 ```
@@ -169,6 +278,7 @@ What tasks are available to work on next?
 ```
 
 The agent will:
+
 - Run `task-master list` to see all tasks
 - Run `task-master next` to determine the next task to work on
 - Analyze dependencies to determine which tasks are ready to be worked on
@@ -178,12 +288,14 @@ The agent will:
 ### 2. Task Implementation
 
 When implementing a task, the agent will:
+
 - Reference the task's details section for implementation specifics
 - Consider dependencies on previous tasks
 - Follow the project's coding standards
 - Create appropriate tests based on the task's testStrategy
 
 You can ask:
+
 ```
 Let's implement task 3. What does it involve?
 ```
@@ -191,6 +303,7 @@ Let's implement task 3. What does it involve?
 ### 3. Task Verification
 
 Before marking a task as complete, verify it according to:
+
 - The task's specified testStrategy
 - Any automated tests in the codebase
 - Manual verification if required
@@ -204,6 +317,7 @@ Task 3 is now complete. Please update its status.
 ```
 
 The agent will execute:
+
 ```bash
 task-master set-status --id=3 --status=done
 ```
@@ -211,16 +325,19 @@ task-master set-status --id=3 --status=done
 ### 5. Handling Implementation Drift
 
 If during implementation, you discover that:
+
 - The current approach differs significantly from what was planned
 - Future tasks need to be modified due to current implementation choices
 - New dependencies or requirements have emerged
 
 Tell the agent:
+
 ```
 We've changed our approach. We're now using Express instead of Fastify. Please update all future tasks to reflect this change.
 ```
 
 The agent will execute:
+
 ```bash
 task-master update --from=4 --prompt="Now we are using Express instead of Fastify."
 ```
@@ -236,36 +353,43 @@ Task 5 seems complex. Can you break it down into subtasks?
 ```
 
 The agent will execute:
+
 ```bash
 task-master expand --id=5 --num=3
 ```
 
 You can provide additional context:
+
 ```
 Please break down task 5 with a focus on security considerations.
 ```
 
 The agent will execute:
+
 ```bash
 task-master expand --id=5 --prompt="Focus on security aspects"
 ```
 
 You can also expand all pending tasks:
+
 ```
 Please break down all pending tasks into subtasks.
 ```
 
 The agent will execute:
+
 ```bash
 task-master expand --all
 ```
 
 For research-backed subtask generation using Perplexity AI:
+
 ```
 Please break down task 5 using research-backed generation.
 ```
 
 The agent will execute:
+
 ```bash
 task-master expand --id=5 --research
 ```
@@ -275,6 +399,7 @@ task-master expand --id=5 --research
 Here's a comprehensive reference of all available commands:
 
 ### Parse PRD
+
 ```bash
 # Parse a PRD file and generate tasks
 task-master parse-prd <prd-file.txt>
@@ -284,6 +409,7 @@ task-master parse-prd <prd-file.txt> --num-tasks=10
 ```
 
 ### List Tasks
+
 ```bash
 # List all tasks
 task-master list
@@ -299,12 +425,14 @@ task-master list --status=<status> --with-subtasks
 ```
 
 ### Show Next Task
+
 ```bash
 # Show the next task to work on based on dependencies and status
 task-master next
 ```
 
 ### Show Specific Task
+
 ```bash
 # Show details of a specific task
 task-master show <id>
@@ -316,18 +444,21 @@ task-master show 1.2
 ```
 
 ### Update Tasks
+
 ```bash
 # Update tasks from a specific ID and provide context
 task-master update --from=<id> --prompt="<prompt>"
 ```
 
 ### Generate Task Files
+
 ```bash
 # Generate individual task files from tasks.json
 task-master generate
 ```
 
 ### Set Task Status
+
 ```bash
 # Set status of a single task
 task-master set-status --id=<id> --status=<status>
@@ -342,6 +473,7 @@ task-master set-status --id=1.1,1.2 --status=<status>
 When marking a task as "done", all of its subtasks will automatically be marked as "done" as well.
 
 ### Expand Tasks
+
 ```bash
 # Expand a specific task with subtasks
 task-master expand --id=<id> --num=<number>
@@ -363,6 +495,7 @@ task-master expand --all --research
 ```
 
 ### Clear Subtasks
+
 ```bash
 # Clear subtasks from a specific task
 task-master clear-subtasks --id=<id>
@@ -375,6 +508,7 @@ task-master clear-subtasks --all
 ```
 
 ### Analyze Task Complexity
+
 ```bash
 # Analyze complexity of all tasks
 task-master analyze-complexity
@@ -396,6 +530,7 @@ task-master analyze-complexity --research
 ```
 
 ### View Complexity Report
+
 ```bash
 # Display the task complexity analysis report
 task-master complexity-report
@@ -405,6 +540,7 @@ task-master complexity-report --file=my-report.json
 ```
 
 ### Managing Task Dependencies
+
 ```bash
 # Add a dependency to a task
 task-master add-dependency --id=<id> --depends-on=<id>
@@ -420,6 +556,7 @@ task-master fix-dependencies
 ```
 
 ### Add a New Task
+
 ```bash
 # Add a new task using AI
 task-master add-task --prompt="Description of the new task"
@@ -436,6 +573,7 @@ task-master add-task --prompt="Description" --priority=high
 ### Analyzing Task Complexity
 
 The `analyze-complexity` command:
+
 - Analyzes each task using AI to assess its complexity on a scale of 1-10
 - Recommends optimal number of subtasks based on configured DEFAULT_SUBTASKS
 - Generates tailored prompts for expanding each task
@@ -443,6 +581,7 @@ The `analyze-complexity` command:
 - Saves the report to scripts/task-complexity-report.json by default
 
 The generated report contains:
+
 - Complexity analysis for each task (scored 1-10)
 - Recommended number of subtasks based on complexity
 - AI-generated expansion prompts customized for each task
@@ -451,6 +590,7 @@ The generated report contains:
 ### Viewing Complexity Report
 
 The `complexity-report` command:
+
 - Displays a formatted, easy-to-read version of the complexity analysis report
 - Shows tasks organized by complexity score (highest to lowest)
 - Provides complexity distribution statistics (low, medium, high)
@@ -463,12 +603,14 @@ The `complexity-report` command:
 The `expand` command automatically checks for and uses the complexity report:
 
 When a complexity report exists:
+
 - Tasks are automatically expanded using the recommended subtask count and prompts
 - When expanding all tasks, they're processed in order of complexity (highest first)
 - Research-backed generation is preserved from the complexity analysis
 - You can still override recommendations with explicit command-line options
 
 Example workflow:
+
 ```bash
 # Generate the complexity analysis report with research capabilities
 task-master analyze-complexity --research
@@ -485,6 +627,7 @@ task-master expand --all
 ### Finding the Next Task
 
 The `next` command:
+
 - Identifies tasks that are pending/in-progress and have all dependencies satisfied
 - Prioritizes tasks by priority level, dependency count, and task ID
 - Displays comprehensive information about the selected task:
@@ -499,6 +642,7 @@ The `next` command:
 ### Viewing Specific Task Details
 
 The `show` command:
+
 - Displays comprehensive details about a specific task or subtask
 - Shows task status, priority, dependencies, and detailed implementation notes
 - For parent tasks, displays all subtasks and their status
@@ -529,43 +673,51 @@ The `show` command:
 ## Example Cursor AI Interactions
 
 ### Starting a new project
+
 ```
-I've just initialized a new project with Claude Task Master. I have a PRD at scripts/prd.txt. 
+I've just initialized a new project with Claude Task Master. I have a PRD at scripts/prd.txt.
 Can you help me parse it and set up the initial tasks?
 ```
 
 ### Working on tasks
+
 ```
 What's the next task I should work on? Please consider dependencies and priorities.
 ```
 
 ### Implementing a specific task
+
 ```
 I'd like to implement task 4. Can you help me understand what needs to be done and how to approach it?
 ```
 
 ### Managing subtasks
+
 ```
 I need to regenerate the subtasks for task 3 with a different approach. Can you help me clear and regenerate them?
 ```
 
 ### Handling changes
+
 ```
 We've decided to use MongoDB instead of PostgreSQL. Can you update all future tasks to reflect this change?
 ```
 
 ### Completing work
+
 ```
-I've finished implementing the authentication system described in task 2. All tests are passing. 
+I've finished implementing the authentication system described in task 2. All tests are passing.
 Please mark it as complete and tell me what I should work on next.
 ```
 
 ### Analyzing complexity
+
 ```
 Can you analyze the complexity of our tasks to help me understand which ones need to be broken down further?
 ```
 
 ### Viewing complexity report
+
 ```
 Can you show me the complexity report in a more readable format?
 ```
