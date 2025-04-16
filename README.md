@@ -88,12 +88,6 @@ Below is a guide for using the available MCP tools:
     GHOST_ADMIN_API_URL=https://your-ghost-site.com
     GHOST_ADMIN_API_KEY=your_admin_api_key
 
-    # Optional:
-    # PORT=3000 # Port for the (optional) Express REST API server
-    # MCP_PORT=3001 # Port for the MCP server
-    # NODE_ENV=development # Set to 'production' for production deployments
-    # LOG_LEVEL=info # Set logging level (debug, info, warn, error)
-
     # If using 1Password CLI for secrets:
     # You might store the API key in 1Password and use `op run --env-file=.env -- ...`
     ```
