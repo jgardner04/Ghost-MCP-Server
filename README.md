@@ -108,10 +108,7 @@ Below is a guide for using the available MCP tools:
     # node src/index.js
     ```
 
-    This command will start both the Express server (if routes are still mounted) and the MCP server.
-
-    - The MCP server will typically be available at `http://localhost:3001` (or the `MCP_PORT` you specified).
-    - An MCP client can connect to this address to discover and use the tools.
+    This command will start the MCP server.
 
 5.  **Development Mode (using nodemon)**:
     For development with automatic restarting:
