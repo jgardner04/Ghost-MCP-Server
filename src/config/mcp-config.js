@@ -94,16 +94,21 @@ export function getTransportConfig() {
 export function validateConfig() {
   const errors = [];
   
-  // Check transport type
-  const validTransports = ['stdio', 'http', 'sse', 'websocket'];
-  if (!validTransports.includes(mcpConfig.transport.type)) {
-    errors.push(`Invalid transport type: ${mcpConfig.transport.type}`);
-  }
-  
-  // Check port for network transports
-  if (['http', 'sse', 'websocket'].includes(mcpConfig.transport.type)) {
-    if (!mcpConfig.transport.port || mcpConfig.transport.port < 1 || mcpConfig.transport.port > 65535) {
-      errors.push(`Invalid port: ${mcpConfig.transport.port}`);
+  // Check if transport configuration exists
+  if (!mcpConfig.transport) {
+    errors.push('Missing transport configuration');
+  } else {
+    // Check transport type
+    const validTransports = ['stdio', 'http', 'sse', 'websocket'];
+    if (!mcpConfig.transport.type || !validTransports.includes(mcpConfig.transport.type)) {
+      errors.push(`Invalid transport type: ${mcpConfig.transport.type}`);
+    }
+    
+    // Check port for network transports
+    if (mcpConfig.transport.type && ['http', 'sse', 'websocket'].includes(mcpConfig.transport.type)) {
+      if (!mcpConfig.transport.port || mcpConfig.transport.port < 1 || mcpConfig.transport.port > 65535) {
+        errors.push(`Invalid port: ${mcpConfig.transport.port}`);
+      }
     }
   }
   

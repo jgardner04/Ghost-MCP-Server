@@ -229,14 +229,41 @@ export function asyncHandler(fn) {
 
 /**
  * Request validation middleware
+ * @param {Object|Function} schema - Validation schema object or validation function
  */
 export function validateRequest(schema) {
   return (req, res, next) => {
     try {
-      const { error } = schema.validate(req.body, { abortEarly: false });
-      
-      if (error) {
-        throw ValidationError.fromJoi(error);
+      // If schema is a function, call it with the request body
+      if (typeof schema === 'function') {
+        const validationResult = schema(req.body);
+        if (validationResult && validationResult.error) {
+          throw new ValidationError(validationResult.error);
+        }
+      } 
+      // If schema has a validate method (e.g., Joi schema)
+      else if (schema && typeof schema.validate === 'function') {
+        const { error } = schema.validate(req.body, { abortEarly: false });
+        if (error) {
+          // Create ValidationError from Joi error details
+          const errors = error.details ? error.details.map(detail => detail.message) : [error.message];
+          throw new ValidationError('Validation failed', errors);
+        }
+      }
+      // If schema is a simple object with required fields
+      else if (schema && typeof schema === 'object') {
+        const errors = [];
+        for (const [field, rules] of Object.entries(schema)) {
+          if (rules.required && !req.body[field]) {
+            errors.push(`${field} is required`);
+          }
+          if (rules.type && req.body[field] && typeof req.body[field] !== rules.type) {
+            errors.push(`${field} must be of type ${rules.type}`);
+          }
+        }
+        if (errors.length > 0) {
+          throw new ValidationError('Validation failed', errors);
+        }
       }
       
       next();

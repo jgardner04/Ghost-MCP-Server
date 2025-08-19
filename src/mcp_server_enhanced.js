@@ -391,11 +391,11 @@ const subscriptionTool = new Tool({
       },
       uri: {
         type: "string",
-        description: "Resource URI to subscribe to"
+        description: "Resource URI to subscribe to (required for subscribe action)"
       },
       subscriptionId: {
         type: "string",
-        description: "Subscription ID (for unsubscribe)"
+        description: "Subscription ID (required for unsubscribe action)"
       },
       options: {
         type: "object",
@@ -414,7 +414,22 @@ const subscriptionTool = new Tool({
         }
       }
     },
-    required: ["action"]
+    required: ["action"],
+    // Add conditional validation using JSON Schema if/then/else
+    if: {
+      properties: { action: { const: "subscribe" } }
+    },
+    then: {
+      required: ["uri"]
+    },
+    else: {
+      if: {
+        properties: { action: { const: "unsubscribe" } }
+      },
+      then: {
+        required: ["subscriptionId"]
+      }
+    }
   },
   implementation: async (input) => {
     if (input.action === 'subscribe') {
@@ -497,6 +512,23 @@ const startEnhancedMCPServer = async (transport = 'http', options = {}) => {
         app.get('/resources/*', async (req, res) => {
           try {
             const uri = req.params[0];
+            
+            // Validate and sanitize the URI to prevent path traversal
+            if (!uri || typeof uri !== 'string') {
+              throw new ValidationError('Invalid resource URI');
+            }
+            
+            // Ensure the URI doesn't contain path traversal attempts
+            if (uri.includes('..') || uri.includes('//') || uri.includes('\\')) {
+              throw new ValidationError('Invalid resource URI: path traversal detected');
+            }
+            
+            // Only allow specific URI patterns for Ghost resources
+            const validPatterns = /^ghost\/(post|posts|tag|tags|author|authors|page|pages)/;
+            if (!validPatterns.test(uri)) {
+              throw new ValidationError('Invalid resource type');
+            }
+            
             const result = await resourceManager.fetchResource(uri);
             res.json(result);
           } catch (error) {

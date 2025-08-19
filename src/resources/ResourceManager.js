@@ -461,8 +461,10 @@ class ResourceSubscriptionManager extends EventEmitter {
   }
 
   async fetchResource(uri) {
-    // This would be implemented to fetch the actual resource
-    // For now, returning a placeholder
+    // TODO: Implement actual resource fetching logic here.
+    // This is a placeholder implementation and should be replaced before production use.
+    // The actual implementation should call the parent ResourceManager's fetchResource method
+    // or be passed a reference to the resource fetcher during construction.
     return { uri, timestamp: new Date().toISOString() };
   }
 

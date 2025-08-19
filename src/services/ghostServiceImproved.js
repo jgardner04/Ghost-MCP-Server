@@ -1,5 +1,6 @@
 import GhostAdminAPI from "@tryghost/admin-api";
 import dotenv from "dotenv";
+import { promises as fs } from 'fs';
 import {
   GhostAPIError,
   ConfigurationError,
@@ -173,13 +174,12 @@ const validators = {
     }
   },
 
-  validateImagePath(imagePath) {
+  async validateImagePath(imagePath) {
     if (!imagePath || typeof imagePath !== 'string') {
       throw new ValidationError('Image path is required and must be a string');
     }
     
     // Check if file exists
-    const fs = await import('fs/promises');
     try {
       await fs.access(imagePath);
     } catch {
