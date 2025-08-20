@@ -368,10 +368,11 @@ class ResourceFetcher {
  * Resource Subscription Manager
  */
 class ResourceSubscriptionManager extends EventEmitter {
-  constructor() {
+  constructor(resourceFetcher = null) {
     super();
     this.subscriptions = new Map();
     this.pollingIntervals = new Map();
+    this.resourceFetcher = resourceFetcher;
   }
 
   subscribe(uri, callback, options = {}) {
@@ -461,11 +462,13 @@ class ResourceSubscriptionManager extends EventEmitter {
   }
 
   async fetchResource(uri) {
-    // TODO: Implement actual resource fetching logic here.
-    // This is a placeholder implementation and should be replaced before production use.
-    // The actual implementation should call the parent ResourceManager's fetchResource method
-    // or be passed a reference to the resource fetcher during construction.
-    return { uri, timestamp: new Date().toISOString() };
+    // Use the injected resource fetcher if available
+    if (this.resourceFetcher && typeof this.resourceFetcher === 'function') {
+      return await this.resourceFetcher(uri);
+    }
+    
+    // Fallback error if no fetcher is configured
+    throw new Error('Resource fetcher not configured for subscription manager');
   }
 
   notifySubscribers(uri, data, eventType = 'update') {
@@ -497,7 +500,10 @@ export class ResourceManager {
     this.ghostService = ghostService;
     this.cache = new LRUCache(100, 300000); // 100 items, 5 min TTL
     this.fetcher = new ResourceFetcher(ghostService, this.cache);
-    this.subscriptionManager = new ResourceSubscriptionManager();
+    // Pass a bound fetchResource method to the subscription manager
+    this.subscriptionManager = new ResourceSubscriptionManager(
+      (uri) => this.fetchResource(uri)
+    );
     this.resources = new Map();
   }
 
