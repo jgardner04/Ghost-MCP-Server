@@ -3,6 +3,9 @@ import {
   Resource,
   Tool,
 } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { WebSocketServerTransport } from "@modelcontextprotocol/sdk/server/websocket.js";
 import dotenv from "dotenv";
 import { createPostService } from "./services/postService.js";
 import {
@@ -16,8 +19,10 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import { v4 as uuidv4 } from "uuid";
+import express from "express";
+import { WebSocketServer } from "ws";
 
-// Load environment variables (might be redundant if loaded elsewhere, but safe)
+// Load environment variables
 dotenv.config();
 
 console.log("Initializing MCP Server...");
@@ -28,9 +33,33 @@ const mcpServer = new MCPServer({
     name: "Ghost CMS Manager",
     description:
       "MCP Server to manage a Ghost CMS instance using the Admin API.",
-    // iconUrl: '...',
+    version: "1.0.0",
   },
 });
+
+// --- Error Response Standardization ---
+class MCPError extends Error {
+  constructor(message, code = "UNKNOWN_ERROR", details = {}) {
+    super(message);
+    this.code = code;
+    this.details = details;
+  }
+}
+
+const handleToolError = (error, toolName) => {
+  console.error(`Error in tool ${toolName}:`, error);
+  
+  // Standardized error response
+  return {
+    error: {
+      code: error.code || "TOOL_EXECUTION_ERROR",
+      message: error.message || "An unexpected error occurred",
+      tool: toolName,
+      details: error.details || {},
+      timestamp: new Date().toISOString(),
+    }
+  };
+};
 
 // --- Define Resources ---
 
@@ -50,10 +79,26 @@ const ghostTagResource = new Resource({
         type: ["string", "null"],
         description: "Optional description for the tag",
       },
-      // Add other relevant tag fields if needed (e.g., feature_image, visibility)
     },
     required: ["id", "name", "slug"],
   },
+  // Resource fetching handler
+  async fetch(uri) {
+    try {
+      // Extract tag ID from URI (e.g., "ghost/tag/123")
+      const tagId = uri.split("/").pop();
+      const tags = await getGhostTags();
+      const tag = tags.find(t => t.id === tagId || t.slug === tagId);
+      
+      if (!tag) {
+        throw new MCPError(`Tag not found: ${tagId}`, "RESOURCE_NOT_FOUND");
+      }
+      
+      return tag;
+    } catch (error) {
+      return handleToolError(error, "ghost_tag_fetch");
+    }
+  }
 });
 mcpServer.addResource(ghostTagResource);
 console.log(`Added Resource: ${ghostTagResource.name}`);
@@ -98,102 +143,107 @@ const ghostPostResource = new Resource({
       },
       status: {
         type: "string",
-        enum: ["published", "draft", "scheduled"],
-        description: "Publication status",
+        enum: ["draft", "published", "scheduled"],
+        description: "The status of the post",
       },
       visibility: {
         type: "string",
-        enum: ["public", "members", "paid"],
-        description: "Access level",
+        enum: ["public", "members", "paid", "tiers"],
+        description: "The visibility level of the post",
       },
       created_at: {
         type: "string",
         format: "date-time",
-        description: "Date/time post was created",
+        description: "Date/time when the post was created",
       },
       updated_at: {
         type: "string",
         format: "date-time",
-        description: "Date/time post was last updated",
+        description: "Date/time when the post was last updated",
       },
       published_at: {
         type: ["string", "null"],
         format: "date-time",
-        description: "Date/time post was published or scheduled",
+        description: "Date/time when the post was published",
       },
       custom_excerpt: {
         type: ["string", "null"],
         description: "Custom excerpt for the post",
       },
-      meta_title: { type: ["string", "null"], description: "Custom SEO title" },
-      meta_description: {
-        type: ["string", "null"],
-        description: "Custom SEO description",
-      },
       tags: {
         type: "array",
-        description: "Tags associated with the post",
-        items: { $ref: "#/definitions/ghost/tag" }, // Reference the ghost/tag resource
+        items: { $ref: "ghost/tag#/schema" },
+        description: "Associated tags",
       },
-      // Add authors or other relevant fields if needed
+      meta_title: {
+        type: ["string", "null"],
+        description: "Custom meta title for SEO",
+      },
+      meta_description: {
+        type: ["string", "null"],
+        description: "Custom meta description for SEO",
+      },
     },
-    required: [
-      "id",
-      "uuid",
-      "title",
-      "slug",
-      "status",
-      "visibility",
-      "created_at",
-      "updated_at",
-    ],
-    definitions: {
-      // Make the referenced tag resource available within this schema's scope
-      "ghost/tag": ghostTagResource.schema,
-    },
+    required: ["id", "uuid", "title", "slug", "status"],
   },
+  // Resource fetching handler  
+  async fetch(uri) {
+    try {
+      // Extract post ID from URI (e.g., "ghost/post/123")
+      const postId = uri.split("/").pop();
+      
+      // You'll need to implement a getPost service method
+      // For now, returning an error as this would require adding to ghostService.js
+      throw new MCPError(
+        "Post fetching not yet implemented",
+        "NOT_IMPLEMENTED",
+        { postId }
+      );
+    } catch (error) {
+      return handleToolError(error, "ghost_post_fetch");
+    }
+  }
 });
 mcpServer.addResource(ghostPostResource);
 console.log(`Added Resource: ${ghostPostResource.name}`);
 
-// --- Define Tools (Subtasks 8.4 - 8.7) ---
-// Placeholder comments for where tools will be added
-
-// --- End Resource/Tool Definitions ---
+// --- Define Tools (with improved error handling) ---
 
 console.log("Defining MCP Tools...");
 
-// Create Post Tool (Adding this missing tool)
+// Create Post Tool
 const createPostTool = new Tool({
   name: "ghost_create_post",
-  description:
-    "Creates a new post in Ghost CMS. Handles tag creation/lookup. Returns the created post data.",
+  description: "Creates a new post in Ghost CMS.",
   inputSchema: {
     type: "object",
     properties: {
-      title: { type: "string", description: "The title for the new post." },
+      title: {
+        type: "string",
+        description: "The title of the post.",
+      },
       html: {
         type: "string",
-        description: "The HTML content for the new post.",
+        description: "The HTML content of the post.",
       },
       status: {
         type: "string",
-        enum: ["published", "draft", "scheduled"],
+        enum: ["draft", "published", "scheduled"],
         default: "draft",
         description:
-          "The status for the post (published, draft, scheduled). Defaults to draft.",
+          "The status of the post. Use 'scheduled' with a future published_at date.",
       },
       tags: {
         type: "array",
         items: { type: "string" },
         description:
-          "Optional: An array of tag names (strings) to associate with the post.",
+          "Optional: List of tag names to associate with the post. Tags will be created if they don't exist.",
       },
       published_at: {
         type: "string",
         format: "date-time",
         description:
-          "Optional: The ISO 8601 date/time for publishing or scheduling. Required if status is scheduled.",
+          "Optional: ISO 8601 date/time to publish the post. Required if status is 'scheduled'.",
       },
       custom_excerpt: {
         type: "string",
@@ -241,8 +291,7 @@ const createPostTool = new Tool({
       );
       return createdPost;
     } catch (error) {
-      console.error(`Error executing tool ${createPostTool.name}:`, error);
-      throw new Error(`Failed to create Ghost post: ${error.message}`);
+      return handleToolError(error, createPostTool.name);
     }
   },
 });
@@ -267,7 +316,6 @@ const uploadImageTool = new Tool({
         description:
           "Optional: Alt text for the image. If omitted, a default will be generated from the filename.",
       },
-      // filenameHint: { type: 'string', description: 'Optional: A hint for the original filename, used for default alt text generation.' }
     },
     required: ["imageUrl"],
   },
@@ -298,9 +346,8 @@ const uploadImageTool = new Tool({
     try {
       // --- 1. Download the image ---
       const response = await axios({ url: imageUrl, responseType: "stream" });
-      // Generate a unique temporary filename
       const tempDir = os.tmpdir();
-      const extension = path.extname(imageUrl.split("?")[0]) || ".tmp"; // Basic extension extraction
+      const extension = path.extname(imageUrl.split("?")[0]) || ".tmp";
       const originalFilenameHint =
         path.basename(imageUrl.split("?")[0]) ||
         `image-${uuidv4()}${extension}`;
@@ -318,13 +365,11 @@ const uploadImageTool = new Tool({
       });
       console.log(`Downloaded image to temporary path: ${downloadedPath}`);
 
-      // --- 2. Process the image (Optional) ---
-      // Using the service from subtask 4.2
+      // --- 2. Process the image ---
       processedPath = await processImage(downloadedPath, tempDir);
       console.log(`Processed image path: ${processedPath}`);
 
       // --- 3. Determine Alt Text ---
-      // Using similar logic from subtask 4.4
       const defaultAlt = getDefaultAltText(originalFilenameHint);
       const finalAltText = alt || defaultAlt;
       console.log(`Using alt text: "${finalAltText}"`);
@@ -339,10 +384,13 @@ const uploadImageTool = new Tool({
         alt: finalAltText,
       };
     } catch (error) {
-      console.error(`Error executing tool ${uploadImageTool.name}:`, error);
-      // Add more specific error handling (download failed, processing failed, upload failed)
-      throw new Error(
-        `Failed to upload image from URL ${imageUrl}: ${error.message}`
+      return handleToolError(
+        new MCPError(
+          `Failed to upload image from URL ${imageUrl}`,
+          "IMAGE_UPLOAD_ERROR",
+          { imageUrl, originalError: error.message }
+        ),
+        uploadImageTool.name
       );
     } finally {
       // --- 6. Cleanup temporary files ---
@@ -370,7 +418,7 @@ const uploadImageTool = new Tool({
   },
 });
 
-// Helper function for default alt text (similar to imageController)
+// Helper function for default alt text
 const getDefaultAltText = (filePath) => {
   try {
     const originalFilename = path
@@ -380,7 +428,7 @@ const getDefaultAltText = (filePath) => {
       .join(".");
     const nameWithoutIds = originalFilename
       .replace(/^(processed-|mcp-download-|mcp-upload-)\d+-\d+-?/, "")
-      .replace(/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}-?/, ""); // Remove UUIDs too
+      .replace(/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}-?/, "");
     return nameWithoutIds.replace(/[-_]/g, " ").trim() || "Uploaded image";
   } catch (e) {
     return "Uploaded image";
@@ -400,26 +448,32 @@ const getTagsTool = new Tool({
     properties: {
       name: {
         type: "string",
-        description: "Optional: The exact name of the tag to search for.",
+        description:
+          "Optional: Filter tags by exact name. If omitted, all tags are returned.",
       },
     },
   },
   outputSchema: {
     type: "array",
-    items: { $ref: "ghost/tag#/schema" }, // Output is an array of ghost/tag resources
+    items: { $ref: "ghost/tag#/schema" },
   },
   implementation: async (input) => {
-    console.log(`Executing tool: ${getTagsTool.name} with input:`, input);
+    console.log(`Executing tool: ${getTagsTool.name}`);
     try {
-      const tags = await getGhostTags(input?.name); // Pass name if provided
-      console.log(
-        `Tool ${getTagsTool.name} executed successfully. Found ${tags.length} tags.`
-      );
-      // TODO: Validate/map output against schema if necessary
+      const tags = await getGhostTags();
+      if (input.name) {
+        const filteredTags = tags.filter(
+          (tag) => tag.name.toLowerCase() === input.name.toLowerCase()
+        );
+        console.log(
+          `Filtered tags by name "${input.name}". Found ${filteredTags.length} match(es).`
+        );
+        return filteredTags;
+      }
+      console.log(`Retrieved ${tags.length} tags from Ghost.`);
       return tags;
     } catch (error) {
-      console.error(`Error executing tool ${getTagsTool.name}:`, error);
-      throw new Error(`Failed to get Ghost tags: ${error.message}`);
+      return handleToolError(error, getTagsTool.name);
     }
   },
 });
@@ -429,75 +483,166 @@ console.log(`Added Tool: ${getTagsTool.name}`);
 // Create Tag Tool
 const createTagTool = new Tool({
   name: "ghost_create_tag",
-  description: "Creates a new tag in Ghost CMS. Returns the created tag.",
+  description: "Creates a new tag in Ghost CMS.",
   inputSchema: {
     type: "object",
     properties: {
-      name: { type: "string", description: "The name for the new tag." },
+      name: {
+        type: "string",
+        description: "The name of the tag.",
+      },
       description: {
         type: "string",
-        description: "Optional: A description for the tag (max 500 chars).",
+        description: "Optional: A description for the tag.",
       },
       slug: {
         type: "string",
+        pattern: "^[a-z0-9\\-]+$",
         description:
-          "Optional: A URL-friendly slug. If omitted, Ghost generates one from the name.",
+          "Optional: A URL-friendly slug for the tag. Will be auto-generated from the name if omitted.",
       },
-      // Add other createable fields like color, feature_image etc. if needed
     },
     required: ["name"],
   },
   outputSchema: {
-    $ref: "ghost/tag#/schema", // Output is a single ghost/tag resource
+    $ref: "ghost/tag#/schema",
   },
   implementation: async (input) => {
-    console.log(`Executing tool: ${createTagTool.name} with input:`, input);
+    console.log(
+      `Executing tool: ${createTagTool.name} with name:`,
+      input.name
+    );
     try {
-      // Basic validation happens via inputSchema, more specific validation (like slug format) could be added here if not in service
-      const newTag = await createGhostTag(input);
+      const createdTag = await createGhostTag(input);
       console.log(
-        `Tool ${createTagTool.name} executed successfully. Tag ID: ${newTag.id}`
+        `Tool ${createTagTool.name} executed successfully. Tag ID: ${createdTag.id}`
       );
-      // TODO: Validate/map output against schema if necessary
-      return newTag;
+      return createdTag;
     } catch (error) {
-      console.error(`Error executing tool ${createTagTool.name}:`, error);
-      throw new Error(`Failed to create Ghost tag: ${error.message}`);
+      return handleToolError(error, createTagTool.name);
     }
   },
 });
 mcpServer.addTool(createTagTool);
 console.log(`Added Tool: ${createTagTool.name}`);
 
-// --- End Tool Definitions ---
+// --- Transport Configuration ---
 
-// Function to start the MCP server
-// We might integrate this with the Express server later or run separately
-const startMCPServer = async (port = 3001) => {
+/**
+ * Start MCP Server with specified transport
+ * @param {string} transport - Transport type: 'stdio', 'http', 'websocket'
+ * @param {object} options - Transport-specific options
+ */
+const startMCPServer = async (transport = 'http', options = {}) => {
   try {
-    // Ensure resources/tools are added before starting
-    console.log("Starting MCP Server on port", port);
-    await mcpServer.listen({ port });
-    console.log(`MCP Server listening on port ${port}`);
-    console.log(
-      "Available Resources:",
-      mcpServer.listResources().map((r) => r.name)
-    );
-    console.log(
-      "Available Tools:",
-      mcpServer.listTools().map((t) => t.name)
-    );
+    console.log(`Starting MCP Server with ${transport} transport...`);
+    
+    switch (transport) {
+      case 'stdio':
+        // Standard I/O transport - best for CLI tools
+        const stdioTransport = new StdioServerTransport();
+        await mcpServer.connect(stdioTransport);
+        console.log("MCP Server running on stdio transport");
+        break;
+        
+      case 'http':
+      case 'sse':
+        // HTTP with Server-Sent Events - good for web clients
+        const port = options.port || 3001;
+        const app = express();
+        
+        // CORS configuration for web clients
+        app.use((req, res, next) => {
+          res.header('Access-Control-Allow-Origin', options.cors || '*');
+          res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+          res.header('Access-Control-Allow-Headers', 'Content-Type');
+          next();
+        });
+        
+        // SSE endpoint
+        const sseTransport = new SSEServerTransport();
+        app.get('/mcp/sse', sseTransport.handler());
+        
+        // Health check
+        app.get('/mcp/health', (req, res) => {
+          res.json({
+            status: 'ok',
+            transport: 'sse',
+            resources: mcpServer.listResources().map(r => r.name),
+            tools: mcpServer.listTools().map(t => t.name),
+          });
+        });
+        
+        await mcpServer.connect(sseTransport);
+        
+        const server = app.listen(port, () => {
+          console.log(`MCP Server (SSE) listening on port ${port}`);
+          console.log(`SSE endpoint: http://localhost:${port}/mcp/sse`);
+          console.log(`Health check: http://localhost:${port}/mcp/health`);
+        });
+        
+        // Store server instance for cleanup
+        mcpServer._httpServer = server;
+        break;
+        
+      case 'websocket':
+        // WebSocket transport - best for real-time bidirectional communication
+        const wsPort = options.port || 3001;
+        const wss = new WebSocketServer({ port: wsPort });
+        
+        wss.on('connection', async (ws) => {
+          console.log('New WebSocket connection');
+          const wsTransport = new WebSocketServerTransport(ws);
+          await mcpServer.connect(wsTransport);
+        });
+        
+        console.log(`MCP Server (WebSocket) listening on port ${wsPort}`);
+        console.log(`WebSocket URL: ws://localhost:${wsPort}`);
+        
+        // Store WebSocket server instance for cleanup
+        mcpServer._wss = wss;
+        break;
+        
+      default:
+        throw new Error(`Unknown transport type: ${transport}`);
+    }
+    
+    console.log("Available Resources:", mcpServer.listResources().map(r => r.name));
+    console.log("Available Tools:", mcpServer.listTools().map(t => t.name));
+    
   } catch (error) {
     console.error("Failed to start MCP Server:", error);
     process.exit(1);
   }
 };
 
-// Export the server instance and start function if needed elsewhere
-export { mcpServer, startMCPServer };
+// Graceful shutdown handler
+const shutdown = async () => {
+  console.log("\nShutting down MCP Server...");
+  
+  if (mcpServer._httpServer) {
+    mcpServer._httpServer.close();
+  }
+  
+  if (mcpServer._wss) {
+    mcpServer._wss.close();
+  }
+  
+  await mcpServer.close();
+  process.exit(0);
+};
 
-// Optional: Automatically start if this file is run directly
-// This might conflict if we integrate with Express later
-// if (require.main === module) {
-//   startMCPServer();
-// }
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
+// Export the server instance and start function
+export { mcpServer, startMCPServer, MCPError };
+
+// If running directly, start with transport from environment or default to HTTP
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const transport = process.env.MCP_TRANSPORT || 'http';
+  const port = parseInt(process.env.MCP_PORT || '3001');
+  const cors = process.env.MCP_CORS || '*';
+  
+  startMCPServer(transport, { port, cors });
+}
