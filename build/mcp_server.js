@@ -16,11 +16,16 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import { v4 as uuidv4 } from "uuid";
+import { validateImageUrl, createSecureAxiosConfig } from "./utils/urlValidator.js";
+import { createContextLogger } from "./utils/logger.js";
 
 // Load environment variables (might be redundant if loaded elsewhere, but safe)
 dotenv.config();
 
-console.log("Initializing MCP Server...");
+// Initialize logger for MCP server
+const logger = createContextLogger('mcp-server');
+
+logger.info('Initializing MCP Server');
 
 // Define the server instance
 const mcpServer = new MCPServer({
@@ -34,7 +39,7 @@ const mcpServer = new MCPServer({
 
 // --- Define Resources ---
 
-console.log("Defining MCP Resources...");
+logger.info('Defining MCP Resources');
 
 // Ghost Tag Resource
 const ghostTagResource = new Resource({
@@ -56,7 +61,7 @@ const ghostTagResource = new Resource({
   },
 });
 mcpServer.addResource(ghostTagResource);
-console.log(`Added Resource: ${ghostTagResource.name}`);
+logger.info('Added MCP Resource', { resourceName: ghostTagResource.name });
 
 // Ghost Post Resource
 const ghostPostResource = new Resource({
@@ -154,14 +159,14 @@ const ghostPostResource = new Resource({
   },
 });
 mcpServer.addResource(ghostPostResource);
-console.log(`Added Resource: ${ghostPostResource.name}`);
+logger.info('Added MCP Resource', { resourceName: ghostPostResource.name });
 
 // --- Define Tools (Subtasks 8.4 - 8.7) ---
 // Placeholder comments for where tools will be added
 
 // --- End Resource/Tool Definitions ---
 
-console.log("Defining MCP Tools...");
+logger.info('Defining MCP Tools');
 
 // Create Post Tool (Adding this missing tool)
 const createPostTool = new Tool({
@@ -230,24 +235,19 @@ const createPostTool = new Tool({
     $ref: "ghost/post#/schema",
   },
   implementation: async (input) => {
-    console.log(
-      `Executing tool: ${createPostTool.name} with input keys:`,
-      Object.keys(input)
-    );
+    logger.toolExecution(createPostTool.name, input);
     try {
       const createdPost = await createPostService(input);
-      console.log(
-        `Tool ${createPostTool.name} executed successfully. Post ID: ${createdPost.id}`
-      );
+      logger.toolSuccess(createPostTool.name, createdPost, { postId: createdPost.id });
       return createdPost;
     } catch (error) {
-      console.error(`Error executing tool ${createPostTool.name}:`, error);
+      logger.toolError(createPostTool.name, error);
       throw new Error(`Failed to create Ghost post: ${error.message}`);
     }
   },
 });
 mcpServer.addTool(createPostTool);
-console.log(`Added Tool: ${createPostTool.name}`);
+logger.info('Added MCP Tool', { toolName: createPostTool.name });
 
 // Upload Image Tool
 const uploadImageTool = new Tool({
@@ -287,17 +287,21 @@ const uploadImageTool = new Tool({
     required: ["url", "alt"],
   },
   implementation: async (input) => {
-    console.log(
-      `Executing tool: ${uploadImageTool.name} for URL:`,
-      input.imageUrl
-    );
+    logger.toolExecution(uploadImageTool.name, { imageUrl: input.imageUrl });
     const { imageUrl, alt } = input;
     let downloadedPath = null;
     let processedPath = null;
 
     try {
-      // --- 1. Download the image ---
-      const response = await axios({ url: imageUrl, responseType: "stream" });
+      // --- 1. Validate URL for SSRF protection ---
+      const urlValidation = validateImageUrl(imageUrl);
+      if (!urlValidation.isValid) {
+        throw new Error(`Invalid image URL: ${urlValidation.error}`);
+      }
+      
+      // --- 2. Download the image with security controls ---
+      const axiosConfig = createSecureAxiosConfig(urlValidation.sanitizedUrl);
+      const response = await axios(axiosConfig);
       // Generate a unique temporary filename
       const tempDir = os.tmpdir();
       const extension = path.extname(imageUrl.split("?")[0]) || ".tmp"; // Basic extension extraction
@@ -316,54 +320,52 @@ const uploadImageTool = new Tool({
         writer.on("finish", resolve);
         writer.on("error", reject);
       });
-      console.log(`Downloaded image to temporary path: ${downloadedPath}`);
+      logger.fileOperation('download', downloadedPath);
 
-      // --- 2. Process the image (Optional) ---
+      // --- 3. Process the image (Optional) ---
       // Using the service from subtask 4.2
       processedPath = await processImage(downloadedPath, tempDir);
-      console.log(`Processed image path: ${processedPath}`);
+      logger.fileOperation('process', processedPath);
 
-      // --- 3. Determine Alt Text ---
+      // --- 4. Determine Alt Text ---
       // Using similar logic from subtask 4.4
       const defaultAlt = getDefaultAltText(originalFilenameHint);
       const finalAltText = alt || defaultAlt;
-      console.log(`Using alt text: "${finalAltText}"`);
+      logger.debug('Generated alt text', { altText: finalAltText });
 
-      // --- 4. Upload processed image to Ghost ---
+      // --- 5. Upload processed image to Ghost ---
       const uploadResult = await uploadGhostImage(processedPath);
-      console.log(`Uploaded processed image to Ghost: ${uploadResult.url}`);
+      logger.info('Image uploaded to Ghost', { ghostUrl: uploadResult.url });
 
-      // --- 5. Return result ---
+      // --- 6. Return result ---
       return {
         url: uploadResult.url,
         alt: finalAltText,
       };
     } catch (error) {
-      console.error(`Error executing tool ${uploadImageTool.name}:`, error);
+      logger.toolError(uploadImageTool.name, error, { imageUrl });
       // Add more specific error handling (download failed, processing failed, upload failed)
       throw new Error(
         `Failed to upload image from URL ${imageUrl}: ${error.message}`
       );
     } finally {
-      // --- 6. Cleanup temporary files ---
+      // --- 7. Cleanup temporary files ---
       if (downloadedPath) {
         fs.unlink(downloadedPath, (err) => {
           if (err)
-            console.error(
-              "Error deleting temporary downloaded file:",
-              downloadedPath,
-              err
-            );
+            logger.warn('Failed to delete temporary downloaded file', {
+              file: path.basename(downloadedPath),
+              error: err.message
+            });
         });
       }
       if (processedPath && processedPath !== downloadedPath) {
         fs.unlink(processedPath, (err) => {
           if (err)
-            console.error(
-              "Error deleting temporary processed file:",
-              processedPath,
-              err
-            );
+            logger.warn('Failed to delete temporary processed file', {
+              file: path.basename(processedPath),
+              error: err.message
+            });
         });
       }
     }
@@ -388,7 +390,7 @@ const getDefaultAltText = (filePath) => {
 };
 
 mcpServer.addTool(uploadImageTool);
-console.log(`Added Tool: ${uploadImageTool.name}`);
+logger.info('Added MCP Tool', { toolName: uploadImageTool.name });
 
 // Get Tags Tool
 const getTagsTool = new Tool({
@@ -409,22 +411,20 @@ const getTagsTool = new Tool({
     items: { $ref: "ghost/tag#/schema" }, // Output is an array of ghost/tag resources
   },
   implementation: async (input) => {
-    console.log(`Executing tool: ${getTagsTool.name} with input:`, input);
+    logger.toolExecution(getTagsTool.name, input);
     try {
       const tags = await getGhostTags(input?.name); // Pass name if provided
-      console.log(
-        `Tool ${getTagsTool.name} executed successfully. Found ${tags.length} tags.`
-      );
+      logger.toolSuccess(getTagsTool.name, tags, { tagCount: tags.length });
       // TODO: Validate/map output against schema if necessary
       return tags;
     } catch (error) {
-      console.error(`Error executing tool ${getTagsTool.name}:`, error);
+      logger.toolError(getTagsTool.name, error);
       throw new Error(`Failed to get Ghost tags: ${error.message}`);
     }
   },
 });
 mcpServer.addTool(getTagsTool);
-console.log(`Added Tool: ${getTagsTool.name}`);
+logger.info('Added MCP Tool', { toolName: getTagsTool.name });
 
 // Create Tag Tool
 const createTagTool = new Tool({
@@ -451,23 +451,21 @@ const createTagTool = new Tool({
     $ref: "ghost/tag#/schema", // Output is a single ghost/tag resource
   },
   implementation: async (input) => {
-    console.log(`Executing tool: ${createTagTool.name} with input:`, input);
+    logger.toolExecution(createTagTool.name, input);
     try {
       // Basic validation happens via inputSchema, more specific validation (like slug format) could be added here if not in service
       const newTag = await createGhostTag(input);
-      console.log(
-        `Tool ${createTagTool.name} executed successfully. Tag ID: ${newTag.id}`
-      );
+      logger.toolSuccess(createTagTool.name, newTag, { tagId: newTag.id });
       // TODO: Validate/map output against schema if necessary
       return newTag;
     } catch (error) {
-      console.error(`Error executing tool ${createTagTool.name}:`, error);
+      logger.toolError(createTagTool.name, error);
       throw new Error(`Failed to create Ghost tag: ${error.message}`);
     }
   },
 });
 mcpServer.addTool(createTagTool);
-console.log(`Added Tool: ${createTagTool.name}`);
+logger.info('Added MCP Tool', { toolName: createTagTool.name });
 
 // --- End Tool Definitions ---
 
@@ -476,19 +474,27 @@ console.log(`Added Tool: ${createTagTool.name}`);
 const startMCPServer = async (port = 3001) => {
   try {
     // Ensure resources/tools are added before starting
-    console.log("Starting MCP Server on port", port);
+    logger.info('Starting MCP Server', { port });
     await mcpServer.listen({ port });
-    console.log(`MCP Server listening on port ${port}`);
-    console.log(
-      "Available Resources:",
-      mcpServer.listResources().map((r) => r.name)
-    );
-    console.log(
-      "Available Tools:",
-      mcpServer.listTools().map((t) => t.name)
-    );
+    
+    const resources = mcpServer.listResources().map((r) => r.name);
+    const tools = mcpServer.listTools().map((t) => t.name);
+    
+    logger.info('MCP Server started successfully', {
+      port,
+      resourceCount: resources.length,
+      toolCount: tools.length,
+      resources,
+      tools,
+      type: 'server_start'
+    });
   } catch (error) {
-    console.error("Failed to start MCP Server:", error);
+    logger.error('Failed to start MCP Server', {
+      port,
+      error: error.message,
+      stack: error.stack,
+      type: 'server_start_error'
+    });
     process.exit(1);
   }
 };

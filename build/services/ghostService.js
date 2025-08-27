@@ -1,8 +1,10 @@
 import GhostAdminAPI from "@tryghost/admin-api";
 import dotenv from "dotenv";
+import { createContextLogger } from "../utils/logger.js";
 
 dotenv.config();
 
+const logger = createContextLogger('ghost-service');
 const { GHOST_ADMIN_API_URL, GHOST_ADMIN_API_KEY } = process.env;
 
 if (!GHOST_ADMIN_API_URL || !GHOST_ADMIN_API_KEY) {
@@ -42,11 +44,9 @@ const handleApiRequest = async (
   }
 
   try {
-    console.log(
-      `Executing Ghost API request: ${resource}.${action} (Retries left: ${retries})`
-    );
+    logger.apiRequest(`${resource}.${action}`, '', { retries, hasData: !!Object.keys(data).length });
     // Log data payload carefully, avoiding sensitive info if necessary
-    // console.debug(`Payload for ${resource}.${action}:`, data);
+    // logger.debug('API request payload', { resource, action, dataKeys: Object.keys(data) });
 
     let result;
     if (Object.keys(options).length > 0) {
@@ -68,16 +68,13 @@ const handleApiRequest = async (
       result = await api[resource][action](data);
     }
 
-    console.log(
-      `Successfully executed Ghost API request: ${resource}.${action}`
-    );
-    // console.debug(`Result for ${resource}.${action}:`, result);
+    logger.apiResponse(`${resource}.${action}`, '', 200, { 
+      resultType: typeof result,
+      hasResult: !!result
+    });
     return result;
   } catch (error) {
-    console.error(
-      `Error executing Ghost API request ${resource}.${action}:`,
-      error.message
-    );
+    logger.apiError(`${resource}.${action}`, '', error);
 
     // Check for specific error types or status codes if available in the error object
     // The structure of `error` depends on the Ghost API client library
@@ -89,27 +86,32 @@ const handleApiRequest = async (
 
     if ((isRateLimit || isServerError || isNetworkError) && retries > 0) {
       const delay = isRateLimit ? 5000 : 1000 * (4 - retries); // Longer delay for rate limit, increasing delay for others
-      console.log(
-        `Retrying ${resource}.${action} after ${delay}ms delay... (${
-          retries - 1
-        } retries left)`
-      );
+      logger.warn('Retrying Ghost API request', {
+        resource,
+        action,
+        delay,
+        retriesLeft: retries - 1,
+        reason: isRateLimit ? 'rate_limit' : isServerError ? 'server_error' : 'network_error'
+      });
       await new Promise((resolve) => setTimeout(resolve, delay));
       // Recursively call with decremented retries
       return handleApiRequest(resource, action, data, options, retries - 1);
     } else if (statusCode === 404) {
-      console.warn(
-        `Ghost API resource not found: ${resource} (potentially ID: ${
-          data.id || "N/A"
-        })`
-      );
+      logger.warn('Ghost API resource not found', {
+        resource,
+        action,
+        id: data.id || 'N/A',
+        statusCode
+      });
       // Decide how to handle 404 - maybe return null or let the error propagate
       throw error; // Or return null;
     } else {
-      console.error(
-        `Non-retryable error or out of retries for ${resource}.${action}.`
-      );
-      // console.error('Full error:', error);
+      logger.error('Non-retryable error or out of retries', {
+        resource,
+        action,
+        statusCode,
+        error: error.message
+      });
       throw error; // Re-throw for upstream handling
     }
   }
@@ -189,8 +191,19 @@ const createTag = async (tagData) => {
 const getTags = async (name) => {
   const options = {
     limit: "all", // Get all tags
-    ...(name && { filter: `name:'${name}'` }), // Add filter if name is provided
   };
+  
+  // Safely construct filter to prevent injection
+  if (name) {
+    // Escape single quotes and prevent injection
+    const safeName = name.replace(/'/g, "\\'");
+    // Additional validation: only allow alphanumeric, spaces, hyphens, underscores
+    if (!/^[a-zA-Z0-9\s\-_]+$/.test(name)) {
+      throw new Error("Tag name contains invalid characters");
+    }
+    options.filter = `name:'${safeName}'`;
+  }
+  
   return handleApiRequest("tags", "browse", {}, options);
 };
 

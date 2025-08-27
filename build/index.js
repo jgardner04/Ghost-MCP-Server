@@ -4,18 +4,30 @@ import postRoutes from "./routes/postRoutes.js"; // Import post routes
 import imageRoutes from "./routes/imageRoutes.js"; // Import image routes
 import tagRoutes from "./routes/tagRoutes.js"; // Import tag routes
 import { startMCPServer } from "./mcp_server.js"; // Import MCP server start function
+import { createContextLogger } from "./utils/logger.js";
 
 // Load environment variables from .env file
 dotenv.config();
+
+// Initialize logger for main server
+const logger = createContextLogger('main');
 
 const app = express();
 const restApiPort = process.env.PORT || 3000;
 const mcpPort = process.env.MCP_PORT || 3001; // Allow configuring MCP port
 
-// Middleware to parse JSON bodies
-app.use(express.json());
-// Middleware to parse URL-encoded bodies (needed potentially for form fields with images)
-app.use(express.urlencoded({ extended: true }));
+// Middleware to parse JSON bodies with size limits
+app.use(express.json({ 
+  limit: '1mb',
+  strict: true,
+  type: 'application/json'
+}));
+// Middleware to parse URL-encoded bodies with size limits
+app.use(express.urlencoded({ 
+  extended: true,
+  limit: '1mb',
+  parameterLimit: 100
+}));
 
 // Health check endpoint
 app.get("/health", (req, res) => {
@@ -31,9 +43,17 @@ app.use("/api/tags", tagRoutes);
 
 // Global error handler for Express
 app.use((err, req, res, next) => {
-  console.error("[Express Error Handler]:", err.message);
-  // Determine status code from error if possible, otherwise default to 500
   const statusCode = err.statusCode || err.response?.status || 500;
+  
+  logger.error('Express error handler triggered', {
+    error: err.message,
+    statusCode,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    type: 'express_error'
+  });
+  
   res.status(statusCode).json({
     message: err.message || "Internal Server Error",
     // Optionally include stack trace in development
@@ -45,9 +65,11 @@ app.use((err, req, res, next) => {
 const startServers = async () => {
   // Start Express server
   app.listen(restApiPort, () => {
-    console.log(
-      `🚀 Express REST API server listening at http://localhost:${restApiPort}`
-    );
+    logger.info('Express REST API server started', {
+      port: restApiPort,
+      url: `http://localhost:${restApiPort}`,
+      type: 'server_start'
+    });
   });
 
   // Start MCP server
@@ -55,6 +77,10 @@ const startServers = async () => {
 };
 
 startServers().catch((error) => {
-  console.error("Failed to start servers:", error);
+  logger.error('Failed to start servers', {
+    error: error.message,
+    stack: error.stack,
+    type: 'server_start_error'
+  });
   process.exit(1);
 });

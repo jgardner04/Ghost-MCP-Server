@@ -2,6 +2,9 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import os from "os"; // Import the os module
+import Joi from "joi";
+import crypto from "crypto";
+import { createContextLogger } from "../utils/logger.js";
 import { uploadImage as uploadGhostImage } from "../services/ghostService.js"; // Assuming uploadImage is in ghostService
 import { processImage } from "../services/imageProcessingService.js"; // Import the processing service
 
@@ -12,28 +15,89 @@ const uploadDir = os.tmpdir(); // Use the OS default temp directory
 //     fs.mkdirSync(uploadDir);
 // }
 
+// Validation schema for uploaded files (excluding size - validated by multer limits)
+const fileValidationSchema = Joi.object({
+  originalname: Joi.string().max(255).required(),
+  mimetype: Joi.string().pattern(/^image\/(jpeg|jpg|png|gif|webp|svg\+xml)$/i).required()
+});
+
+// Post-upload validation schema (when file.size is available)
+const uploadedFileValidationSchema = Joi.object({
+  originalname: Joi.string().max(255).required(),
+  mimetype: Joi.string().pattern(/^image\/(jpeg|jpg|png|gif|webp|svg\+xml)$/i).required(),
+  size: Joi.number().max(10 * 1024 * 1024).required(), // 10MB max
+  path: Joi.string().required()
+});
+
+// Safe filename generation
+const generateSafeFilename = (originalName) => {
+  const ext = path.extname(originalName);
+  // Validate extension against whitelist
+  const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
+  const normalizedExt = ext.toLowerCase();
+  
+  if (!allowedExtensions.includes(normalizedExt)) {
+    throw new Error('Invalid file extension');
+  }
+  
+  // Generate cryptographically secure random filename
+  const randomBytes = crypto.randomBytes(16).toString('hex');
+  const timestamp = Date.now();
+  return `mcp-upload-${timestamp}-${randomBytes}${normalizedExt}`;
+};
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
+    // Ensure we're using the temp directory, no user input for path
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    // Keep original extension, use timestamp for uniqueness
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    // Use a prefix to easily identify our temp files if needed
-    cb(null, "mcp-upload-" + uniqueSuffix + path.extname(file.originalname));
+    try {
+      // Generate safe filename that prevents path traversal
+      const safeFilename = generateSafeFilename(file.originalname);
+      cb(null, safeFilename);
+    } catch (error) {
+      cb(error);
+    }
   },
 });
 
-// Filter for image files (optional but recommended)
+// Enhanced filter for image files with validation
 const imageFileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith("image/")) {
-    cb(null, true);
-  } else {
-    cb(new Error("Not an image! Please upload only images."), false);
+  // Validate file properties (excluding size - not available at this stage)
+  const validation = fileValidationSchema.validate({
+    originalname: file.originalname,
+    mimetype: file.mimetype
+  });
+  
+  if (validation.error) {
+    return cb(new Error(`File validation failed: ${validation.error.details[0].message}`), false);
   }
+  
+  // Additional security checks
+  const filename = file.originalname;
+  
+  // Check for path traversal attempts
+  if (filename.includes('../') || filename.includes('..\\') || path.isAbsolute(filename)) {
+    return cb(new Error('Invalid filename: Path traversal detected'), false);
+  }
+  
+  // Check for null bytes
+  if (filename.includes('\0')) {
+    return cb(new Error('Invalid filename: Null byte detected'), false);
+  }
+  
+  cb(null, true);
 };
 
-const upload = multer({ storage: storage, fileFilter: imageFileFilter });
+const upload = multer({ 
+  storage: storage, 
+  fileFilter: imageFileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB
+    files: 1 // Only allow 1 file per request
+  }
+});
 
 /**
  * Extracts a base filename without extension or unique identifiers.
@@ -41,20 +105,28 @@ const upload = multer({ storage: storage, fileFilter: imageFileFilter });
  * Note: This might be simplified depending on how original filename is best accessed.
  * Multer's `file.originalname` is the best source.
  */
-const getDefaultAltText = (filePath) => {
+const getDefaultAltText = (originalName) => {
   try {
-    const originalFilename = path
-      .basename(filePath)
+    // Use the original filename directly instead of a file path to avoid path traversal
+    // Validate the input is a string and not a path
+    if (!originalName || typeof originalName !== 'string') {
+      return "Uploaded image";
+    }
+    
+    // Ensure no path separators are present (defense in depth)
+    const sanitizedName = originalName.replace(/[/\\:]/g, '');
+    
+    const originalFilename = sanitizedName
       .split(".")
       .slice(0, -1)
       .join(".");
+    
     // Attempt to remove common prefixes/suffixes added during upload/processing
-    // This is a basic heuristic and might need adjustment
     const nameWithoutIds = originalFilename.replace(
       /^(processed-|mcp-upload-)\d+-\d+-?/,
       ""
     );
-    return nameWithoutIds.replace(/[-_]/g, " ") || "Uploaded image"; // Replace separators, provide default
+    return nameWithoutIds.replace(/[-_]/g, " ") || "Uploaded image";
   } catch (e) {
     return "Uploaded image"; // Fallback
   }
@@ -65,6 +137,7 @@ const getDefaultAltText = (filePath) => {
  * Processes the image and includes alt text in the response.
  */
 const handleImageUpload = async (req, res, next) => {
+  const logger = createContextLogger('image-controller');
   let originalPath = null;
   let processedPath = null;
 
@@ -72,29 +145,82 @@ const handleImageUpload = async (req, res, next) => {
     if (!req.file) {
       return res.status(400).json({ message: "No image file uploaded." });
     }
+    
+    // Post-upload validation with complete file information
+    const fileValidation = uploadedFileValidationSchema.validate({
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      path: req.file.path
+    });
+    
+    if (fileValidation.error) {
+      // Delete the uploaded file since validation failed
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ 
+        message: `File validation failed: ${fileValidation.error.details[0].message}` 
+      });
+    }
+    
+    // Validate the file path is within our temp directory (defense in depth)
     originalPath = req.file.path;
-    console.log(`Image received (temp): ${originalPath}`);
+    const resolvedPath = path.resolve(originalPath);
+    const resolvedUploadDir = path.resolve(uploadDir);
+    
+    if (!resolvedPath.startsWith(resolvedUploadDir)) {
+      logger.error('Security violation: File path outside upload directory', {
+        filePath: path.basename(originalPath),
+        uploadDir: path.basename(uploadDir)
+      });
+      throw new Error('Security violation: File path outside of upload directory');
+    }
+    
+    logger.info('Image received for processing', {
+      originalName: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+      tempFile: path.basename(originalPath)
+    });
 
     // Process Image (output directory is still the temp dir)
     processedPath = await processImage(originalPath, uploadDir);
 
     // --- Handle Alt Text ---
-    // Get alt text from the request body (sent as a form field)
-    const providedAlt = req.body.alt;
+    // Validate and sanitize alt text from the request body
+    const altSchema = Joi.string().max(500).allow('').optional();
+    const { error, value: sanitizedAlt } = altSchema.validate(req.body.alt);
+    
+    if (error) {
+      return res.status(400).json({ message: `Invalid alt text: ${error.details[0].message}` });
+    }
+    
+    const providedAlt = sanitizedAlt;
     // Generate a default alt text from the original filename if none provided
     const defaultAlt = getDefaultAltText(req.file.originalname);
     const altText = providedAlt || defaultAlt;
-    console.log(`Using alt text: "${altText}"`);
+    logger.debug('Alt text determined', {
+      provided: !!providedAlt,
+      generated: !providedAlt,
+      altText
+    });
     // --- End Alt Text Handling ---
 
     // Call ghostService to upload the processed image
     const uploadResult = await uploadGhostImage(processedPath);
-    console.log("Processed image uploaded to Ghost:", uploadResult.url);
+    logger.info('Image uploaded to Ghost successfully', {
+      ghostUrl: uploadResult.url,
+      processedFile: path.basename(processedPath)
+    });
 
     // Respond with the URL and the determined alt text
     res.status(200).json({ url: uploadResult.url, alt: altText });
   } catch (error) {
-    console.error("Error in handleImageUpload controller:", error.message);
+    logger.error('Image upload controller error', {
+      error: error.message,
+      stack: error.stack,
+      originalFile: originalPath ? path.basename(originalPath) : null,
+      processedFile: processedPath ? path.basename(processedPath) : null
+    });
     // If it's a multer error (e.g., file filter), it might need specific handling
     if (error instanceof multer.MulterError) {
       return res.status(400).json({ message: error.message });
@@ -106,22 +232,20 @@ const handleImageUpload = async (req, res, next) => {
     if (originalPath) {
       fs.unlink(originalPath, (err) => {
         if (err)
-          console.error(
-            "Error deleting original temp file:",
-            originalPath,
-            err
-          );
+          logger.warn('Failed to delete original temp file', {
+            file: path.basename(originalPath),
+            error: err.message
+          });
       });
     }
     if (processedPath && processedPath !== originalPath) {
       // Don't delete if processing failed/skipped
       fs.unlink(processedPath, (err) => {
         if (err)
-          console.error(
-            "Error deleting processed temp file:",
-            processedPath,
-            err
-          );
+          logger.warn('Failed to delete processed temp file', {
+            file: path.basename(processedPath),
+            error: err.message
+          });
       });
     }
   }

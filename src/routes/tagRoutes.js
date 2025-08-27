@@ -1,6 +1,7 @@
 import express from "express";
 import { body, validationResult } from "express-validator"; // Import for validation
 import { getTags, createTag } from "../controllers/tagController.js";
+import { createContextLogger } from "../utils/logger.js";
 
 const router = express.Router();
 
@@ -21,9 +22,13 @@ const validateTagCreation = [
     ),
   // Handle validation results
   (req, res, next) => {
+    const logger = createContextLogger('tag-routes');
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.warn("Validation errors for POST /api/tags:", errors.array());
+      logger.warn('Tag validation errors', {
+        errors: errors.array(),
+        tagName: req.body?.name
+      });
       return res.status(400).json({ errors: errors.array() });
     }
     next();

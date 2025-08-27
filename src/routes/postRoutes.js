@@ -1,6 +1,7 @@
 import express from "express";
 import { body, validationResult } from "express-validator";
 import { createPost } from "../controllers/postController.js";
+import { createContextLogger } from "../utils/logger.js";
 
 const router = express.Router();
 
@@ -47,10 +48,14 @@ const validatePostCreation = [
     .withMessage("Meta description cannot exceed 500 characters."),
   // Handle validation results
   (req, res, next) => {
+    const logger = createContextLogger('post-routes');
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       // Log the validation errors
-      console.warn("Validation errors for POST /api/posts:", errors.array());
+      logger.warn('Post validation errors', {
+        errors: errors.array(),
+        title: req.body?.title
+      });
       return res.status(400).json({ errors: errors.array() });
     }
     next();
