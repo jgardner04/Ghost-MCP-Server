@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(gh api:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(npm install:*)",
+      "Bash(sudo chown:*)",
+      "Bash(npm config set:*)",
+      "Bash(node:*)",
+      "Bash(npm audit:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(git log:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

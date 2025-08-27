@@ -8,7 +8,13 @@
     "dev": "node scripts/dev.js",
     "list": "node scripts/dev.js list",
     "generate": "node scripts/dev.js generate",
-    "parse-prd": "node scripts/dev.js parse-prd"
+    "parse-prd": "node scripts/dev.js parse-prd",
+    "build": "mkdir -p build && cp -r src/* build/",
+    "start": "node src/index.js",
+    "start:mcp": "node src/mcp_server_improved.js",
+    "start:mcp:stdio": "MCP_TRANSPORT=stdio node src/mcp_server_improved.js",
+    "start:mcp:http": "MCP_TRANSPORT=http node src/mcp_server_improved.js",
+    "start:mcp:websocket": "MCP_TRANSPORT=websocket node src/mcp_server_improved.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -21,13 +27,18 @@
     "commander": "^11.1.0",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.0.1",
     "express-validator": "^7.2.1",
     "figlet": "^1.7.0",
     "gradient-string": "^2.0.2",
+    "helmet": "^8.1.0",
+    "joi": "^18.0.1",
     "multer": "^2.0.2",
     "openai": "^4.86.1",
     "ora": "^7.0.1",
-    "sharp": "^0.34.1"
+    "sanitize-html": "^2.17.0",
+    "sharp": "^0.34.1",
+    "winston": "^3.17.0"
   },
   "main": "index.js",
   "keywords": [],
