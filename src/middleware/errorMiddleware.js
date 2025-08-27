@@ -9,6 +9,7 @@ import {
 } from '../errors/index.js';
 import fs from 'fs/promises';
 import path from 'path';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -335,7 +336,19 @@ export function apiKeyAuth(apiKey) {
       return next(new AuthenticationError('API key is required'));
     }
     
-    if (providedKey !== apiKey) {
+    // Use timing-safe comparison to prevent timing attacks
+    const expectedKeyBuffer = Buffer.from(apiKey, 'utf8');
+    const providedKeyBuffer = Buffer.from(providedKey, 'utf8');
+    
+    // Ensure buffers are same length to prevent timing attacks
+    if (expectedKeyBuffer.length !== providedKeyBuffer.length) {
+      return next(new AuthenticationError('Invalid API key'));
+    }
+    
+    // Use constant-time comparison
+    const isValid = crypto.timingSafeEqual(expectedKeyBuffer, providedKeyBuffer);
+    
+    if (!isValid) {
       return next(new AuthenticationError('Invalid API key'));
     }
     
