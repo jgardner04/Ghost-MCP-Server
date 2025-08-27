@@ -195,12 +195,12 @@ const getTags = async (name) => {
   
   // Safely construct filter to prevent injection
   if (name) {
-    // Escape single quotes and prevent injection
-    const safeName = name.replace(/'/g, "\\'");
     // Additional validation: only allow alphanumeric, spaces, hyphens, underscores
     if (!/^[a-zA-Z0-9\s\-_]+$/.test(name)) {
       throw new Error("Tag name contains invalid characters");
     }
+    // Escape single quotes and backslashes to prevent injection
+    const safeName = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     options.filter = `name:'${safeName}'`;
   }
   

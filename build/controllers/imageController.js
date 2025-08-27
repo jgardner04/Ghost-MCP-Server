@@ -156,7 +156,15 @@ const handleImageUpload = async (req, res, next) => {
     
     if (fileValidation.error) {
       // Delete the uploaded file since validation failed
-      fs.unlink(req.file.path, () => {});
+      // Validate file path is within upload directory before deletion
+      const filePath = req.file.path;
+      const resolvedFilePath = path.resolve(filePath);
+      const resolvedUploadDir = path.resolve(uploadDir);
+      
+      if (resolvedFilePath.startsWith(resolvedUploadDir)) {
+        fs.unlink(filePath, () => {});
+      }
+      
       return res.status(400).json({ 
         message: `File validation failed: ${fileValidation.error.details[0].message}` 
       });
@@ -228,25 +236,34 @@ const handleImageUpload = async (req, res, next) => {
     // Pass other errors to the global handler
     next(error);
   } finally {
-    // Cleanup: Delete temporary files
+    // Cleanup: Delete temporary files with path validation
     if (originalPath) {
-      fs.unlink(originalPath, (err) => {
-        if (err)
-          logger.warn('Failed to delete original temp file', {
-            file: path.basename(originalPath),
-            error: err.message
-          });
-      });
+      const resolvedOriginalPath = path.resolve(originalPath);
+      const resolvedUploadDir = path.resolve(uploadDir);
+      
+      if (resolvedOriginalPath.startsWith(resolvedUploadDir)) {
+        fs.unlink(originalPath, (err) => {
+          if (err)
+            logger.warn('Failed to delete original temp file', {
+              file: path.basename(originalPath),
+              error: err.message
+            });
+        });
+      }
     }
     if (processedPath && processedPath !== originalPath) {
-      // Don't delete if processing failed/skipped
-      fs.unlink(processedPath, (err) => {
-        if (err)
-          logger.warn('Failed to delete processed temp file', {
-            file: path.basename(processedPath),
-            error: err.message
-          });
-      });
+      const resolvedProcessedPath = path.resolve(processedPath);
+      const resolvedUploadDir = path.resolve(uploadDir);
+      
+      if (resolvedProcessedPath.startsWith(resolvedUploadDir)) {
+        fs.unlink(processedPath, (err) => {
+          if (err)
+            logger.warn('Failed to delete processed temp file', {
+              file: path.basename(processedPath),
+              error: err.message
+            });
+        });
+      }
     }
   }
 };

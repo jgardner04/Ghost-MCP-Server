@@ -2,6 +2,56 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Security Requirements (OWASP Guidelines)
+
+All code written for this project MUST follow OWASP security best practices to prevent common vulnerabilities:
+
+### Required Security Measures:
+
+1. **Input Validation & Sanitization**
+   - Validate ALL user inputs using Joi schemas or express-validator
+   - Sanitize HTML content using sanitize-html library
+   - Reject inputs that don't match expected patterns
+   - Use allowlists for acceptable values, not denylists
+
+2. **Path Traversal Prevention**
+   - Always resolve and validate file paths against expected directories
+   - Use `path.resolve()` and verify paths start with allowed base directories
+   - Never use user input directly in file system operations
+   - Generate cryptographically secure filenames for uploads
+
+3. **XSS (Cross-Site Scripting) Prevention**
+   - Sanitize all HTML content before storage or display
+   - Escape special characters in user-generated content
+   - Use Content Security Policy headers
+   - Never use `eval()` or `new Function()` with user input
+
+4. **SQL Injection Prevention**
+   - Use parameterized queries (though this project uses Ghost API, not direct SQL)
+   - Escape special characters in filter strings
+   - Validate query parameters against expected formats
+
+5. **Authentication & Authorization**
+   - Use constant-time comparison for secrets (crypto.timingSafeEqual)
+   - Implement rate limiting on sensitive endpoints
+   - Validate API keys and tokens securely
+   - Never log sensitive information
+
+6. **Additional Security Controls**
+   - Set appropriate HTTP security headers
+   - Implement request size limits
+   - Use HTTPS for external requests
+   - Validate URLs to prevent SSRF attacks
+   - Clean up temporary files securely
+   - Log security events appropriately
+
+### Security Libraries in Use:
+- `joi` - Input validation schemas
+- `sanitize-html` - HTML sanitization
+- `express-rate-limit` - Rate limiting
+- `crypto` - Secure random generation and comparisons
+- `helmet` - Security headers (to be added if not present)
+
 ## Project Overview
 
 Ghost MCP Server - A Model Context Protocol (MCP) server that enables AI clients to interact with Ghost CMS instances via the Ghost Admin API. The project provides both an Express REST API server (port 3000) and an MCP server (port 3001) for managing Ghost blog content.

@@ -11,7 +11,9 @@
       "Bash(npm config set:*)",
       "Bash(node:*)",
       "Bash(npm audit:*)",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []

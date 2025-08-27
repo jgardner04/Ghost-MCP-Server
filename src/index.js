@@ -1,4 +1,5 @@
 import express from "express";
+import helmet from "helmet";
 import dotenv from "dotenv";
 import postRoutes from "./routes/postRoutes.js"; // Import post routes
 import imageRoutes from "./routes/imageRoutes.js"; // Import image routes
@@ -15,6 +16,28 @@ const logger = createContextLogger('main');
 const app = express();
 const restApiPort = process.env.PORT || 3000;
 const mcpPort = process.env.MCP_PORT || 3001; // Allow configuring MCP port
+
+// Apply security headers with Helmet (OWASP recommended)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
+}))
 
 // Middleware to parse JSON bodies with size limits
 app.use(express.json({ 
