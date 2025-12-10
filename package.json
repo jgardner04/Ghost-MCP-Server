@@ -1,5 +1,5 @@
 {
-  "name": "ghost-mcp-server",
+  "name": "@jgardner04/ghost-mcp-server",
   "version": "1.0.0",
   "description": "A Model Context Protocol (MCP) server for interacting with Ghost CMS via the Admin API",
   "author": "Jonathan Gardner",
@@ -10,8 +10,8 @@
     "./mcp": "./src/mcp_server_improved.js"
   },
   "bin": {
-    "ghost-mcp-server": "./src/index.js",
-    "ghost-mcp": "./src/mcp_server_improved.js"
+    "ghost-mcp-server": "src/index.js",
+    "ghost-mcp": "src/mcp_server_improved.js"
   },
   "files": [
     "src",
