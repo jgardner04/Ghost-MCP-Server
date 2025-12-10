@@ -1,9 +1,34 @@
 {
   "name": "ghost-mcp-server",
   "version": "1.0.0",
-  "description": "A Ghost MCP Server for managing a Ghost(Pro).",
+  "description": "A Model Context Protocol (MCP) server for interacting with Ghost CMS via the Admin API",
   "author": "Jonathan Gardner",
   "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./mcp": "./src/mcp_server_improved.js"
+  },
+  "bin": {
+    "ghost-mcp-server": "./src/index.js",
+    "ghost-mcp": "./src/mcp_server_improved.js"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jgardner04/Ghost-MCP-Server.git"
+  },
+  "homepage": "https://github.com/jgardner04/Ghost-MCP-Server#readme",
+  "bugs": {
+    "url": "https://github.com/jgardner04/Ghost-MCP-Server/issues"
+  },
   "scripts": {
     "dev": "node scripts/dev.js",
     "list": "node scripts/dev.js list",
@@ -40,7 +65,25 @@
     "sharp": "^0.34.1",
     "winston": "^3.17.0"
   },
-  "main": "index.js",
-  "keywords": [],
-  "license": "MIT"
+  "keywords": [
+    "ghost",
+    "cms",
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "claude",
+    "ghost-cms",
+    "admin-api",
+    "blog",
+    "publishing"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "semantic-release": "^25.0.2"
+  }
 }

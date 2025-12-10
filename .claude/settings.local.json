@@ -13,7 +13,11 @@
       "Bash(npm audit:*)",
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(git push:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(git remote:*)"
     ],
     "deny": [],
     "ask": []
