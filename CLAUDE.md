@@ -62,15 +62,72 @@ Ghost MCP Server - A Model Context Protocol (MCP) server that enables AI clients
 ### Core Development Commands
 
 - **Start MCP Server**: `npm start` or `node src/index.js` - Starts both Express and MCP servers
-- **Development Mode**: `npm run dev` - Runs the Task Master development workflow system
 - **Build**: `npm run build` - Copies source files to build directory
 
-### Task Master CLI Commands (for project task management)
+## Testing (Test-Driven Development)
 
-- **List Tasks**: `npm run list` or `node scripts/dev.js list` - View all development tasks
-- **Generate Task Files**: `npm run generate` - Create individual task files from tasks.json
-- **Parse PRD**: `npm run parse-prd` - Convert a PRD document into structured tasks
-- **Task Management**: Use the comprehensive Task Master system detailed in `.cursor/rules/dev_workflow.mdc`
+This project follows Test-Driven Development (TDD) practices.
+
+### TDD Requirement
+
+**All new features and bug fixes MUST be developed using TDD:**
+
+1. **Red**: Write a failing test first
+2. **Green**: Write minimal code to make the test pass
+3. **Refactor**: Improve the code while keeping tests green
+
+### Test File Conventions
+
+- **Location**: Place tests alongside source files in `__tests__/` directories
+  - Example: `src/services/__tests__/ghostService.test.js`
+- **Naming**: Use `*.test.js` or `*.spec.js` suffix
+- **Framework**: Vitest (not Jest)
+- **Organization**: Use `describe` blocks for modules/functions, `it` for test cases
+
+### Coverage Requirements
+
+- **Minimum coverage**: 80% for lines, branches, functions, and statements
+- Coverage is enforced in CI pipeline
+- Tests failing or coverage below threshold will block merges
+
+### Testing Commands
+
+- `npm test` - Run tests once
+- `npm run test:watch` - Run tests in watch mode (use during development)
+- `npm run test:coverage` - Run tests with coverage report
+
+## Code Quality Principles
+
+Follow these principles when writing code:
+
+1. **Never disable lint rules as workarounds**
+   - If ESLint flags an issue, fix the underlying problem
+   - Don't use `// eslint-disable` comments unless absolutely necessary
+   - If you must disable a rule, add a detailed comment explaining why
+
+2. **Prefer proper fixes over suppressions**
+   - Refactor code to comply with rules instead of disabling them
+   - Use type assertions only when you have more information than the linter
+
+3. **Follow existing patterns in the codebase**
+   - Read similar code before implementing new features
+   - Match the architectural patterns already established
+   - Keep consistency in naming, structure, and error handling
+
+4. **Write self-documenting code**
+   - Use clear, descriptive variable and function names
+   - Add comments only when the "why" isn't obvious from the code
+   - Keep functions small and focused on a single responsibility
+
+### Code Quality Commands
+
+- `npm run lint` - Check code for linting errors
+- `npm run lint:fix` - Automatically fix linting errors
+- `npm run format` - Format code with Prettier
+- `npm run format:check` - Check if code is formatted correctly
+- `npm run prepare` - Set up Husky git hooks (pre-commit, pre-push)
+
+**Note:** Git hooks automatically run linting and tests before commits/pushes.
 
 ## Architecture
 
@@ -96,11 +153,6 @@ Ghost MCP Server - A Model Context Protocol (MCP) server that enables AI clients
    - Handle HTTP requests for posts, images, and tags
    - Validate inputs and coordinate with services
 
-5. **Task Master System** (`scripts/`):
-   - AI-driven development workflow management
-   - Task complexity analysis and subtask generation
-   - Modular architecture in `scripts/modules/`
-
 ### Environment Configuration
 
 Required environment variables in `.env`:
@@ -115,9 +167,87 @@ Optional:
 ```
 PORT=3000                 # Express REST API port
 MCP_PORT=3001            # MCP server port
-ANTHROPIC_API_KEY=...    # For Task Master CLI
-PERPLEXITY_API_KEY=...   # For research-backed task analysis
 ```
+
+## Documentation
+
+This project maintains detailed documentation in the `docs/` directory:
+
+| File | Description |
+|------|-------------|
+| [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md) | Error types, circuit breaker pattern, retry mechanisms, error logging strategies |
+| [docs/MCP_TRANSPORT.md](docs/MCP_TRANSPORT.md) | Transport configuration (stdio, HTTP/SSE, WebSocket), use cases, security considerations |
+| [docs/RESOURCE_FETCHING.md](docs/RESOURCE_FETCHING.md) | Resource URI patterns, caching strategies (LRU/TTL), real-time subscriptions, batch operations |
+| [docs/TESTING.md](docs/TESTING.md) | Manual testing setup with Ghost CMS, MCP Inspector usage, debugging tips |
+
+### When to Update Documentation
+
+Update documentation when you:
+- Add new error types or change error handling patterns → Update ERROR_HANDLING.md
+- Modify transport configuration or add transport options → Update MCP_TRANSPORT.md
+- Change resource URI patterns or caching behavior → Update RESOURCE_FETCHING.md
+- Add new manual testing procedures → Update TESTING.md
+
+### Post-Task Documentation Checklist
+
+After completing a task, verify:
+- [ ] Updated relevant documentation files if patterns changed
+- [ ] Added examples for new features in appropriate docs
+- [ ] Updated CLAUDE.md if development workflow changed
+- [ ] Documented any new environment variables in this file
+
+## Task Tracking for Multi-Session Work
+
+For complex tasks that span multiple work sessions, create task files to track progress.
+
+### When to Create Task Files
+
+Create a task file in `docs/tasks/` when:
+- The task will take multiple sessions to complete
+- You need to track subtasks and their dependencies
+- You want to document decisions made during implementation
+- The task involves coordinating changes across multiple files
+
+### Task File Template
+
+Create files as `docs/tasks/issue-XX-brief-description.md`:
+
+```markdown
+# Task: [Brief Description]
+
+**Issue:** #XX
+**Status:** In Progress | Blocked | Completed
+**Started:** YYYY-MM-DD
+
+## Goal
+[What you're trying to accomplish]
+
+## Subtasks
+- [ ] Subtask 1
+- [ ] Subtask 2
+- [x] Completed subtask
+
+## Progress Log
+
+### YYYY-MM-DD
+- Completed subtask X
+- Discovered issue with Y
+- Next: Work on Z
+
+## Decisions
+- [Document key architectural or implementation decisions]
+
+## Blockers
+- [List anything blocking progress]
+```
+
+### Using Task Files
+
+1. **Create** the task file when starting multi-session work
+2. **Update** the Progress Log at the end of each session
+3. **Check off** subtasks as you complete them
+4. **Document** important decisions and blockers
+5. **Delete** the task file when work is complete and merged
 
 ## MCP Tool Usage Guide
 
@@ -137,21 +267,9 @@ When implementing Ghost CMS operations via MCP:
    - Status options: 'draft', 'published', 'scheduled'
    - HTML content is required for post body
 
-## Task Master Workflow
-
-The project uses an advanced task management system. Key commands:
-
-- Analyze task complexity before implementation
-- Use `expand` command to break down complex tasks
-- Track progress with task status updates
-- Maintain dependency chains between tasks
-
-Refer to `.cursor/rules/dev_workflow.mdc` for comprehensive Task Master documentation.
-
 ## Key Dependencies
 
 - `@modelcontextprotocol/sdk`: MCP protocol implementation
 - `@tryghost/admin-api`: Official Ghost Admin API client
 - `express`: REST API framework
 - `sharp`: Image processing
-- `@anthropic-ai/sdk`: Task Master AI features
