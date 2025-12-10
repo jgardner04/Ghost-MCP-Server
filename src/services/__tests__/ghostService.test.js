@@ -1,35 +1,35 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // Mock the Ghost Admin API
 vi.mock('@tryghost/admin-api', () => {
-  const GhostAdminAPI = vi.fn(function() {
+  const GhostAdminAPI = vi.fn(function () {
     return {
       posts: {
-        add: vi.fn()
+        add: vi.fn(),
       },
       tags: {
         add: vi.fn(),
-        browse: vi.fn()
+        browse: vi.fn(),
       },
       site: {
-        read: vi.fn()
+        read: vi.fn(),
       },
       images: {
-        upload: vi.fn()
-      }
+        upload: vi.fn(),
+      },
     };
   });
 
   return {
-    default: GhostAdminAPI
+    default: GhostAdminAPI,
   };
 });
 
 // Mock dotenv
 vi.mock('dotenv', () => ({
   default: {
-    config: vi.fn()
-  }
+    config: vi.fn(),
+  },
 }));
 
 // Mock logger
@@ -39,8 +39,8 @@ vi.mock('../../utils/logger.js', () => ({
     apiResponse: vi.fn(),
     apiError: vi.fn(),
     warn: vi.fn(),
-    error: vi.fn()
-  }))
+    error: vi.fn(),
+  })),
 }));
 
 // Import after setting up mocks and environment
@@ -58,7 +58,7 @@ describe('ghostService', () => {
       // The function should call the API with default status
       try {
         await createPost(postData);
-      } catch (error) {
+      } catch (_error) {
         // Expected to fail since we're using a mock, but we can verify the behavior
       }
 
@@ -76,7 +76,7 @@ describe('ghostService', () => {
 
       try {
         await createTag(tagData);
-      } catch (error) {
+      } catch (_error) {
         // Expected to fail with mock, but validates input handling
       }
 
@@ -86,7 +86,9 @@ describe('ghostService', () => {
 
   describe('getTags', () => {
     it('should reject tag names with invalid characters', async () => {
-      await expect(getTags("'; DROP TABLE tags; --")).rejects.toThrow('Tag name contains invalid characters');
+      await expect(getTags("'; DROP TABLE tags; --")).rejects.toThrow(
+        'Tag name contains invalid characters'
+      );
     });
 
     it('should accept valid tag names', async () => {
@@ -95,9 +97,9 @@ describe('ghostService', () => {
       for (const name of validNames) {
         try {
           await getTags(name);
-        } catch (error) {
+        } catch (_error) {
           // Expected to fail with mock, but should not throw validation error
-          expect(error.message).not.toContain('invalid characters');
+          expect(_error.message).not.toContain('invalid characters');
         }
       }
     });
@@ -105,7 +107,7 @@ describe('ghostService', () => {
     it('should handle tag names without filter when name is not provided', async () => {
       try {
         await getTags();
-      } catch (error) {
+      } catch (_error) {
         // Expected to fail with mock
       }
 

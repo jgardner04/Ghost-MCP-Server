@@ -15,11 +15,13 @@ MCP_TRANSPORT=stdio npm run start:mcp
 ```
 
 **Use Cases:**
+
 - CLI tools that spawn the MCP server as a subprocess
 - Direct integration with shell scripts
 - Testing and debugging with simple text protocols
 
 **Example Client Connection:**
+
 ```javascript
 import { spawn } from 'child_process';
 const mcpProcess = spawn('npm', ['run', 'start:mcp:stdio']);
@@ -37,16 +39,19 @@ MCP_TRANSPORT=http npm run start:mcp
 ```
 
 **Use Cases:**
+
 - Web applications
 - Cross-origin requests (CORS supported)
 - Stateless client connections
 - Integration with existing HTTP infrastructure
 
 **Endpoints:**
+
 - SSE Stream: `http://localhost:3001/mcp/sse`
 - Health Check: `http://localhost:3001/mcp/health`
 
 **Example Client Connection:**
+
 ```javascript
 const eventSource = new EventSource('http://localhost:3001/mcp/sse');
 eventSource.onmessage = (event) => {
@@ -66,12 +71,14 @@ MCP_TRANSPORT=websocket npm run start:mcp
 ```
 
 **Use Cases:**
+
 - Real-time applications
 - Persistent connections
 - Low-latency communication
 - Bidirectional streaming
 
 **Example Client Connection:**
+
 ```javascript
 const ws = new WebSocket('ws://localhost:3001');
 ws.on('open', () => {
@@ -128,6 +135,7 @@ All transports now return standardized error responses:
 ```
 
 Error codes:
+
 - `TOOL_EXECUTION_ERROR`: General tool execution failure
 - `RESOURCE_NOT_FOUND`: Requested resource doesn't exist
 - `IMAGE_UPLOAD_ERROR`: Image processing/upload failed
@@ -141,10 +149,10 @@ Resources now support fetching individual items:
 
 ```javascript
 // Fetch a specific tag
-GET /resources/ghost/tag/my-tag-slug
+GET / resources / ghost / tag / my - tag - slug;
 
 // Fetch a specific post (when implemented)
-GET /resources/ghost/post/post-id
+GET / resources / ghost / post / post - id;
 ```
 
 ## Security Considerations
@@ -158,6 +166,7 @@ MCP_API_KEY=your-secret-key
 ```
 
 Clients must include the API key in requests:
+
 - **HTTP/SSE**: `Authorization: Bearer your-secret-key`
 - **WebSocket**: Send in connection params or first message
 - **stdio**: Not applicable
@@ -176,11 +185,11 @@ MCP_ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com
 
 ## Choosing the Right Transport
 
-| Transport | Best For | Pros | Cons |
-|-----------|----------|------|------|
-| **stdio** | CLI tools, scripts | Simple, secure, no network | Limited to local processes |
-| **HTTP/SSE** | Web apps, REST APIs | CORS support, stateless, firewall-friendly | One-way streaming only |
-| **WebSocket** | Real-time apps | Bidirectional, low latency, persistent | More complex, stateful |
+| Transport     | Best For            | Pros                                       | Cons                       |
+| ------------- | ------------------- | ------------------------------------------ | -------------------------- |
+| **stdio**     | CLI tools, scripts  | Simple, secure, no network                 | Limited to local processes |
+| **HTTP/SSE**  | Web apps, REST APIs | CORS support, stateless, firewall-friendly | One-way streaming only     |
+| **WebSocket** | Real-time apps      | Bidirectional, low latency, persistent     | More complex, stateful     |
 
 ## Migration from Basic Implementation
 
@@ -196,6 +205,7 @@ The improved implementation is backward compatible. To migrate:
 Test each transport with curl or similar tools:
 
 ### HTTP/SSE
+
 ```bash
 # Health check
 curl http://localhost:3001/mcp/health
@@ -205,12 +215,14 @@ curl -N http://localhost:3001/mcp/sse
 ```
 
 ### WebSocket
+
 ```bash
 # Using wscat (npm install -g wscat)
 wscat -c ws://localhost:3001
 ```
 
 ### stdio
+
 ```bash
 # Direct execution
 MCP_TRANSPORT=stdio node src/mcp_server_improved.js

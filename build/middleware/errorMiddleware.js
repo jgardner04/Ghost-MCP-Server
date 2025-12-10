@@ -5,7 +5,7 @@ import {
   NotFoundError,
   AuthenticationError,
   AuthorizationError,
-  RateLimitError
+  RateLimitError,
 } from '../errors/index.js';
 import fs from 'fs/promises';
 import path from 'path';
@@ -23,7 +23,7 @@ export class ErrorLogger {
     this.maxLogSize = options.maxLogSize || 10 * 1024 * 1024; // 10MB
     this.logLevel = options.logLevel || process.env.LOG_LEVEL || 'info';
     this.enableFileLogging = options.enableFileLogging ?? true;
-    
+
     // Ensure log directory exists
     if (this.enableFileLogging) {
       this.ensureLogDirectory();
@@ -58,21 +58,23 @@ export class ErrorLogger {
   }
 
   formatLogEntry(level, message, meta = {}) {
-    return JSON.stringify({
-      timestamp: new Date().toISOString(),
-      level,
-      message,
-      ...meta,
-      environment: process.env.NODE_ENV || 'development',
-      pid: process.pid
-    }) + '\n';
+    return (
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level,
+        message,
+        ...meta,
+        environment: process.env.NODE_ENV || 'development',
+        pid: process.pid,
+      }) + '\n'
+    );
   }
 
   async writeToFile(type, entry) {
     if (!this.enableFileLogging) return;
-    
+
     const filePath = this.getLogFilePath(type);
-    
+
     try {
       await this.rotateLogIfNeeded(filePath);
       await fs.appendFile(filePath, entry);
@@ -84,7 +86,7 @@ export class ErrorLogger {
   async logError(error, context = {}) {
     const isOperational = ErrorHandler.isOperationalError(error);
     const level = isOperational ? 'error' : 'fatal';
-    
+
     const logData = {
       name: error.name || 'Error',
       message: error.message,
@@ -92,7 +94,7 @@ export class ErrorLogger {
       statusCode: error.statusCode,
       stack: error.stack,
       isOperational,
-      ...context
+      ...context,
     };
 
     // Console logging
@@ -145,21 +147,22 @@ export class ErrorMetrics {
       errorsByType: {},
       errorsByStatusCode: {},
       errorsByEndpoint: {},
-      lastReset: new Date().toISOString()
+      lastReset: new Date().toISOString(),
     };
   }
 
   recordError(error, endpoint = null) {
     this.metrics.totalErrors++;
-    
+
     // Count by error type
     const errorType = error.constructor.name;
     this.metrics.errorsByType[errorType] = (this.metrics.errorsByType[errorType] || 0) + 1;
-    
+
     // Count by status code
     const statusCode = error.statusCode || 500;
-    this.metrics.errorsByStatusCode[statusCode] = (this.metrics.errorsByStatusCode[statusCode] || 0) + 1;
-    
+    this.metrics.errorsByStatusCode[statusCode] =
+      (this.metrics.errorsByStatusCode[statusCode] || 0) + 1;
+
     // Count by endpoint
     if (endpoint) {
       this.metrics.errorsByEndpoint[endpoint] = (this.metrics.errorsByEndpoint[endpoint] || 0) + 1;
@@ -171,7 +174,7 @@ export class ErrorMetrics {
       ...this.metrics,
       uptime: process.uptime(),
       memoryUsage: process.memoryUsage(),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 
@@ -181,7 +184,7 @@ export class ErrorMetrics {
       errorsByType: {},
       errorsByStatusCode: {},
       errorsByEndpoint: {},
-      lastReset: new Date().toISOString()
+      lastReset: new Date().toISOString(),
     };
   }
 }
@@ -199,7 +202,7 @@ export function expressErrorHandler(err, req, res, next) {
     method: req.method,
     url: req.url,
     ip: req.ip,
-    userAgent: req.get('user-agent')
+    userAgent: req.get('user-agent'),
   });
 
   // Record metrics
@@ -207,12 +210,12 @@ export function expressErrorHandler(err, req, res, next) {
 
   // Format response
   const { statusCode, body } = ErrorHandler.formatHTTPError(err);
-  
+
   // Set security headers
   res.set({
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
-    'X-XSS-Protection': '1; mode=block'
+    'X-XSS-Protection': '1; mode=block',
   });
 
   // Send response
@@ -241,13 +244,15 @@ export function validateRequest(schema) {
         if (validationResult && validationResult.error) {
           throw new ValidationError(validationResult.error);
         }
-      } 
+      }
       // If schema has a validate method (e.g., Joi schema)
       else if (schema && typeof schema.validate === 'function') {
         const { error } = schema.validate(req.body, { abortEarly: false });
         if (error) {
           // Create ValidationError from Joi error details
-          const errors = error.details ? error.details.map(detail => detail.message) : [error.message];
+          const errors = error.details
+            ? error.details.map((detail) => detail.message)
+            : [error.message];
           throw new ValidationError('Validation failed', errors);
         }
       }
@@ -266,7 +271,7 @@ export function validateRequest(schema) {
           throw new ValidationError('Validation failed', errors);
         }
       }
-      
+
       next();
     } catch (error) {
       next(error);
@@ -288,33 +293,33 @@ export class RateLimiter {
     return (req, res, next) => {
       const key = req.ip;
       const now = Date.now();
-      
+
       // Clean old entries
       this.cleanup(now);
-      
+
       // Get or create request list for this IP
       if (!this.requests.has(key)) {
         this.requests.set(key, []);
       }
-      
+
       const requestTimes = this.requests.get(key);
       requestTimes.push(now);
-      
+
       if (requestTimes.length > this.maxRequests) {
         const retryAfter = Math.ceil((this.windowMs - (now - requestTimes[0])) / 1000);
         return next(new RateLimitError(retryAfter));
       }
-      
+
       next();
     };
   }
 
   cleanup(now) {
     const cutoff = now - this.windowMs;
-    
+
     for (const [key, times] of this.requests.entries()) {
-      const filtered = times.filter(time => time > cutoff);
-      
+      const filtered = times.filter((time) => time > cutoff);
+
       if (filtered.length === 0) {
         this.requests.delete(key);
       } else {
@@ -329,29 +334,29 @@ export class RateLimiter {
  */
 export function apiKeyAuth(apiKey) {
   return (req, res, next) => {
-    const providedKey = req.headers['x-api-key'] || 
-                       req.headers['authorization']?.replace('Bearer ', '');
-    
+    const providedKey =
+      req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
+
     if (!providedKey) {
       return next(new AuthenticationError('API key is required'));
     }
-    
+
     // Use timing-safe comparison to prevent timing attacks
     const expectedKeyBuffer = Buffer.from(apiKey, 'utf8');
     const providedKeyBuffer = Buffer.from(providedKey, 'utf8');
-    
+
     // Ensure buffers are same length to prevent timing attacks
     if (expectedKeyBuffer.length !== providedKeyBuffer.length) {
       return next(new AuthenticationError('Invalid API key'));
     }
-    
+
     // Use constant-time comparison
     const isValid = crypto.timingSafeEqual(expectedKeyBuffer, providedKeyBuffer);
-    
+
     if (!isValid) {
       return next(new AuthenticationError('Invalid API key'));
     }
-    
+
     next();
   };
 }
@@ -362,18 +367,18 @@ export function apiKeyAuth(apiKey) {
 export function mcpCors(allowedOrigins = ['*']) {
   return (req, res, next) => {
     const origin = req.headers.origin;
-    
+
     if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
       res.header('Access-Control-Allow-Origin', origin || '*');
       res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
       res.header('Access-Control-Max-Age', '86400');
     }
-    
+
     if (req.method === 'OPTIONS') {
       return res.sendStatus(204);
     }
-    
+
     next();
   };
 }
@@ -386,22 +391,22 @@ export function healthCheck(ghostService) {
     try {
       const health = await ghostService.checkHealth();
       const metrics = errorMetrics.getMetrics();
-      
+
       const status = health.status === 'healthy' ? 200 : 503;
-      
+
       res.status(status).json({
         ...health,
         metrics: {
           errors: metrics.totalErrors,
           uptime: metrics.uptime,
-          memory: metrics.memoryUsage
-        }
+          memory: metrics.memoryUsage,
+        },
       });
     } catch (error) {
       res.status(503).json({
         status: 'unhealthy',
         error: error.message,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
   };
@@ -428,12 +433,12 @@ export class GracefulShutdown {
         res.status(503).json({
           error: {
             code: 'SERVER_SHUTTING_DOWN',
-            message: 'Server is shutting down'
-          }
+            message: 'Server is shutting down',
+          },
         });
         return;
       }
-      
+
       // Track the connection
       this.trackConnection(req.socket);
       next();
@@ -442,36 +447,33 @@ export class GracefulShutdown {
 
   async shutdown(server) {
     if (this.isShuttingDown) return;
-    
+
     this.isShuttingDown = true;
     console.log('Graceful shutdown initiated...');
-    
+
     // Stop accepting new connections
     server.close(() => {
       console.log('Server closed to new connections');
     });
-    
+
     // Close existing connections
     for (const connection of this.connections) {
       connection.end();
     }
-    
+
     // Force close after timeout
     setTimeout(() => {
       for (const connection of this.connections) {
         connection.destroy();
       }
     }, 10000);
-    
+
     // Log final metrics
     await errorLogger.logInfo('Shutdown metrics', errorMetrics.getMetrics());
   }
 }
 
-export {
-  errorLogger,
-  errorMetrics
-};
+export { errorLogger, errorMetrics };
 
 export default {
   expressErrorHandler,
@@ -485,5 +487,5 @@ export default {
   ErrorLogger,
   ErrorMetrics,
   errorLogger,
-  errorMetrics
+  errorMetrics,
 };

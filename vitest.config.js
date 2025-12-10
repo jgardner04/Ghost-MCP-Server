@@ -12,7 +12,7 @@ export default defineConfig({
         lines: 80,
         branches: 80,
         functions: 80,
-        statements: 80
+        statements: 80,
       },
       include: ['src/**/*.js'],
       exclude: [
@@ -21,10 +21,10 @@ export default defineConfig({
         'scripts/**',
         '**/__tests__/**',
         '**/*.test.js',
-        '**/*.spec.js'
-      ]
+        '**/*.spec.js',
+      ],
     },
     include: ['src/**/*.test.js', 'src/**/*.spec.js', 'src/**/__tests__/**/*.js'],
-    exclude: ['node_modules/**', 'build/**']
-  }
+    exclude: ['node_modules/**', 'build/**'],
+  },
 });

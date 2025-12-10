@@ -46,6 +46,7 @@ All code written for this project MUST follow OWASP security best practices to p
    - Log security events appropriately
 
 ### Security Libraries in Use:
+
 - `joi` - Input validation schemas
 - `sanitize-html` - HTML sanitization
 - `express-rate-limit` - Rate limiting
@@ -76,26 +77,22 @@ Ghost MCP Server - A Model Context Protocol (MCP) server that enables AI clients
 ### Core Components
 
 1. **MCP Server** (`src/mcp_server.js`):
-
    - Implements Model Context Protocol specification
    - Exposes Ghost CMS functionality as MCP tools
    - Resources: `ghost/tag`, `ghost/post`
    - Tools: `ghost_create_tag`, `ghost_get_tags`, `ghost_upload_image`, `ghost_create_post`
 
 2. **Express Server** (`src/index.js`):
-
    - REST API endpoints for Ghost operations
    - Routes: `/api/posts`, `/api/images`, `/api/tags`
    - Health check endpoint: `/health`
 
 3. **Services Layer** (`src/services/`):
-
    - `ghostService.js`: Ghost Admin API wrapper with retry logic
    - `postService.js`: Post creation and management
    - `imageProcessingService.js`: Image optimization and processing
 
 4. **Controllers** (`src/controllers/`):
-
    - Handle HTTP requests for posts, images, and tags
    - Validate inputs and coordinate with services
 
@@ -127,12 +124,10 @@ PERPLEXITY_API_KEY=...   # For research-backed task analysis
 When implementing Ghost CMS operations via MCP:
 
 1. **Image Upload Flow**:
-
    - First call `ghost_upload_image` with imageUrl
    - Use returned URL for `feature_image` in post creation
 
 2. **Tag Management**:
-
    - Use `ghost_get_tags` to check existing tags
    - Create new tags with `ghost_create_tag` if needed
    - Reference tags by name when creating posts
