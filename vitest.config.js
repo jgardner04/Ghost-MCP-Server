@@ -29,6 +29,6 @@ export default defineConfig({
       ],
     },
     include: ['src/**/*.test.js', 'src/**/*.spec.js', 'src/**/__tests__/**/*.js'],
-    exclude: ['node_modules/**', 'build/**'],
+    exclude: ['node_modules/**', 'build/**', 'src/__tests__/helpers/**'],
   },
 });

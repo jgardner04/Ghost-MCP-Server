@@ -1,46 +1,17 @@
 import { describe, it, expect, vi } from 'vitest';
+import { mockGhostApiModule } from '../../__tests__/helpers/mockGhostApi.js';
+import { createMockContextLogger } from '../../__tests__/helpers/mockLogger.js';
+import { mockDotenv } from '../../__tests__/helpers/testUtils.js';
 
 // Mock the Ghost Admin API
-vi.mock('@tryghost/admin-api', () => {
-  const GhostAdminAPI = vi.fn(function () {
-    return {
-      posts: {
-        add: vi.fn(),
-      },
-      tags: {
-        add: vi.fn(),
-        browse: vi.fn(),
-      },
-      site: {
-        read: vi.fn(),
-      },
-      images: {
-        upload: vi.fn(),
-      },
-    };
-  });
-
-  return {
-    default: GhostAdminAPI,
-  };
-});
+vi.mock('@tryghost/admin-api', () => mockGhostApiModule());
 
 // Mock dotenv
-vi.mock('dotenv', () => ({
-  default: {
-    config: vi.fn(),
-  },
-}));
+vi.mock('dotenv', () => mockDotenv());
 
 // Mock logger
 vi.mock('../../utils/logger.js', () => ({
-  createContextLogger: vi.fn(() => ({
-    apiRequest: vi.fn(),
-    apiResponse: vi.fn(),
-    apiError: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  })),
+  createContextLogger: createMockContextLogger(),
 }));
 
 // Import after setting up mocks and environment
