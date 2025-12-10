@@ -17,7 +17,12 @@
       "Bash(git push:*)",
       "Bash(find:*)",
       "Bash(cat:*)",
-      "Bash(git remote:*)"
+      "Bash(git remote:*)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(npm view:*)",
+      "Bash(npm show:*)"
     ],
     "deny": [],
     "ask": []
