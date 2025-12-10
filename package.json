@@ -39,7 +39,10 @@
     "start:mcp": "node src/mcp_server_improved.js",
     "start:mcp:stdio": "MCP_TRANSPORT=stdio node src/mcp_server_improved.js",
     "start:mcp:http": "MCP_TRANSPORT=http node src/mcp_server_improved.js",
-    "start:mcp:websocket": "MCP_TRANSPORT=websocket node src/mcp_server_improved.js"
+    "start:mcp:websocket": "MCP_TRANSPORT=websocket node src/mcp_server_improved.js",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -83,6 +86,8 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "semantic-release": "^25.0.2"
+    "@vitest/coverage-v8": "^4.0.15",
+    "semantic-release": "^25.0.2",
+    "vitest": "^4.0.15"
   }
 }
