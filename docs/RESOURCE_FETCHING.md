@@ -74,35 +74,35 @@ Fetch multiple resources efficiently:
 const result = await resourceManager.batchFetch([
   'ghost/post/123',
   'ghost/tag/456',
-  'ghost/posts?status=published&limit=5'
+  'ghost/posts?status=published&limit=5',
 ]);
 
 // Results and errors separated
-console.log(result.results);  // Successful fetches
-console.log(result.errors);   // Failed fetches
+console.log(result.results); // Successful fetches
+console.log(result.errors); // Failed fetches
 ```
 
 ## Resource URI Patterns
 
 ### Posts
 
-| Pattern | Description | Example |
-|---------|-------------|---------|
-| `ghost/post/{id}` | Post by ID | `ghost/post/123` |
-| `ghost/post/slug:{slug}` | Post by slug | `ghost/post/slug:my-post` |
-| `ghost/post/uuid:{uuid}` | Post by UUID | `ghost/post/uuid:550e8400-...` |
-| `ghost/posts` | All posts | `ghost/posts` |
-| `ghost/posts?{query}` | Filtered posts | `ghost/posts?status=published&limit=10` |
+| Pattern                  | Description    | Example                                 |
+| ------------------------ | -------------- | --------------------------------------- |
+| `ghost/post/{id}`        | Post by ID     | `ghost/post/123`                        |
+| `ghost/post/slug:{slug}` | Post by slug   | `ghost/post/slug:my-post`               |
+| `ghost/post/uuid:{uuid}` | Post by UUID   | `ghost/post/uuid:550e8400-...`          |
+| `ghost/posts`            | All posts      | `ghost/posts`                           |
+| `ghost/posts?{query}`    | Filtered posts | `ghost/posts?status=published&limit=10` |
 
 ### Tags
 
-| Pattern | Description | Example |
-|---------|-------------|---------|
-| `ghost/tag/{id}` | Tag by ID | `ghost/tag/456` |
-| `ghost/tag/slug:{slug}` | Tag by slug | `ghost/tag/slug:technology` |
-| `ghost/tag/name:{name}` | Tag by name | `ghost/tag/name:JavaScript` |
-| `ghost/tags` | All tags | `ghost/tags` |
-| `ghost/tags?{query}` | Filtered tags | `ghost/tags?limit=20` |
+| Pattern                 | Description   | Example                     |
+| ----------------------- | ------------- | --------------------------- |
+| `ghost/tag/{id}`        | Tag by ID     | `ghost/tag/456`             |
+| `ghost/tag/slug:{slug}` | Tag by slug   | `ghost/tag/slug:technology` |
+| `ghost/tag/name:{name}` | Tag by name   | `ghost/tag/name:JavaScript` |
+| `ghost/tags`            | All tags      | `ghost/tags`                |
+| `ghost/tags?{query}`    | Filtered tags | `ghost/tags?limit=20`       |
 
 ## Query Parameters
 
@@ -112,14 +112,14 @@ console.log(result.errors);   // Failed fetches
 ghost/posts?status=published&limit=10&page=2&include=tags,authors&order=published_at%20desc
 ```
 
-| Parameter | Type | Description | Default |
-|-----------|------|-------------|---------|
-| `status` | string | Filter by status (`draft`, `published`, `scheduled`) | all |
-| `limit` | integer | Number of posts per page (1-100) | 15 |
-| `page` | integer | Page number (1+) | 1 |
-| `include` | string | Related data to include (`tags`, `authors`) | `tags,authors` |
-| `order` | string | Sort order | `published_at desc` |
-| `filter` | string | Advanced Ghost filter syntax | none |
+| Parameter | Type    | Description                                          | Default             |
+| --------- | ------- | ---------------------------------------------------- | ------------------- |
+| `status`  | string  | Filter by status (`draft`, `published`, `scheduled`) | all                 |
+| `limit`   | integer | Number of posts per page (1-100)                     | 15                  |
+| `page`    | integer | Page number (1+)                                     | 1                   |
+| `include` | string  | Related data to include (`tags`, `authors`)          | `tags,authors`      |
+| `order`   | string  | Sort order                                           | `published_at desc` |
+| `filter`  | string  | Advanced Ghost filter syntax                         | none                |
 
 ### Tags Collection
 
@@ -127,12 +127,12 @@ ghost/posts?status=published&limit=10&page=2&include=tags,authors&order=publishe
 ghost/tags?limit=20&filter=name:tech
 ```
 
-| Parameter | Type | Description | Default |
-|-----------|------|-------------|---------|
-| `limit` | integer | Number of tags per page (1-100) | 50 |
-| `page` | integer | Page number (1+) | 1 |
-| `filter` | string | Filter tags | none |
-| `name` | string | Filter by exact name | none |
+| Parameter | Type    | Description                     | Default |
+| --------- | ------- | ------------------------------- | ------- |
+| `limit`   | integer | Number of tags per page (1-100) | 50      |
+| `page`    | integer | Page number (1+)                | 1       |
+| `filter`  | string  | Filter tags                     | none    |
+| `name`    | string  | Filter by exact name            | none    |
 
 ## Advanced Usage
 
@@ -143,7 +143,7 @@ ghost/tags?limit=20&filter=name:tech
 await resourceManager.prefetch([
   'ghost/posts?status=published&limit=10',
   'ghost/tags?limit=20',
-  'ghost/post/slug:homepage'
+  'ghost/post/slug:homepage',
 ]);
 ```
 
@@ -155,7 +155,7 @@ const stats = resourceManager.getCacheStats();
 console.log(`Cache: ${stats.size}/${stats.maxSize} items`);
 
 // Invalidate specific patterns
-resourceManager.invalidateCache('post:*');        // All posts
+resourceManager.invalidateCache('post:*'); // All posts
 resourceManager.invalidateCache('tag:slug:tech'); // Specific tag
 
 // Clear entire cache
@@ -180,7 +180,7 @@ const subscriptionId = resourceManager.subscribe(
   },
   {
     enablePolling: true,
-    pollingInterval: 30000 // 30 seconds
+    pollingInterval: 30000, // 30 seconds
   }
 );
 
@@ -194,12 +194,12 @@ resourceManager.unsubscribe(subscriptionId);
 const operations = [
   { id: 'op1', type: 'create_post', data: { title: 'New Post', html: '...' } },
   { id: 'op2', type: 'create_tag', data: { name: 'Technology' } },
-  { id: 'op3', type: 'fetch_resource', data: { uri: 'ghost/post/123' } }
+  { id: 'op3', type: 'fetch_resource', data: { uri: 'ghost/post/123' } },
 ];
 
 const result = await mcpServer.tools.ghost_batch_operations.execute({
   operations,
-  stopOnError: false
+  stopOnError: false,
 });
 
 // Process results
@@ -217,12 +217,14 @@ for (const [id, result] of Object.entries(result.results)) {
 The enhanced server provides HTTP endpoints for direct resource access:
 
 ### Resource Listing
+
 ```http
 GET /resources
 GET /resources?namespace=ghost
 ```
 
 ### Individual Resource Fetching
+
 ```http
 GET /resources/ghost/post/123
 GET /resources/ghost/tag/slug:technology
@@ -230,6 +232,7 @@ GET /resources/ghost/posts?status=published&limit=10
 ```
 
 ### Batch Operations
+
 ```http
 POST /batch
 Content-Type: application/json
@@ -244,6 +247,7 @@ Content-Type: application/json
 ```
 
 ### Cache Management
+
 ```http
 GET /cache/stats
 POST /cache/invalidate
@@ -259,16 +263,18 @@ For real-time applications, use WebSocket transport with subscriptions:
 const ws = new WebSocket('ws://localhost:3001');
 
 // Subscribe to resources
-ws.send(JSON.stringify({
-  type: 'subscribe',
-  uri: 'ghost/post/123',
-  options: { enablePolling: true, pollingInterval: 30000 }
-}));
+ws.send(
+  JSON.stringify({
+    type: 'subscribe',
+    uri: 'ghost/post/123',
+    options: { enablePolling: true, pollingInterval: 30000 },
+  })
+);
 
 // Listen for updates
 ws.on('message', (data) => {
   const message = JSON.parse(data);
-  
+
   if (message.type === 'subscription_update') {
     console.log('Resource updated:', message.data);
   }
@@ -299,8 +305,8 @@ const tags = await fetch('ghost/tags');
 // Use batch fetching
 const results = await resourceManager.batchFetch([
   'ghost/post/123',
-  'ghost/post/456', 
-  'ghost/tags'
+  'ghost/post/456',
+  'ghost/tags',
 ]);
 ```
 
@@ -319,6 +325,7 @@ ghost/tags?limit=all  // Just names and IDs
 ## Error Handling
 
 ### Resource Not Found
+
 ```json
 {
   "error": {
@@ -330,10 +337,11 @@ ghost/tags?limit=all  // Just names and IDs
 ```
 
 ### Invalid URI Format
+
 ```json
 {
   "error": {
-    "code": "VALIDATION_ERROR", 
+    "code": "VALIDATION_ERROR",
     "message": "Invalid resource URI format",
     "statusCode": 400
   }
@@ -341,6 +349,7 @@ ghost/tags?limit=all  // Just names and IDs
 ```
 
 ### Cache Errors
+
 ```json
 {
   "error": {
@@ -376,7 +385,7 @@ PREFETCH_PARALLEL_LIMIT=5         # Parallel prefetch requests
 
 ```javascript
 // Before: Simple resource access
-const tag = await getGhostTags().find(t => t.id === tagId);
+const tag = await getGhostTags().find((t) => t.id === tagId);
 
 // After: Enhanced resource fetching
 const tag = await resourceManager.fetchResource(`ghost/tag/${tagId}`);
@@ -393,8 +402,8 @@ const tag = await createTag(tagData);
 const result = await batchOperationsTool.execute({
   operations: [
     { id: 'post', type: 'create_post', data: postData },
-    { id: 'tag', type: 'create_tag', data: tagData }
-  ]
+    { id: 'tag', type: 'create_tag', data: tagData },
+  ],
 });
 ```
 
@@ -417,15 +426,15 @@ describe('ResourceManager', () => {
   it('should cache fetched resources', async () => {
     const result1 = await resourceManager.fetchResource('ghost/post/123');
     const result2 = await resourceManager.fetchResource('ghost/post/123');
-    
+
     expect(ghostService.getPost).toHaveBeenCalledTimes(1);
     expect(result1).toEqual(result2);
   });
-  
+
   it('should invalidate cache on pattern match', async () => {
     await resourceManager.fetchResource('ghost/post/123');
     resourceManager.invalidateCache('post:*');
-    
+
     const stats = resourceManager.getCacheStats();
     expect(stats.size).toBe(0);
   });
@@ -437,17 +446,15 @@ describe('ResourceManager', () => {
 ```javascript
 describe('Resource Endpoints', () => {
   it('should fetch post by slug', async () => {
-    const response = await request(app)
-      .get('/resources/ghost/post/slug:my-post');
-    
+    const response = await request(app).get('/resources/ghost/post/slug:my-post');
+
     expect(response.status).toBe(200);
     expect(response.body.slug).toBe('my-post');
   });
-  
+
   it('should return paginated posts', async () => {
-    const response = await request(app)
-      .get('/resources/ghost/posts?limit=5&page=2');
-    
+    const response = await request(app).get('/resources/ghost/posts?limit=5&page=2');
+
     expect(response.status).toBe(200);
     expect(response.body.meta.pagination.page).toBe(2);
     expect(response.body.data.length).toBeLessThanOrEqual(5);

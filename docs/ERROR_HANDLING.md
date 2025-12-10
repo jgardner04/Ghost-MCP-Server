@@ -53,13 +53,14 @@ Prevents cascading failures when Ghost API is unavailable:
 
 ```javascript
 const circuitBreaker = new CircuitBreaker({
-  failureThreshold: 5,      // Open after 5 failures
-  resetTimeout: 60000,       // Try again after 1 minute
-  monitoringPeriod: 10000    // Monitor over 10 seconds
+  failureThreshold: 5, // Open after 5 failures
+  resetTimeout: 60000, // Try again after 1 minute
+  monitoringPeriod: 10000, // Monitor over 10 seconds
 });
 ```
 
 States:
+
 - **CLOSED**: Normal operation
 - **OPEN**: Service unavailable, fast-fail all requests
 - **HALF_OPEN**: Testing if service recovered
@@ -73,7 +74,7 @@ await retryWithBackoff(operation, {
   maxAttempts: 3,
   onRetry: (attempt, error) => {
     console.log(`Retry ${attempt}/3`);
-  }
+  },
 });
 ```
 
@@ -91,6 +92,7 @@ logs/
 ```
 
 Features:
+
 - Automatic log rotation at 10MB
 - Structured JSON logging
 - Different log levels (debug, info, warning, error, fatal)
@@ -130,7 +132,7 @@ import { ValidationError, NotFoundError } from './errors/index.js';
 // Throwing validation errors
 if (!postData.title) {
   throw new ValidationError('Post title is required', [
-    { field: 'title', message: 'Required field' }
+    { field: 'title', message: 'Required field' },
   ]);
 }
 
@@ -147,10 +149,7 @@ if (!post) {
 import { retryWithBackoff, ErrorHandler } from './errors/index.js';
 
 async function createPostWithRetry(data) {
-  return await retryWithBackoff(
-    () => ghostService.createPost(data),
-    { maxAttempts: 3 }
-  );
+  return await retryWithBackoff(() => ghostService.createPost(data), { maxAttempts: 3 });
 }
 ```
 
@@ -160,7 +159,8 @@ async function createPostWithRetry(data) {
 import { asyncHandler, validateRequest } from './middleware/errorMiddleware.js';
 import { postSchema } from './schemas/post.js';
 
-router.post('/posts',
+router.post(
+  '/posts',
   validateRequest(postSchema),
   asyncHandler(async (req, res) => {
     const post = await createPost(req.body);
@@ -180,7 +180,7 @@ const tool = new Tool({
     } catch (error) {
       return ErrorHandler.formatMCPError(error, 'create_post');
     }
-  }
+  },
 });
 ```
 
@@ -213,7 +213,7 @@ import {
   RateLimiter,
   apiKeyAuth,
   GracefulShutdown,
-  healthCheck
+  healthCheck,
 } from './middleware/errorMiddleware.js';
 
 const app = express();
@@ -265,8 +265,8 @@ Production responses hide sensitive information:
 Comprehensive validation before processing:
 
 ```javascript
-validators.validatePostData(data);  // Throws ValidationError
-validators.validateTagData(data);   // Throws ValidationError
+validators.validatePostData(data); // Throws ValidationError
+validators.validateTagData(data); // Throws ValidationError
 validators.validateImagePath(path); // Throws ValidationError or NotFoundError
 ```
 
@@ -285,8 +285,8 @@ Prevents abuse and DOS attacks:
 
 ```javascript
 const rateLimiter = new RateLimiter({
-  windowMs: 60000,      // 1 minute
-  maxRequests: 100      // 100 requests per minute
+  windowMs: 60000, // 1 minute
+  maxRequests: 100, // 100 requests per minute
 });
 ```
 
@@ -335,6 +335,7 @@ GET /metrics
 ### From Basic Error Handling
 
 1. **Replace generic errors with typed errors:**
+
 ```javascript
 // Before
 throw new Error('Post not found');
@@ -344,17 +345,17 @@ throw new NotFoundError('Post', postId);
 ```
 
 2. **Add retry logic to external calls:**
+
 ```javascript
 // Before
 const result = await ghostAPI.posts.add(data);
 
 // After
-const result = await retryWithBackoff(
-  () => ghostAPI.posts.add(data)
-);
+const result = await retryWithBackoff(() => ghostAPI.posts.add(data));
 ```
 
 3. **Use error middleware in Express:**
+
 ```javascript
 // Before
 app.use((err, req, res, next) => {
@@ -367,12 +368,20 @@ app.use(expressErrorHandler);
 ```
 
 4. **Wrap async routes:**
+
 ```javascript
 // Before
-router.get('/posts/:id', async (req, res) => { /* ... */ });
+router.get('/posts/:id', async (req, res) => {
+  /* ... */
+});
 
 // After
-router.get('/posts/:id', asyncHandler(async (req, res) => { /* ... */ }));
+router.get(
+  '/posts/:id',
+  asyncHandler(async (req, res) => {
+    /* ... */
+  })
+);
 ```
 
 ## Testing Error Handling
@@ -382,22 +391,23 @@ router.get('/posts/:id', asyncHandler(async (req, res) => { /* ... */ }));
 ```javascript
 describe('Error Handling', () => {
   it('should retry on transient failures', async () => {
-    const operation = jest.fn()
+    const operation = jest
+      .fn()
       .mockRejectedValueOnce(new Error('Network error'))
       .mockResolvedValueOnce({ success: true });
-    
+
     const result = await retryWithBackoff(operation);
-    
+
     expect(operation).toHaveBeenCalledTimes(2);
     expect(result).toEqual({ success: true });
   });
-  
+
   it('should open circuit breaker after threshold', async () => {
     const breaker = new CircuitBreaker({ failureThreshold: 2 });
-    
+
     await expect(breaker.execute(failingOperation)).rejects.toThrow();
     await expect(breaker.execute(failingOperation)).rejects.toThrow();
-    
+
     expect(breaker.state).toBe('OPEN');
   });
 });
@@ -408,20 +418,20 @@ describe('Error Handling', () => {
 ```javascript
 describe('API Error Responses', () => {
   it('should return 400 for validation errors', async () => {
-    const response = await request(app)
-      .post('/api/posts')
-      .send({ /* invalid data */ });
-    
+    const response = await request(app).post('/api/posts').send({
+      /* invalid data */
+    });
+
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe('VALIDATION_ERROR');
   });
-  
+
   it('should return 429 for rate limit', async () => {
     // Make many requests quickly
     for (let i = 0; i < 101; i++) {
       await request(app).get('/api/posts');
     }
-    
+
     const response = await request(app).get('/api/posts');
     expect(response.status).toBe(429);
   });

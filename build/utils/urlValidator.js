@@ -26,7 +26,7 @@ const ALLOWED_DOMAINS = [
   'pexels.com',
   'images.pexels.com',
   'pixabay.com',
-  'cdn.pixabay.com'
+  'cdn.pixabay.com',
 ];
 
 // Private/internal IP ranges to block
@@ -44,7 +44,7 @@ const BLOCKED_IP_PATTERNS = [
   /^::/, // IPv6 unspecified
   /^fc00:/, // IPv6 unique local
   /^fe80:/, // IPv6 link local
-  /^ff00:/ // IPv6 multicast
+  /^ff00:/, // IPv6 multicast
 ];
 
 /**
@@ -56,16 +56,16 @@ const isSafeHost = (hostname) => {
   // Check if hostname is an IP address
   const ipv4Pattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
   const ipv6Pattern = /^[0-9a-f:]+$/i;
-  
+
   if (ipv4Pattern.test(hostname) || ipv6Pattern.test(hostname)) {
     // Check against blocked IP patterns
-    return !BLOCKED_IP_PATTERNS.some(pattern => pattern.test(hostname));
+    return !BLOCKED_IP_PATTERNS.some((pattern) => pattern.test(hostname));
   }
-  
+
   // For domain names, check against allowlist
   const normalizedHost = hostname.toLowerCase();
-  return ALLOWED_DOMAINS.some(allowed => 
-    normalizedHost === allowed || normalizedHost.endsWith('.' + allowed)
+  return ALLOWED_DOMAINS.some(
+    (allowed) => normalizedHost === allowed || normalizedHost.endsWith('.' + allowed)
   );
 };
 
@@ -77,68 +77,71 @@ const isSafeHost = (hostname) => {
 const validateImageUrl = (url) => {
   try {
     // Basic URL validation with Joi
-    const urlSchema = Joi.string().uri({
-      scheme: ['http', 'https'],
-      allowRelative: false
-    }).required();
-    
+    const urlSchema = Joi.string()
+      .uri({
+        scheme: ['http', 'https'],
+        allowRelative: false,
+      })
+      .required();
+
     const validation = urlSchema.validate(url);
     if (validation.error) {
       return {
         isValid: false,
-        error: `Invalid URL format: ${validation.error.details[0].message}`
+        error: `Invalid URL format: ${validation.error.details[0].message}`,
       };
     }
-    
+
     // Parse URL for additional security checks
     const parsedUrl = new URL(url);
-    
+
     // Only allow HTTP/HTTPS
     if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
       return {
         isValid: false,
-        error: 'Only HTTP and HTTPS protocols are allowed'
+        error: 'Only HTTP and HTTPS protocols are allowed',
       };
     }
-    
+
     // Check if host is safe (not internal/private)
     if (!isSafeHost(parsedUrl.hostname)) {
       return {
         isValid: false,
-        error: `Requests to ${parsedUrl.hostname} are not allowed for security reasons`
+        error: `Requests to ${parsedUrl.hostname} are not allowed for security reasons`,
       };
     }
-    
+
     // Prevent requests to non-standard ports (common in SSRF attacks)
     const port = parsedUrl.port;
     if (port && !['80', '443', '8080', '8443'].includes(port)) {
       return {
         isValid: false,
-        error: `Requests to non-standard port ${port} are not allowed`
+        error: `Requests to non-standard port ${port} are not allowed`,
       };
     }
-    
+
     // Additional checks for suspicious patterns
-    if (parsedUrl.hostname.includes('localhost') || 
-        parsedUrl.hostname === '0.0.0.0' ||
-        parsedUrl.hostname.startsWith('192.168.') ||
-        parsedUrl.hostname.startsWith('10.') ||
-        parsedUrl.hostname.includes('.local')) {
+    if (
+      parsedUrl.hostname.includes('localhost') ||
+      parsedUrl.hostname === '0.0.0.0' ||
+      parsedUrl.hostname.startsWith('192.168.') ||
+      parsedUrl.hostname.startsWith('10.') ||
+      parsedUrl.hostname.includes('.local')
+    ) {
       return {
         isValid: false,
-        error: 'Requests to local/private addresses are not allowed'
+        error: 'Requests to local/private addresses are not allowed',
       };
     }
-    
+
     return {
       isValid: true,
-      sanitizedUrl: parsedUrl.href
+      sanitizedUrl: parsedUrl.href,
     };
-    
   } catch (error) {
     return {
       isValid: false,
-      error: `URL parsing failed: ${error.message}`
+      error: `URL parsing failed: ${error.message}`,
     };
   }
 };
@@ -157,13 +160,9 @@ const createSecureAxiosConfig = (url) => {
     maxContentLength: 50 * 1024 * 1024, // 50MB max response
     validateStatus: (status) => status >= 200 && status < 300, // Only accept 2xx
     headers: {
-      'User-Agent': 'Ghost-MCP-Server/1.0'
-    }
+      'User-Agent': 'Ghost-MCP-Server/1.0',
+    },
   };
 };
 
-export {
-  validateImageUrl,
-  createSecureAxiosConfig,
-  ALLOWED_DOMAINS
-};
+export { validateImageUrl, createSecureAxiosConfig, ALLOWED_DOMAINS };

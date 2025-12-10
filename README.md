@@ -25,7 +25,6 @@ _(Refer to `src/mcp_server.js` for full resource schemas.)_
 Below is a guide for using the available MCP tools:
 
 1.  **`ghost_create_tag`**
-
     - **Purpose**: Creates a new tag.
     - **Inputs**:
       - `name` (string, required): The name for the new tag.
@@ -34,14 +33,12 @@ Below is a guide for using the available MCP tools:
     - **Output**: The created `ghost/tag` resource.
 
 2.  **`ghost_get_tags`**
-
     - **Purpose**: Retrieves existing tags. Can be used to find a tag ID or check if a tag exists before creation.
     - **Inputs**:
       - `name` (string, optional): Filter tags by exact name.
     - **Output**: An array of `ghost/tag` resources matching the filter (or all tags if no name is provided).
 
 3.  **`ghost_upload_image`**
-
     - **Purpose**: Uploads an image to Ghost for use, typically as a post's featured image.
     - **Inputs**:
       - `imageUrl` (string URL, required): A publicly accessible URL of the image to upload.

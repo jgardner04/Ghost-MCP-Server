@@ -1,5 +1,5 @@
-import { createPostService } from "../services/postService.js";
-import { createContextLogger } from "../utils/logger.js";
+import { createPostService } from '../services/postService.js';
+import { createContextLogger } from '../utils/logger.js';
 
 /**
  * Controller to handle creating a new post.
@@ -9,7 +9,7 @@ import { createContextLogger } from "../utils/logger.js";
  */
 const createPost = async (req, res, next) => {
   const logger = createContextLogger('post-controller');
-  
+
   try {
     // Input is already validated by express-validator middleware
     // The body now includes potential feature_image and metadata fields
@@ -19,16 +19,16 @@ const createPost = async (req, res, next) => {
       title: postInput.title,
       status: postInput.status,
       hasFeatureImage: !!postInput.feature_image,
-      tagCount: postInput.tags?.length || 0
+      tagCount: postInput.tags?.length || 0,
     });
-    
+
     // Call the service layer function
     const newPost = await createPostService(postInput);
-    
+
     logger.info('Post created successfully', {
       postId: newPost.id,
       title: newPost.title,
-      status: newPost.status
+      status: newPost.status,
     });
 
     res.status(201).json(newPost);
@@ -36,7 +36,7 @@ const createPost = async (req, res, next) => {
     logger.error('Post creation failed', {
       error: error.message,
       stack: error.stack,
-      title: req.body?.title
+      title: req.body?.title,
     });
     // Pass error to the Express error handler
     next(error);

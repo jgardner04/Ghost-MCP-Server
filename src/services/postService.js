@@ -1,12 +1,12 @@
-import sanitizeHtml from "sanitize-html";
-import Joi from "joi";
-import { createContextLogger } from "../utils/logger.js";
+import sanitizeHtml from 'sanitize-html';
+import Joi from 'joi';
+import { createContextLogger } from '../utils/logger.js';
 import {
   createPost as createGhostPost,
   getTags as getGhostTags,
   createTag as createGhostTag,
   // Import other necessary functions from ghostService later
-} from "./ghostService.js"; // Note the relative path
+} from './ghostService.js'; // Note the relative path
 
 /**
  * Helper to generate a simple meta description from HTML content.
@@ -16,21 +16,21 @@ import {
  * @returns {string} A plain text truncated description.
  */
 const generateSimpleMetaDescription = (htmlContent, maxLength = 500) => {
-  if (!htmlContent) return "";
-  
+  if (!htmlContent) return '';
+
   // Use sanitize-html to safely remove all HTML tags
   // This prevents ReDoS attacks and properly handles malformed HTML
   const textContent = sanitizeHtml(htmlContent, {
     allowedTags: [], // Remove all HTML tags
     allowedAttributes: {},
-    textFilter: function(text) {
+    textFilter: function (text) {
       return text.replace(/\s\s+/g, ' ').trim();
-    }
+    },
   });
-  
+
   // Truncate and add ellipsis if needed
   return textContent.length > maxLength
-    ? textContent.substring(0, maxLength - 3) + "..."
+    ? textContent.substring(0, maxLength - 3) + '...'
     : textContent;
 };
 
@@ -52,22 +52,22 @@ const postInputSchema = Joi.object({
   feature_image_alt: Joi.string().max(255).optional(),
   feature_image_caption: Joi.string().max(500).optional(),
   meta_title: Joi.string().max(70).optional(),
-  meta_description: Joi.string().max(160).optional()
+  meta_description: Joi.string().max(160).optional(),
 });
 
 const createPostService = async (postInput) => {
   const logger = createContextLogger('post-service');
-  
+
   // Validate input to prevent format string vulnerabilities
   const { error, value: validatedInput } = postInputSchema.validate(postInput);
   if (error) {
     logger.error('Post input validation failed', {
       error: error.details[0].message,
-      inputKeys: Object.keys(postInput)
+      inputKeys: Object.keys(postInput),
     });
     throw new Error(`Invalid post input: ${error.details[0].message}`);
   }
-  
+
   const {
     title,
     html,
@@ -88,7 +88,7 @@ const createPostService = async (postInput) => {
     logger.info('Resolving provided tag names', { tagCount: tags.length, tags });
     resolvedTags = await Promise.all(
       tags.map(async (tagName) => {
-        if (typeof tagName !== "string" || !tagName.trim()) {
+        if (typeof tagName !== 'string' || !tagName.trim()) {
           logger.warn('Skipping invalid tag name', { tagName, type: typeof tagName });
           return null; // Skip invalid entries
         }
@@ -100,7 +100,7 @@ const createPostService = async (postInput) => {
           if (existingTags && existingTags.length > 0) {
             logger.debug('Found existing tag', {
               tagName,
-              tagId: existingTags[0].id
+              tagId: existingTags[0].id,
             });
             // Use the existing tag (Ghost usually accepts name, slug, or id)
             return { name: tagName }; // Or { id: existingTags[0].id } or { slug: existingTags[0].slug }
@@ -110,7 +110,7 @@ const createPostService = async (postInput) => {
             const newTag = await createGhostTag({ name: tagName });
             logger.info('Created new tag successfully', {
               tagName,
-              tagId: newTag.id
+              tagId: newTag.id,
             });
             // Use the new tag
             return { name: tagName }; // Or { id: newTag.id }
@@ -118,7 +118,7 @@ const createPostService = async (postInput) => {
         } catch (tagError) {
           logger.error('Error processing tag', {
             tagName,
-            error: tagError.message
+            error: tagError.message,
           });
           return null; // Skip tags that cause errors during processing
         }
@@ -128,7 +128,7 @@ const createPostService = async (postInput) => {
     resolvedTags = resolvedTags.filter((tag) => tag !== null);
     logger.debug('Resolved tags for API', {
       resolvedTagCount: resolvedTags.length,
-      resolvedTags
+      resolvedTags,
     });
   }
   // --- End Tag Resolution ---
@@ -140,7 +140,7 @@ const createPostService = async (postInput) => {
   // Ensure description does not exceed limit even after defaulting
   const truncatedMetaDescription =
     finalMetaDescription.length > 500
-      ? finalMetaDescription.substring(0, 497) + "..."
+      ? finalMetaDescription.substring(0, 497) + '...'
       : finalMetaDescription;
   // --- End Metadata Defaults ---
 
@@ -149,7 +149,7 @@ const createPostService = async (postInput) => {
     title,
     html,
     custom_excerpt,
-    status: status || "draft", // Default to draft
+    status: status || 'draft', // Default to draft
     published_at,
     tags: resolvedTags,
     feature_image,
@@ -164,7 +164,7 @@ const createPostService = async (postInput) => {
     title: postDataForApi.title,
     status: postDataForApi.status,
     tagCount: postDataForApi.tags?.length || 0,
-    hasFeatureImage: !!postDataForApi.feature_image
+    hasFeatureImage: !!postDataForApi.feature_image,
   });
   // Call the lower-level ghostService function
   const newPost = await createGhostPost(postDataForApi);

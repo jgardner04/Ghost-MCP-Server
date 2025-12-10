@@ -14,7 +14,7 @@ export class BaseError extends Error {
     this.code = code;
     this.isOperational = isOperational;
     this.timestamp = new Date().toISOString();
-    
+
     // Capture stack trace
     Error.captureStackTrace(this, this.constructor);
   }
@@ -26,7 +26,7 @@ export class BaseError extends Error {
       code: this.code,
       statusCode: this.statusCode,
       timestamp: this.timestamp,
-      ...(process.env.NODE_ENV === 'development' && { stack: this.stack })
+      ...(process.env.NODE_ENV === 'development' && { stack: this.stack }),
     };
   }
 }
@@ -41,10 +41,10 @@ export class ValidationError extends BaseError {
   }
 
   static fromJoi(joiError) {
-    const errors = joiError.details.map(detail => ({
+    const errors = joiError.details.map((detail) => ({
       field: detail.path.join('.'),
       message: detail.message,
-      type: detail.type
+      type: detail.type,
     }));
     return new ValidationError('Validation failed', errors);
   }
@@ -118,7 +118,7 @@ export class GhostAPIError extends ExternalServiceError {
     super('Ghost API', originalError);
     this.operation = operation;
     this.ghostStatusCode = statusCode;
-    
+
     // Map Ghost API status codes to our error types
     if (statusCode === 401) {
       this.statusCode = 401;
@@ -156,7 +156,7 @@ export class ToolExecutionError extends BaseError {
     this.toolName = toolName;
     this.originalError = originalError?.message || originalError;
     this.input = input;
-    
+
     // Don't expose sensitive data in production
     if (process.env.NODE_ENV === 'production') {
       delete this.input.apiKey;
@@ -214,8 +214,8 @@ export class ErrorHandler {
           ...(toolName && { tool: toolName }),
           ...(error.errors && { validationErrors: error.errors }),
           ...(error.retryAfter && { retryAfter: error.retryAfter }),
-          timestamp: error.timestamp
-        }
+          timestamp: error.timestamp,
+        },
       };
     }
 
@@ -223,13 +223,12 @@ export class ErrorHandler {
     return {
       error: {
         code: 'UNKNOWN_ERROR',
-        message: process.env.NODE_ENV === 'production' 
-          ? 'An unexpected error occurred' 
-          : error.message,
+        message:
+          process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : error.message,
         statusCode: 500,
         ...(toolName && { tool: toolName }),
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 
@@ -244,13 +243,13 @@ export class ErrorHandler {
           message: error.message,
           ...(error.errors && { errors: error.errors }),
           ...(error.retryAfter && { retryAfter: error.retryAfter }),
-          ...(error.resource && { resource: error.resource })
-        }
+          ...(error.resource && { resource: error.resource }),
+        },
       };
-      
+
       return {
         statusCode: error.statusCode,
-        body: response
+        body: response,
       };
     }
 
@@ -260,11 +259,10 @@ export class ErrorHandler {
       body: {
         error: {
           code: 'INTERNAL_ERROR',
-          message: process.env.NODE_ENV === 'production'
-            ? 'An internal error occurred'
-            : error.message
-        }
-      }
+          message:
+            process.env.NODE_ENV === 'production' ? 'An internal error occurred' : error.message,
+        },
+      },
     };
   }
 
@@ -291,7 +289,7 @@ export class ErrorHandler {
   static fromGhostError(error, operation) {
     const statusCode = error.response?.status || error.statusCode;
     const message = error.response?.data?.errors?.[0]?.message || error.message;
-    
+
     return new GhostAPIError(operation, message, statusCode);
   }
 
@@ -304,14 +302,16 @@ export class ErrorHandler {
     if (error instanceof GhostAPIError) {
       return [429, 502, 503, 504].includes(error.ghostStatusCode);
     }
-    
+
     // Network errors
-    if (error.code === 'ECONNREFUSED' || 
-        error.code === 'ETIMEDOUT' || 
-        error.code === 'ECONNRESET') {
+    if (
+      error.code === 'ECONNREFUSED' ||
+      error.code === 'ETIMEDOUT' ||
+      error.code === 'ECONNRESET'
+    ) {
       return true;
     }
-    
+
     return false;
   }
 
@@ -322,15 +322,15 @@ export class ErrorHandler {
     if (error instanceof RateLimitError) {
       return error.retryAfter * 1000; // Convert to milliseconds
     }
-    
+
     // Exponential backoff: 1s, 2s, 4s, 8s...
     const baseDelay = 1000;
     const maxDelay = 30000;
     const delay = Math.min(baseDelay * Math.pow(2, attempt - 1), maxDelay);
-    
+
     // Add jitter to prevent thundering herd
     const jitter = Math.random() * 0.3 * delay;
-    
+
     return Math.round(delay + jitter);
   }
 }
@@ -343,7 +343,7 @@ export class CircuitBreaker {
     this.failureThreshold = options.failureThreshold || 5;
     this.resetTimeout = options.resetTimeout || 60000; // 1 minute
     this.monitoringPeriod = options.monitoringPeriod || 10000; // 10 seconds
-    
+
     this.state = 'CLOSED'; // CLOSED, OPEN, HALF_OPEN
     this.failureCount = 0;
     this.lastFailureTime = null;
@@ -353,7 +353,10 @@ export class CircuitBreaker {
   async execute(fn, ...args) {
     if (this.state === 'OPEN') {
       if (Date.now() < this.nextAttempt) {
-        throw new ExternalServiceError('Circuit breaker is OPEN', 'Service temporarily unavailable');
+        throw new ExternalServiceError(
+          'Circuit breaker is OPEN',
+          'Service temporarily unavailable'
+        );
       }
       this.state = 'HALF_OPEN';
     }
@@ -383,7 +386,9 @@ export class CircuitBreaker {
     if (this.failureCount >= this.failureThreshold) {
       this.state = 'OPEN';
       this.nextAttempt = Date.now() + this.resetTimeout;
-      console.error(`Circuit breaker opened. Will retry at ${new Date(this.nextAttempt).toISOString()}`);
+      console.error(
+        `Circuit breaker opened. Will retry at ${new Date(this.nextAttempt).toISOString()}`
+      );
     }
   }
 
@@ -392,7 +397,7 @@ export class CircuitBreaker {
       state: this.state,
       failureCount: this.failureCount,
       lastFailureTime: this.lastFailureTime,
-      nextAttempt: this.nextAttempt
+      nextAttempt: this.nextAttempt,
     };
   }
 }
@@ -403,27 +408,27 @@ export class CircuitBreaker {
 export async function retryWithBackoff(fn, options = {}) {
   const maxAttempts = options.maxAttempts || 3;
   const onRetry = options.onRetry || (() => {});
-  
+
   let lastError;
-  
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error;
-      
+
       if (attempt === maxAttempts || !ErrorHandler.isRetryable(error)) {
         throw error;
       }
-      
+
       const delay = ErrorHandler.getRetryDelay(attempt, error);
       console.log(`Retry attempt ${attempt}/${maxAttempts} after ${delay}ms`);
-      
-      await new Promise(resolve => setTimeout(resolve, delay));
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
       onRetry(attempt, error);
     }
   }
-  
+
   throw lastError;
 }
 
@@ -443,5 +448,5 @@ export default {
   ConfigurationError,
   ErrorHandler,
   CircuitBreaker,
-  retryWithBackoff
+  retryWithBackoff,
 };
