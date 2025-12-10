@@ -10,8 +10,8 @@
     "./mcp": "./src/mcp_server_improved.js"
   },
   "bin": {
-    "ghost-mcp-server": "src/index.js",
-    "ghost-mcp": "src/mcp_server_improved.js"
+    "ghost-mcp-server": "./src/index.js",
+    "ghost-mcp": "./src/mcp_server_improved.js"
   },
   "files": [
     "src",
