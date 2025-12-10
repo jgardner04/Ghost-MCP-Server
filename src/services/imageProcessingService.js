@@ -28,8 +28,8 @@ const processImage = async (inputPath, outputDir) => {
   if (error) {
     logger.error('Invalid processing parameters', {
       error: error.details[0].message,
-      inputPath: path.basename(inputPath),
-      outputDir: path.basename(outputDir),
+      inputPath: inputPath ? path.basename(inputPath) : 'undefined',
+      outputDir: outputDir ? path.basename(outputDir) : 'undefined',
     });
     throw new Error('Invalid processing parameters');
   }
