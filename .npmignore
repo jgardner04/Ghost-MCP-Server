@@ -1,0 +1,36 @@
+# Development files
+.github/
+.claude/
+scripts/
+docs/
+tasks/
+build/
+logs/
+
+# Configuration
+.env
+.env.*
+*.log
+.gitignore
+.eslintrc*
+.prettierrc*
+
+# Task Master files
+tasks.json
+complexity-report.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files (when added)
+__tests__/
+*.test.js
+*.spec.js
+coverage/
+
+# Misc
+*.md
+!README.md

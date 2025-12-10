@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import express from "express";
 import helmet from "helmet";
 import dotenv from "dotenv";
