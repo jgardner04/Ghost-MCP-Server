@@ -376,6 +376,51 @@ server.tool(
   }
 );
 
+// Search Posts Tool
+server.tool(
+  'ghost_search_posts',
+  'Search for posts in Ghost CMS by query string with optional status filtering.',
+  {
+    query: z.string().describe('Search query to find in post titles.'),
+    status: z
+      .enum(['published', 'draft', 'scheduled', 'all'])
+      .optional()
+      .describe('Filter by post status. Default searches all statuses.'),
+    limit: z
+      .number()
+      .min(1)
+      .max(50)
+      .optional()
+      .describe('Maximum number of results (1-50). Default is 15.'),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_search_posts with query: ${input.query}`);
+    try {
+      await loadServices();
+
+      // Build options object with provided parameters
+      const options = {};
+      if (input.status !== undefined) options.status = input.status;
+      if (input.limit !== undefined) options.limit = input.limit;
+
+      // Search posts using ghostServiceImproved
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const posts = await ghostServiceImproved.searchPosts(input.query, options);
+      console.error(`Found ${posts.length} posts matching "${input.query}".`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(posts, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_search_posts:`, error);
+      return {
+        content: [{ type: 'text', text: `Error searching posts: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
 // Update Post Tool
 server.tool(
   'ghost_update_post',

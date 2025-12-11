@@ -49,6 +49,7 @@ const mockValidateImageUrl = vi.fn();
 const mockCreateSecureAxiosConfig = vi.fn();
 const mockUpdatePost = vi.fn();
 const mockDeletePost = vi.fn();
+const mockSearchPosts = vi.fn();
 
 vi.mock('../services/ghostService.js', () => ({
   getPosts: (...args) => mockGetPosts(...args),
@@ -65,6 +66,7 @@ vi.mock('../services/postService.js', () => ({
 vi.mock('../services/ghostServiceImproved.js', () => ({
   updatePost: (...args) => mockUpdatePost(...args),
   deletePost: (...args) => mockDeletePost(...args),
+  searchPosts: (...args) => mockSearchPosts(...args),
 }));
 
 vi.mock('../services/imageProcessingService.js', () => ({
@@ -752,5 +754,156 @@ describe('mcp_server_improved - ghost_delete_post tool', () => {
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Network error');
+  });
+});
+
+describe('mcp_server_improved - ghost_search_posts tool', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    // Don't clear mockTools - they're registered once on module load
+    if (mockTools.size === 0) {
+      await import('../mcp_server_improved.js');
+    }
+  });
+
+  it('should register ghost_search_posts tool', () => {
+    expect(mockTools.has('ghost_search_posts')).toBe(true);
+  });
+
+  it('should have correct schema with required query and optional parameters', () => {
+    const tool = mockTools.get('ghost_search_posts');
+    expect(tool).toBeDefined();
+    expect(tool.description).toContain('Search');
+    expect(tool.schema).toBeDefined();
+    expect(tool.schema.query).toBeDefined();
+    expect(tool.schema.status).toBeDefined();
+    expect(tool.schema.limit).toBeDefined();
+  });
+
+  it('should search posts with query only', async () => {
+    const mockPosts = [
+      { id: '1', title: 'JavaScript Tips', slug: 'javascript-tips', status: 'published' },
+      { id: '2', title: 'JavaScript Tricks', slug: 'javascript-tricks', status: 'published' },
+    ];
+    mockSearchPosts.mockResolvedValue(mockPosts);
+
+    const tool = mockTools.get('ghost_search_posts');
+    const result = await tool.handler({ query: 'JavaScript' });
+
+    expect(mockSearchPosts).toHaveBeenCalledWith('JavaScript', {});
+    expect(result.content[0].text).toContain('JavaScript Tips');
+    expect(result.content[0].text).toContain('JavaScript Tricks');
+  });
+
+  it('should search posts with query and status filter', async () => {
+    const mockPosts = [
+      { id: '1', title: 'Published Post', slug: 'published-post', status: 'published' },
+    ];
+    mockSearchPosts.mockResolvedValue(mockPosts);
+
+    const tool = mockTools.get('ghost_search_posts');
+    await tool.handler({ query: 'test', status: 'published' });
+
+    expect(mockSearchPosts).toHaveBeenCalledWith('test', { status: 'published' });
+  });
+
+  it('should search posts with query and limit', async () => {
+    const mockPosts = [{ id: '1', title: 'Test Post', slug: 'test-post' }];
+    mockSearchPosts.mockResolvedValue(mockPosts);
+
+    const tool = mockTools.get('ghost_search_posts');
+    await tool.handler({ query: 'test', limit: 10 });
+
+    expect(mockSearchPosts).toHaveBeenCalledWith('test', { limit: 10 });
+  });
+
+  it('should validate limit is between 1 and 50', () => {
+    const tool = mockTools.get('ghost_search_posts');
+    const schema = tool.schema;
+
+    expect(schema.limit).toBeDefined();
+    expect(() => schema.limit.parse(0)).toThrow();
+    expect(() => schema.limit.parse(51)).toThrow();
+    expect(schema.limit.parse(25)).toBe(25);
+  });
+
+  it('should validate status enum values', () => {
+    const tool = mockTools.get('ghost_search_posts');
+    const schema = tool.schema;
+
+    expect(schema.status).toBeDefined();
+    expect(() => schema.status.parse('invalid')).toThrow();
+    expect(schema.status.parse('published')).toBe('published');
+    expect(schema.status.parse('draft')).toBe('draft');
+    expect(schema.status.parse('scheduled')).toBe('scheduled');
+    expect(schema.status.parse('all')).toBe('all');
+  });
+
+  it('should pass all parameters combined', async () => {
+    const mockPosts = [{ id: '1', title: 'Test Post' }];
+    mockSearchPosts.mockResolvedValue(mockPosts);
+
+    const tool = mockTools.get('ghost_search_posts');
+    await tool.handler({
+      query: 'JavaScript',
+      status: 'published',
+      limit: 20,
+    });
+
+    expect(mockSearchPosts).toHaveBeenCalledWith('JavaScript', {
+      status: 'published',
+      limit: 20,
+    });
+  });
+
+  it('should handle errors from searchPosts', async () => {
+    mockSearchPosts.mockRejectedValue(new Error('Search query is required'));
+
+    const tool = mockTools.get('ghost_search_posts');
+    const result = await tool.handler({ query: '' });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Search query is required');
+  });
+
+  it('should handle Ghost API errors', async () => {
+    mockSearchPosts.mockRejectedValue(new Error('Ghost API error'));
+
+    const tool = mockTools.get('ghost_search_posts');
+    const result = await tool.handler({ query: 'test' });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Ghost API error');
+  });
+
+  it('should return formatted JSON response', async () => {
+    const mockPosts = [
+      {
+        id: '1',
+        title: 'Test Post',
+        slug: 'test-post',
+        html: '<p>Content</p>',
+        status: 'published',
+      },
+    ];
+    mockSearchPosts.mockResolvedValue(mockPosts);
+
+    const tool = mockTools.get('ghost_search_posts');
+    const result = await tool.handler({ query: 'Test' });
+
+    expect(result.content).toBeDefined();
+    expect(result.content[0].type).toBe('text');
+    expect(result.content[0].text).toContain('"id": "1"');
+    expect(result.content[0].text).toContain('"title": "Test Post"');
+  });
+
+  it('should return empty array when no results found', async () => {
+    mockSearchPosts.mockResolvedValue([]);
+
+    const tool = mockTools.get('ghost_search_posts');
+    const result = await tool.handler({ query: 'nonexistent' });
+
+    expect(result.content[0].text).toBe('[]');
+    expect(result.isError).toBeUndefined();
   });
 });
