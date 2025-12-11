@@ -19,6 +19,7 @@ const MAX_LABEL_LENGTH = 191; // Label name limit
  */
 const MIN_LIMIT = 1;
 const MAX_LIMIT = 100;
+const MAX_SEARCH_LIMIT = 50; // Lower limit for search operations
 const MIN_PAGE = 1;
 
 /**
@@ -351,11 +352,41 @@ export function validateSearchQuery(query) {
   return trimmedQuery;
 }
 
+/**
+ * Validates search options (specifically limit for search operations)
+ * Search has a lower max limit (50) than browse operations (100)
+ * @param {Object} options - The search options to validate
+ * @param {number} [options.limit] - Maximum number of results (1-50)
+ * @throws {ValidationError} If validation fails
+ */
+export function validateSearchOptions(options) {
+  const errors = [];
+
+  // Validate limit for search (1-50, lower than browse)
+  if (options.limit !== undefined) {
+    if (
+      typeof options.limit !== 'number' ||
+      options.limit < MIN_LIMIT ||
+      options.limit > MAX_SEARCH_LIMIT
+    ) {
+      errors.push({
+        field: 'limit',
+        message: `Limit must be a number between ${MIN_LIMIT} and ${MAX_SEARCH_LIMIT}`,
+      });
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new ValidationError('Search options validation failed', errors);
+  }
+}
+
 export default {
   validateMemberData,
   validateMemberUpdateData,
   validateMemberQueryOptions,
   validateMemberLookup,
   validateSearchQuery,
+  validateSearchOptions,
   sanitizeNqlValue,
 };

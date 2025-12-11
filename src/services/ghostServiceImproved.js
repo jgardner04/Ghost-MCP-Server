@@ -960,8 +960,10 @@ export async function getMember(params) {
  * @throws {GhostAPIError} If the API request fails
  */
 export async function searchMembers(query, options = {}) {
-  // Import and validate search query
-  const { validateSearchQuery, sanitizeNqlValue } = await import('./memberService.js');
+  // Import and validate search query and options
+  const { validateSearchQuery, validateSearchOptions, sanitizeNqlValue } =
+    await import('./memberService.js');
+  validateSearchOptions(options);
   const sanitizedQuery = sanitizeNqlValue(validateSearchQuery(query));
 
   const limit = options.limit || 15;

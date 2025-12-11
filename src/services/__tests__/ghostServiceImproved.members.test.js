@@ -503,6 +503,18 @@ describe('ghostServiceImproved - Members', () => {
       await expect(searchMembers(null)).rejects.toThrow('Search query validation failed');
     });
 
+    it('should throw validation error for invalid limit', async () => {
+      await expect(searchMembers('test', { limit: 0 })).rejects.toThrow(
+        'Search options validation failed'
+      );
+      await expect(searchMembers('test', { limit: 51 })).rejects.toThrow(
+        'Search options validation failed'
+      );
+      await expect(searchMembers('test', { limit: 100 })).rejects.toThrow(
+        'Search options validation failed'
+      );
+    });
+
     it('should sanitize query to prevent NQL injection', async () => {
       const mockMembers = [];
 

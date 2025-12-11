@@ -5,6 +5,7 @@ import {
   validateMemberQueryOptions,
   validateMemberLookup,
   validateSearchQuery,
+  validateSearchOptions,
   sanitizeNqlValue,
 } from '../memberService.js';
 
@@ -410,6 +411,40 @@ describe('memberService - Validation', () => {
     it('should trim whitespace from query', () => {
       const result = validateSearchQuery('  john  ');
       expect(result).toBe('john');
+    });
+  });
+
+  describe('validateSearchOptions', () => {
+    it('should accept empty options', () => {
+      expect(() => validateSearchOptions({})).not.toThrow();
+    });
+
+    it('should accept valid limit within bounds (1-50)', () => {
+      expect(() => validateSearchOptions({ limit: 1 })).not.toThrow();
+      expect(() => validateSearchOptions({ limit: 25 })).not.toThrow();
+      expect(() => validateSearchOptions({ limit: 50 })).not.toThrow();
+    });
+
+    it('should reject limit below minimum', () => {
+      expect(() => validateSearchOptions({ limit: 0 })).toThrow('Search options validation failed');
+      expect(() => validateSearchOptions({ limit: -1 })).toThrow(
+        'Search options validation failed'
+      );
+    });
+
+    it('should reject limit above maximum (50)', () => {
+      expect(() => validateSearchOptions({ limit: 51 })).toThrow(
+        'Search options validation failed'
+      );
+      expect(() => validateSearchOptions({ limit: 100 })).toThrow(
+        'Search options validation failed'
+      );
+    });
+
+    it('should reject non-number limit', () => {
+      expect(() => validateSearchOptions({ limit: 'ten' })).toThrow(
+        'Search options validation failed'
+      );
     });
   });
 
