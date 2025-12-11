@@ -77,6 +77,70 @@ describe('memberService - Validation', () => {
         'Member validation failed'
       );
     });
+
+    it('should validate name length', () => {
+      const longName = 'a'.repeat(192); // Exceeds MAX_NAME_LENGTH (191)
+      expect(() => validateMemberData({ email: 'test@example.com', name: longName })).toThrow(
+        'Member validation failed'
+      );
+    });
+
+    it('should accept name at max length', () => {
+      const maxName = 'a'.repeat(191); // At MAX_NAME_LENGTH
+      expect(() => validateMemberData({ email: 'test@example.com', name: maxName })).not.toThrow();
+    });
+
+    it('should validate note length', () => {
+      const longNote = 'a'.repeat(2001); // Exceeds MAX_NOTE_LENGTH (2000)
+      expect(() => validateMemberData({ email: 'test@example.com', note: longNote })).toThrow(
+        'Member validation failed'
+      );
+    });
+
+    it('should accept note at max length', () => {
+      const maxNote = 'a'.repeat(2000); // At MAX_NOTE_LENGTH
+      expect(() => validateMemberData({ email: 'test@example.com', note: maxNote })).not.toThrow();
+    });
+
+    it('should sanitize HTML in note field', () => {
+      const memberData = {
+        email: 'test@example.com',
+        note: '<script>alert("xss")</script>Test note',
+      };
+      validateMemberData(memberData);
+      expect(memberData.note).toBe('Test note'); // HTML should be stripped
+    });
+
+    it('should validate label length', () => {
+      const longLabel = 'a'.repeat(192); // Exceeds MAX_LABEL_LENGTH (191)
+      expect(() => validateMemberData({ email: 'test@example.com', labels: [longLabel] })).toThrow(
+        'Member validation failed'
+      );
+    });
+
+    it('should reject empty string labels', () => {
+      expect(() => validateMemberData({ email: 'test@example.com', labels: [''] })).toThrow(
+        'Member validation failed'
+      );
+      expect(() => validateMemberData({ email: 'test@example.com', labels: ['  '] })).toThrow(
+        'Member validation failed'
+      );
+    });
+
+    it('should reject non-string labels', () => {
+      expect(() => validateMemberData({ email: 'test@example.com', labels: [123] })).toThrow(
+        'Member validation failed'
+      );
+    });
+
+    it('should reject empty newsletter IDs', () => {
+      expect(() =>
+        validateMemberData({ email: 'test@example.com', newsletters: [{ id: '' }] })
+      ).toThrow('Member validation failed');
+      expect(() =>
+        validateMemberData({ email: 'test@example.com', newsletters: [{ id: '  ' }] })
+      ).toThrow('Member validation failed');
+    });
   });
 
   describe('validateMemberUpdateData', () => {
@@ -119,6 +183,63 @@ describe('memberService - Validation', () => {
 
     it('should allow empty update object', () => {
       expect(() => validateMemberUpdateData({})).not.toThrow();
+    });
+
+    it('should validate name length in updates', () => {
+      const longName = 'a'.repeat(192); // Exceeds MAX_NAME_LENGTH (191)
+      expect(() => validateMemberUpdateData({ name: longName })).toThrow(
+        'Member validation failed'
+      );
+    });
+
+    it('should accept name at max length in updates', () => {
+      const maxName = 'a'.repeat(191); // At MAX_NAME_LENGTH
+      expect(() => validateMemberUpdateData({ name: maxName })).not.toThrow();
+    });
+
+    it('should validate note length in updates', () => {
+      const longNote = 'a'.repeat(2001); // Exceeds MAX_NOTE_LENGTH (2000)
+      expect(() => validateMemberUpdateData({ note: longNote })).toThrow(
+        'Member validation failed'
+      );
+    });
+
+    it('should accept note at max length in updates', () => {
+      const maxNote = 'a'.repeat(2000); // At MAX_NOTE_LENGTH
+      expect(() => validateMemberUpdateData({ note: maxNote })).not.toThrow();
+    });
+
+    it('should sanitize HTML in note field for updates', () => {
+      const updateData = { note: '<script>alert("xss")</script>Updated note' };
+      validateMemberUpdateData(updateData);
+      expect(updateData.note).toBe('Updated note'); // HTML should be stripped
+    });
+
+    it('should validate label length in updates', () => {
+      const longLabel = 'a'.repeat(192); // Exceeds MAX_LABEL_LENGTH (191)
+      expect(() => validateMemberUpdateData({ labels: [longLabel] })).toThrow(
+        'Member validation failed'
+      );
+    });
+
+    it('should reject empty string labels in updates', () => {
+      expect(() => validateMemberUpdateData({ labels: [''] })).toThrow('Member validation failed');
+      expect(() => validateMemberUpdateData({ labels: ['  '] })).toThrow(
+        'Member validation failed'
+      );
+    });
+
+    it('should reject non-string labels in updates', () => {
+      expect(() => validateMemberUpdateData({ labels: [123] })).toThrow('Member validation failed');
+    });
+
+    it('should reject empty newsletter IDs in updates', () => {
+      expect(() => validateMemberUpdateData({ newsletters: [{ id: '' }] })).toThrow(
+        'Member validation failed'
+      );
+      expect(() => validateMemberUpdateData({ newsletters: [{ id: '  ' }] })).toThrow(
+        'Member validation failed'
+      );
     });
   });
 });

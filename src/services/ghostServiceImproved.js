@@ -744,6 +744,20 @@ export async function deleteTag(tagId) {
  * Members represent subscribers/users in Ghost CMS
  */
 
+/**
+ * Creates a new member (subscriber) in Ghost CMS
+ * @param {Object} memberData - The member data
+ * @param {string} memberData.email - Member email (required)
+ * @param {string} [memberData.name] - Member name
+ * @param {string} [memberData.note] - Notes about the member (HTML will be sanitized)
+ * @param {string[]} [memberData.labels] - Array of label names
+ * @param {Object[]} [memberData.newsletters] - Array of newsletter objects with id
+ * @param {boolean} [memberData.subscribed] - Email subscription status
+ * @param {Object} [options] - Additional options for the API request
+ * @returns {Promise<Object>} The created member object
+ * @throws {ValidationError} If validation fails
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function createMember(memberData, options = {}) {
   // Import and validate input
   const { validateMemberData } = await import('./memberService.js');
@@ -761,6 +775,22 @@ export async function createMember(memberData, options = {}) {
   }
 }
 
+/**
+ * Updates an existing member in Ghost CMS
+ * @param {string} memberId - The member ID to update
+ * @param {Object} updateData - The member update data
+ * @param {string} [updateData.email] - Member email
+ * @param {string} [updateData.name] - Member name
+ * @param {string} [updateData.note] - Notes about the member (HTML will be sanitized)
+ * @param {string[]} [updateData.labels] - Array of label names
+ * @param {Object[]} [updateData.newsletters] - Array of newsletter objects with id
+ * @param {boolean} [updateData.subscribed] - Email subscription status
+ * @param {Object} [options] - Additional options for the API request
+ * @returns {Promise<Object>} The updated member object
+ * @throws {ValidationError} If validation fails
+ * @throws {NotFoundError} If the member is not found
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function updateMember(memberId, updateData, options = {}) {
   if (!memberId) {
     throw new ValidationError('Member ID is required for update');
@@ -790,6 +820,14 @@ export async function updateMember(memberId, updateData, options = {}) {
   }
 }
 
+/**
+ * Deletes a member from Ghost CMS
+ * @param {string} memberId - The member ID to delete
+ * @returns {Promise<Object>} Deletion confirmation object
+ * @throws {ValidationError} If member ID is not provided
+ * @throws {NotFoundError} If the member is not found
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function deleteMember(memberId) {
   if (!memberId) {
     throw new ValidationError('Member ID is required for deletion');
