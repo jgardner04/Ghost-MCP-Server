@@ -41,7 +41,10 @@ vi.mock('crypto', () => ({
 const mockGetPosts = vi.fn();
 const mockGetPost = vi.fn();
 const mockGetTags = vi.fn();
+const mockGetTag = vi.fn();
 const mockCreateTag = vi.fn();
+const mockUpdateTag = vi.fn();
+const mockDeleteTag = vi.fn();
 const mockUploadImage = vi.fn();
 const mockCreatePostService = vi.fn();
 const mockProcessImage = vi.fn();
@@ -67,6 +70,9 @@ vi.mock('../services/ghostServiceImproved.js', () => ({
   updatePost: (...args) => mockUpdatePost(...args),
   deletePost: (...args) => mockDeletePost(...args),
   searchPosts: (...args) => mockSearchPosts(...args),
+  getTag: (...args) => mockGetTag(...args),
+  updateTag: (...args) => mockUpdateTag(...args),
+  deleteTag: (...args) => mockDeleteTag(...args),
 }));
 
 vi.mock('../services/imageProcessingService.js', () => ({
@@ -905,5 +911,284 @@ describe('mcp_server_improved - ghost_search_posts tool', () => {
 
     expect(result.content[0].text).toBe('[]');
     expect(result.isError).toBeUndefined();
+  });
+});
+
+describe('ghost_get_tag', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should be registered as a tool', () => {
+    expect(mockTools.has('ghost_get_tag')).toBe(true);
+    const tool = mockTools.get('ghost_get_tag');
+    expect(tool.name).toBe('ghost_get_tag');
+    expect(tool.description).toBeDefined();
+    expect(tool.schema).toBeDefined();
+    expect(tool.handler).toBeDefined();
+  });
+
+  it('should have correct schema with id and slug as optional', () => {
+    const tool = mockTools.get('ghost_get_tag');
+    expect(tool.schema.id).toBeDefined();
+    expect(tool.schema.slug).toBeDefined();
+    expect(tool.schema.include).toBeDefined();
+  });
+
+  it('should retrieve tag by ID', async () => {
+    const mockTag = {
+      id: '123',
+      name: 'Test Tag',
+      slug: 'test-tag',
+      description: 'A test tag',
+    };
+    mockGetTag.mockResolvedValue(mockTag);
+
+    const tool = mockTools.get('ghost_get_tag');
+    const result = await tool.handler({ id: '123' });
+
+    expect(mockGetTag).toHaveBeenCalledWith('123', {});
+    expect(result.content).toBeDefined();
+    expect(result.content[0].type).toBe('text');
+    expect(result.content[0].text).toContain('"id": "123"');
+    expect(result.content[0].text).toContain('"name": "Test Tag"');
+  });
+
+  it('should retrieve tag by slug', async () => {
+    const mockTag = {
+      id: '123',
+      name: 'Test Tag',
+      slug: 'test-tag',
+      description: 'A test tag',
+    };
+    mockGetTag.mockResolvedValue(mockTag);
+
+    const tool = mockTools.get('ghost_get_tag');
+    const result = await tool.handler({ slug: 'test-tag' });
+
+    expect(mockGetTag).toHaveBeenCalledWith('slug/test-tag', {});
+    expect(result.content[0].text).toContain('"slug": "test-tag"');
+  });
+
+  it('should support include parameter for post count', async () => {
+    const mockTag = {
+      id: '123',
+      name: 'Test Tag',
+      slug: 'test-tag',
+      count: { posts: 5 },
+    };
+    mockGetTag.mockResolvedValue(mockTag);
+
+    const tool = mockTools.get('ghost_get_tag');
+    const result = await tool.handler({ id: '123', include: 'count.posts' });
+
+    expect(mockGetTag).toHaveBeenCalledWith('123', { include: 'count.posts' });
+    expect(result.content[0].text).toContain('"count"');
+  });
+
+  it('should return error when neither id nor slug provided', async () => {
+    const tool = mockTools.get('ghost_get_tag');
+    const result = await tool.handler({});
+
+    expect(result.content[0].type).toBe('text');
+    expect(result.content[0].text).toContain('Either id or slug must be provided');
+    expect(result.isError).toBe(true);
+  });
+
+  it('should handle not found error', async () => {
+    mockGetTag.mockRejectedValue(new Error('Tag not found'));
+
+    const tool = mockTools.get('ghost_get_tag');
+    const result = await tool.handler({ id: '999' });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Tag not found');
+  });
+});
+
+describe('ghost_update_tag', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should be registered as a tool', () => {
+    expect(mockTools.has('ghost_update_tag')).toBe(true);
+    const tool = mockTools.get('ghost_update_tag');
+    expect(tool.name).toBe('ghost_update_tag');
+    expect(tool.description).toBeDefined();
+    expect(tool.schema).toBeDefined();
+    expect(tool.handler).toBeDefined();
+  });
+
+  it('should have correct schema with all update fields', () => {
+    const tool = mockTools.get('ghost_update_tag');
+    expect(tool.schema.id).toBeDefined();
+    expect(tool.schema.name).toBeDefined();
+    expect(tool.schema.slug).toBeDefined();
+    expect(tool.schema.description).toBeDefined();
+    expect(tool.schema.feature_image).toBeDefined();
+    expect(tool.schema.meta_title).toBeDefined();
+    expect(tool.schema.meta_description).toBeDefined();
+  });
+
+  it('should update tag name', async () => {
+    const mockUpdatedTag = {
+      id: '123',
+      name: 'Updated Tag',
+      slug: 'updated-tag',
+    };
+    mockUpdateTag.mockResolvedValue(mockUpdatedTag);
+
+    const tool = mockTools.get('ghost_update_tag');
+    const result = await tool.handler({ id: '123', name: 'Updated Tag' });
+
+    expect(mockUpdateTag).toHaveBeenCalledWith('123', { name: 'Updated Tag' });
+    expect(result.content[0].text).toContain('"name": "Updated Tag"');
+  });
+
+  it('should update tag description', async () => {
+    const mockUpdatedTag = {
+      id: '123',
+      name: 'Test Tag',
+      description: 'New description',
+    };
+    mockUpdateTag.mockResolvedValue(mockUpdatedTag);
+
+    const tool = mockTools.get('ghost_update_tag');
+    const result = await tool.handler({ id: '123', description: 'New description' });
+
+    expect(mockUpdateTag).toHaveBeenCalledWith('123', { description: 'New description' });
+    expect(result.content[0].text).toContain('"description": "New description"');
+  });
+
+  it('should update multiple fields at once', async () => {
+    const mockUpdatedTag = {
+      id: '123',
+      name: 'Updated Tag',
+      slug: 'updated-tag',
+      description: 'Updated description',
+      meta_title: 'Updated Meta',
+    };
+    mockUpdateTag.mockResolvedValue(mockUpdatedTag);
+
+    const tool = mockTools.get('ghost_update_tag');
+    await tool.handler({
+      id: '123',
+      name: 'Updated Tag',
+      description: 'Updated description',
+      meta_title: 'Updated Meta',
+    });
+
+    expect(mockUpdateTag).toHaveBeenCalledWith('123', {
+      name: 'Updated Tag',
+      description: 'Updated description',
+      meta_title: 'Updated Meta',
+    });
+  });
+
+  it('should update tag feature image', async () => {
+    const mockUpdatedTag = {
+      id: '123',
+      name: 'Test Tag',
+      feature_image: 'https://example.com/image.jpg',
+    };
+    mockUpdateTag.mockResolvedValue(mockUpdatedTag);
+
+    const tool = mockTools.get('ghost_update_tag');
+    await tool.handler({
+      id: '123',
+      feature_image: 'https://example.com/image.jpg',
+    });
+
+    expect(mockUpdateTag).toHaveBeenCalledWith('123', {
+      feature_image: 'https://example.com/image.jpg',
+    });
+  });
+
+  it('should return error when id is missing', async () => {
+    const tool = mockTools.get('ghost_update_tag');
+    const result = await tool.handler({ name: 'Test' });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Tag ID is required');
+  });
+
+  it('should handle validation error', async () => {
+    mockUpdateTag.mockRejectedValue(new Error('Validation failed'));
+
+    const tool = mockTools.get('ghost_update_tag');
+    const result = await tool.handler({ id: '123', name: '' });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Validation failed');
+  });
+
+  it('should handle not found error', async () => {
+    mockUpdateTag.mockRejectedValue(new Error('Tag not found'));
+
+    const tool = mockTools.get('ghost_update_tag');
+    const result = await tool.handler({ id: '999', name: 'Test' });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Tag not found');
+  });
+});
+
+describe('ghost_delete_tag', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should be registered as a tool', () => {
+    expect(mockTools.has('ghost_delete_tag')).toBe(true);
+    const tool = mockTools.get('ghost_delete_tag');
+    expect(tool.name).toBe('ghost_delete_tag');
+    expect(tool.description).toBeDefined();
+    expect(tool.schema).toBeDefined();
+    expect(tool.handler).toBeDefined();
+  });
+
+  it('should have correct schema with id field', () => {
+    const tool = mockTools.get('ghost_delete_tag');
+    expect(tool.schema.id).toBeDefined();
+  });
+
+  it('should delete tag successfully', async () => {
+    mockDeleteTag.mockResolvedValue({ success: true });
+
+    const tool = mockTools.get('ghost_delete_tag');
+    const result = await tool.handler({ id: '123' });
+
+    expect(mockDeleteTag).toHaveBeenCalledWith('123');
+    expect(result.content[0].text).toContain('successfully deleted');
+    expect(result.isError).toBeUndefined();
+  });
+
+  it('should return error when id is missing', async () => {
+    const tool = mockTools.get('ghost_delete_tag');
+    const result = await tool.handler({});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Tag ID is required');
+  });
+
+  it('should handle not found error', async () => {
+    mockDeleteTag.mockRejectedValue(new Error('Tag not found'));
+
+    const tool = mockTools.get('ghost_delete_tag');
+    const result = await tool.handler({ id: '999' });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Tag not found');
+  });
+
+  it('should handle deletion error', async () => {
+    mockDeleteTag.mockRejectedValue(new Error('Failed to delete tag'));
+
+    const tool = mockTools.get('ghost_delete_tag');
+    const result = await tool.handler({ id: '123' });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Failed to delete tag');
   });
 });
