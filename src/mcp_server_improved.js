@@ -122,6 +122,129 @@ server.tool(
   }
 );
 
+// Get Tag Tool
+server.tool(
+  'ghost_get_tag',
+  'Retrieves a single tag from Ghost CMS by ID or slug.',
+  {
+    id: z.string().optional().describe('The ID of the tag to retrieve.'),
+    slug: z.string().optional().describe('The slug of the tag to retrieve.'),
+    include: z
+      .string()
+      .optional()
+      .describe('Additional resources to include (e.g., "count.posts").'),
+  },
+  async ({ id, slug, include }) => {
+    console.error(`Executing tool: ghost_get_tag`);
+    try {
+      if (!id && !slug) {
+        throw new Error('Either id or slug must be provided');
+      }
+
+      await loadServices();
+
+      // If slug is provided, use the slug/slug-name format
+      const identifier = slug ? `slug/${slug}` : id;
+      const options = include ? { include } : {};
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const tag = await ghostServiceImproved.getTag(identifier, options);
+      console.error(`Tag retrieved successfully. Tag ID: ${tag.id}`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(tag, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_get_tag:`, error);
+      return {
+        content: [{ type: 'text', text: `Error: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Update Tag Tool
+server.tool(
+  'ghost_update_tag',
+  'Updates an existing tag in Ghost CMS.',
+  {
+    id: z.string().describe('The ID of the tag to update.'),
+    name: z.string().optional().describe('The new name for the tag.'),
+    slug: z.string().optional().describe('The new slug for the tag.'),
+    description: z.string().optional().describe('The new description for the tag.'),
+    feature_image: z.string().url().optional().describe('URL of the feature image for the tag.'),
+    meta_title: z.string().optional().describe('SEO meta title for the tag.'),
+    meta_description: z.string().optional().describe('SEO meta description for the tag.'),
+  },
+  async ({ id, name, slug, description, feature_image, meta_title, meta_description }) => {
+    console.error(`Executing tool: ghost_update_tag for ID: ${id}`);
+    try {
+      if (!id) {
+        throw new Error('Tag ID is required');
+      }
+
+      await loadServices();
+
+      // Build update data object with only provided fields
+      const updateData = {};
+      if (name !== undefined) updateData.name = name;
+      if (slug !== undefined) updateData.slug = slug;
+      if (description !== undefined) updateData.description = description;
+      if (feature_image !== undefined) updateData.feature_image = feature_image;
+      if (meta_title !== undefined) updateData.meta_title = meta_title;
+      if (meta_description !== undefined) updateData.meta_description = meta_description;
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const updatedTag = await ghostServiceImproved.updateTag(id, updateData);
+      console.error(`Tag updated successfully. Tag ID: ${updatedTag.id}`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(updatedTag, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_update_tag:`, error);
+      return {
+        content: [{ type: 'text', text: `Error: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Delete Tag Tool
+server.tool(
+  'ghost_delete_tag',
+  'Deletes a tag from Ghost CMS by ID. This operation is permanent.',
+  {
+    id: z.string().describe('The ID of the tag to delete.'),
+  },
+  async ({ id }) => {
+    console.error(`Executing tool: ghost_delete_tag for ID: ${id}`);
+    try {
+      if (!id) {
+        throw new Error('Tag ID is required');
+      }
+
+      await loadServices();
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      await ghostServiceImproved.deleteTag(id);
+      console.error(`Tag deleted successfully. Tag ID: ${id}`);
+
+      return {
+        content: [{ type: 'text', text: `Tag with ID ${id} has been successfully deleted.` }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_delete_tag:`, error);
+      return {
+        content: [{ type: 'text', text: `Error: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
 // Upload Image Tool
 server.tool(
   'ghost_upload_image',
@@ -790,7 +913,7 @@ async function main() {
 
   console.error('Ghost MCP Server running on stdio transport');
   console.error(
-    'Available tools: ghost_get_tags, ghost_create_tag, ghost_upload_image, ' +
+    'Available tools: ghost_get_tags, ghost_create_tag, ghost_get_tag, ghost_update_tag, ghost_delete_tag, ghost_upload_image, ' +
       'ghost_create_post, ghost_get_posts, ghost_get_post, ghost_search_posts, ghost_update_post, ghost_delete_post, ' +
       'ghost_get_pages, ghost_get_page, ghost_create_page, ghost_update_page, ghost_delete_page, ghost_search_pages'
   );

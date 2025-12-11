@@ -681,13 +681,13 @@ export async function getTags(name) {
   }
 }
 
-export async function getTag(tagId) {
+export async function getTag(tagId, options = {}) {
   if (!tagId) {
     throw new ValidationError('Tag ID is required');
   }
 
   try {
-    return await handleApiRequest('tags', 'read', { id: tagId });
+    return await handleApiRequest('tags', 'read', { id: tagId }, options);
   } catch (error) {
     if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
       throw new NotFoundError('Tag', tagId);
