@@ -740,6 +740,72 @@ export async function deleteTag(tagId) {
 }
 
 /**
+ * Member CRUD Operations
+ * Members represent subscribers/users in Ghost CMS
+ */
+
+export async function createMember(memberData, options = {}) {
+  // Import and validate input
+  const { validateMemberData } = await import('./memberService.js');
+  validateMemberData(memberData);
+
+  try {
+    return await handleApiRequest('members', 'add', memberData, options);
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
+      throw new ValidationError('Member creation failed due to validation errors', [
+        { field: 'member', message: error.originalError },
+      ]);
+    }
+    throw error;
+  }
+}
+
+export async function updateMember(memberId, updateData, options = {}) {
+  if (!memberId) {
+    throw new ValidationError('Member ID is required for update');
+  }
+
+  // Import and validate update data
+  const { validateMemberUpdateData } = await import('./memberService.js');
+  validateMemberUpdateData(updateData);
+
+  try {
+    // Get existing member to retrieve updated_at for conflict resolution
+    const existingMember = await handleApiRequest('members', 'read', { id: memberId });
+
+    // Merge existing data with updates, preserving updated_at
+    const mergedData = {
+      ...existingMember,
+      ...updateData,
+      updated_at: existingMember.updated_at,
+    };
+
+    return await handleApiRequest('members', 'edit', mergedData, { id: memberId, ...options });
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError('Member', memberId);
+    }
+    throw error;
+  }
+}
+
+export async function deleteMember(memberId) {
+  if (!memberId) {
+    throw new ValidationError('Member ID is required for deletion');
+  }
+
+  try {
+    return await handleApiRequest('members', 'delete', { id: memberId });
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError('Member', memberId);
+    }
+    throw error;
+  }
+}
+
+/**
  * Health check for Ghost API connection
  */
 export async function checkHealth() {
@@ -790,5 +856,8 @@ export default {
   getTag,
   updateTag,
   deleteTag,
+  createMember,
+  updateMember,
+  deleteMember,
   checkHealth,
 };

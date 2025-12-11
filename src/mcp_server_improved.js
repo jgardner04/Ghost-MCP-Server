@@ -780,6 +780,122 @@ server.tool(
   }
 );
 
+// =============================================================================
+// MEMBER TOOLS
+// Member management for Ghost CMS subscribers
+// =============================================================================
+
+// Create Member Tool
+server.tool(
+  'ghost_create_member',
+  'Creates a new member (subscriber) in Ghost CMS.',
+  {
+    email: z.string().email().describe('The email address of the member (required).'),
+    name: z.string().optional().describe('The name of the member.'),
+    note: z.string().optional().describe('A note about the member.'),
+    labels: z.array(z.string()).optional().describe('List of label names to assign to the member.'),
+    newsletters: z
+      .array(z.object({ id: z.string() }))
+      .optional()
+      .describe('List of newsletter objects with id field to subscribe the member to.'),
+    subscribed: z
+      .boolean()
+      .optional()
+      .describe('Whether the member is subscribed to emails. Defaults to true.'),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_create_member with email: ${input.email}`);
+    try {
+      await loadServices();
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const createdMember = await ghostServiceImproved.createMember(input);
+      console.error(`Member created successfully. Member ID: ${createdMember.id}`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(createdMember, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_create_member:`, error);
+      return {
+        content: [{ type: 'text', text: `Error creating member: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Update Member Tool
+server.tool(
+  'ghost_update_member',
+  'Updates an existing member in Ghost CMS. All fields except id are optional.',
+  {
+    id: z.string().describe('The ID of the member to update.'),
+    email: z.string().email().optional().describe('New email address for the member.'),
+    name: z.string().optional().describe('New name for the member.'),
+    note: z.string().optional().describe('New note about the member.'),
+    labels: z
+      .array(z.string())
+      .optional()
+      .describe('New list of label names to assign to the member.'),
+    newsletters: z
+      .array(z.object({ id: z.string() }))
+      .optional()
+      .describe('New list of newsletter objects with id field to subscribe the member to.'),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_update_member for member ID: ${input.id}`);
+    try {
+      await loadServices();
+
+      const { id, ...updateData } = input;
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const updatedMember = await ghostServiceImproved.updateMember(id, updateData);
+      console.error(`Member updated successfully. Member ID: ${updatedMember.id}`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(updatedMember, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_update_member:`, error);
+      return {
+        content: [{ type: 'text', text: `Error updating member: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Delete Member Tool
+server.tool(
+  'ghost_delete_member',
+  'Deletes a member from Ghost CMS by ID. This operation is permanent and cannot be undone.',
+  {
+    id: z.string().describe('The ID of the member to delete.'),
+  },
+  async ({ id }) => {
+    console.error(`Executing tool: ghost_delete_member for member ID: ${id}`);
+    try {
+      await loadServices();
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      await ghostServiceImproved.deleteMember(id);
+      console.error(`Member deleted successfully. Member ID: ${id}`);
+
+      return {
+        content: [{ type: 'text', text: `Member ${id} has been successfully deleted.` }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_delete_member:`, error);
+      return {
+        content: [{ type: 'text', text: `Error deleting member: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
 // --- Main Entry Point ---
 
 async function main() {
@@ -792,7 +908,8 @@ async function main() {
   console.error(
     'Available tools: ghost_get_tags, ghost_create_tag, ghost_upload_image, ' +
       'ghost_create_post, ghost_get_posts, ghost_get_post, ghost_search_posts, ghost_update_post, ghost_delete_post, ' +
-      'ghost_get_pages, ghost_get_page, ghost_create_page, ghost_update_page, ghost_delete_page, ghost_search_pages'
+      'ghost_get_pages, ghost_get_page, ghost_create_page, ghost_update_page, ghost_delete_page, ghost_search_pages, ' +
+      'ghost_create_member, ghost_update_member, ghost_delete_member'
   );
 }
 
