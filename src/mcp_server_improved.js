@@ -1019,6 +1019,125 @@ server.tool(
   }
 );
 
+// Get Members Tool
+server.tool(
+  'ghost_get_members',
+  'Retrieves a list of members (subscribers) from Ghost CMS with optional filtering, pagination, and includes.',
+  {
+    limit: z
+      .number()
+      .min(1)
+      .max(100)
+      .optional()
+      .describe('Number of members to retrieve (1-100). Default is 15.'),
+    page: z.number().min(1).optional().describe('Page number for pagination (starts at 1).'),
+    filter: z
+      .string()
+      .optional()
+      .describe('Ghost NQL filter string (e.g., "status:free", "status:paid", "subscribed:true").'),
+    order: z.string().optional().describe('Order string (e.g., "created_at desc", "email asc").'),
+    include: z
+      .string()
+      .optional()
+      .describe('Comma-separated list of related data to include (e.g., "labels,newsletters").'),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_get_members`);
+    try {
+      await loadServices();
+
+      const options = {};
+      if (input.limit !== undefined) options.limit = input.limit;
+      if (input.page !== undefined) options.page = input.page;
+      if (input.filter !== undefined) options.filter = input.filter;
+      if (input.order !== undefined) options.order = input.order;
+      if (input.include !== undefined) options.include = input.include;
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const members = await ghostServiceImproved.getMembers(options);
+      console.error(`Retrieved ${members.length} members from Ghost.`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(members, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_get_members:`, error);
+      return {
+        content: [{ type: 'text', text: `Error retrieving members: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Get Member Tool
+server.tool(
+  'ghost_get_member',
+  'Retrieves a single member from Ghost CMS by ID or email. Provide either id OR email.',
+  {
+    id: z.string().optional().describe('The ID of the member to retrieve.'),
+    email: z.string().email().optional().describe('The email of the member to retrieve.'),
+  },
+  async ({ id, email }) => {
+    console.error(`Executing tool: ghost_get_member for ${id ? `ID: ${id}` : `email: ${email}`}`);
+    try {
+      await loadServices();
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const member = await ghostServiceImproved.getMember({ id, email });
+      console.error(`Retrieved member: ${member.email} (ID: ${member.id})`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(member, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_get_member:`, error);
+      return {
+        content: [{ type: 'text', text: `Error retrieving member: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Search Members Tool
+server.tool(
+  'ghost_search_members',
+  'Searches for members by name or email in Ghost CMS.',
+  {
+    query: z.string().min(1).describe('Search query to match against member name or email.'),
+    limit: z
+      .number()
+      .min(1)
+      .max(50)
+      .optional()
+      .describe('Maximum number of results to return (1-50). Default is 15.'),
+  },
+  async ({ query, limit }) => {
+    console.error(`Executing tool: ghost_search_members with query: ${query}`);
+    try {
+      await loadServices();
+
+      const options = {};
+      if (limit !== undefined) options.limit = limit;
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const members = await ghostServiceImproved.searchMembers(query, options);
+      console.error(`Found ${members.length} members matching "${query}".`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(members, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_search_members:`, error);
+      return {
+        content: [{ type: 'text', text: `Error searching members: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
 // =============================================================================
 // NEWSLETTER TOOLS
 // =============================================================================
@@ -1224,7 +1343,7 @@ async function main() {
     'Available tools: ghost_get_tags, ghost_create_tag, ghost_get_tag, ghost_update_tag, ghost_delete_tag, ghost_upload_image, ' +
       'ghost_create_post, ghost_get_posts, ghost_get_post, ghost_search_posts, ghost_update_post, ghost_delete_post, ' +
       'ghost_get_pages, ghost_get_page, ghost_create_page, ghost_update_page, ghost_delete_page, ghost_search_pages, ' +
-      'ghost_create_member, ghost_update_member, ghost_delete_member, ' +
+      'ghost_create_member, ghost_update_member, ghost_delete_member, ghost_get_members, ghost_get_member, ghost_search_members, ' +
       'ghost_get_newsletters, ghost_get_newsletter, ghost_create_newsletter, ghost_update_newsletter, ghost_delete_newsletter'
   );
 }

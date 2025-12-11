@@ -877,6 +877,111 @@ export async function deleteMember(memberId) {
 }
 
 /**
+ * List members from Ghost CMS with optional filtering and pagination
+ * @param {Object} [options] - Query options
+ * @param {number} [options.limit] - Number of members to return (1-100)
+ * @param {number} [options.page] - Page number (1+)
+ * @param {string} [options.filter] - NQL filter string (e.g., 'status:paid')
+ * @param {string} [options.order] - Order string (e.g., 'created_at desc')
+ * @param {string} [options.include] - Include string (e.g., 'labels,newsletters')
+ * @returns {Promise<Array>} Array of member objects
+ * @throws {ValidationError} If validation fails
+ * @throws {GhostAPIError} If the API request fails
+ */
+export async function getMembers(options = {}) {
+  // Import and validate query options
+  const { validateMemberQueryOptions } = await import('./memberService.js');
+  validateMemberQueryOptions(options);
+
+  const defaultOptions = {
+    limit: 15,
+    ...options,
+  };
+
+  try {
+    const members = await handleApiRequest('members', 'browse', {}, defaultOptions);
+    return members || [];
+  } catch (error) {
+    console.error('Failed to get members:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get a single member from Ghost CMS by ID or email
+ * @param {Object} params - Lookup parameters (id OR email required)
+ * @param {string} [params.id] - Member ID
+ * @param {string} [params.email] - Member email
+ * @returns {Promise<Object>} The member object
+ * @throws {ValidationError} If validation fails
+ * @throws {NotFoundError} If the member is not found
+ * @throws {GhostAPIError} If the API request fails
+ */
+export async function getMember(params) {
+  // Import and validate lookup parameters
+  const { validateMemberLookup, sanitizeNqlValue } = await import('./memberService.js');
+  const { lookupType, id, email } = validateMemberLookup(params);
+
+  try {
+    if (lookupType === 'id') {
+      // Lookup by ID using read endpoint
+      return await handleApiRequest('members', 'read', { id }, { id });
+    } else {
+      // Lookup by email using browse with filter
+      const sanitizedEmail = sanitizeNqlValue(email);
+      const members = await handleApiRequest(
+        'members',
+        'browse',
+        {},
+        { filter: `email:'${sanitizedEmail}'`, limit: 1 }
+      );
+
+      if (!members || members.length === 0) {
+        throw new NotFoundError('Member', email);
+      }
+
+      return members[0];
+    }
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError('Member', id || email);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Search members by name or email
+ * @param {string} query - Search query (searches name and email fields)
+ * @param {Object} [options] - Additional options
+ * @param {number} [options.limit] - Maximum number of results (default: 15)
+ * @returns {Promise<Array>} Array of matching member objects
+ * @throws {ValidationError} If validation fails
+ * @throws {GhostAPIError} If the API request fails
+ */
+export async function searchMembers(query, options = {}) {
+  // Import and validate search query and options
+  const { validateSearchQuery, validateSearchOptions, sanitizeNqlValue } =
+    await import('./memberService.js');
+  validateSearchOptions(options);
+  const sanitizedQuery = sanitizeNqlValue(validateSearchQuery(query));
+
+  const limit = options.limit || 15;
+
+  // Build NQL filter for name or email containing the query
+  // Ghost uses ~ for contains/like matching
+  const filter = `name:~'${sanitizedQuery}',email:~'${sanitizedQuery}'`;
+
+  try {
+    const members = await handleApiRequest('members', 'browse', {}, { filter, limit });
+    return members || [];
+  } catch (error) {
+    console.error('Failed to search members:', error);
+    throw error;
+  }
+}
+
+/**
  * Newsletter CRUD Operations
  */
 
@@ -1027,6 +1132,9 @@ export default {
   createMember,
   updateMember,
   deleteMember,
+  getMembers,
+  getMember,
+  searchMembers,
   getNewsletters,
   getNewsletter,
   createNewsletter,
