@@ -122,6 +122,129 @@ server.tool(
   }
 );
 
+// Get Tag Tool
+server.tool(
+  'ghost_get_tag',
+  'Retrieves a single tag from Ghost CMS by ID or slug.',
+  {
+    id: z.string().optional().describe('The ID of the tag to retrieve.'),
+    slug: z.string().optional().describe('The slug of the tag to retrieve.'),
+    include: z
+      .string()
+      .optional()
+      .describe('Additional resources to include (e.g., "count.posts").'),
+  },
+  async ({ id, slug, include }) => {
+    console.error(`Executing tool: ghost_get_tag`);
+    try {
+      if (!id && !slug) {
+        throw new Error('Either id or slug must be provided');
+      }
+
+      await loadServices();
+
+      // If slug is provided, use the slug/slug-name format
+      const identifier = slug ? `slug/${slug}` : id;
+      const options = include ? { include } : {};
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const tag = await ghostServiceImproved.getTag(identifier, options);
+      console.error(`Tag retrieved successfully. Tag ID: ${tag.id}`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(tag, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_get_tag:`, error);
+      return {
+        content: [{ type: 'text', text: `Error: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Update Tag Tool
+server.tool(
+  'ghost_update_tag',
+  'Updates an existing tag in Ghost CMS.',
+  {
+    id: z.string().describe('The ID of the tag to update.'),
+    name: z.string().optional().describe('The new name for the tag.'),
+    slug: z.string().optional().describe('The new slug for the tag.'),
+    description: z.string().optional().describe('The new description for the tag.'),
+    feature_image: z.string().url().optional().describe('URL of the feature image for the tag.'),
+    meta_title: z.string().optional().describe('SEO meta title for the tag.'),
+    meta_description: z.string().optional().describe('SEO meta description for the tag.'),
+  },
+  async ({ id, name, slug, description, feature_image, meta_title, meta_description }) => {
+    console.error(`Executing tool: ghost_update_tag for ID: ${id}`);
+    try {
+      if (!id) {
+        throw new Error('Tag ID is required');
+      }
+
+      await loadServices();
+
+      // Build update data object with only provided fields
+      const updateData = {};
+      if (name !== undefined) updateData.name = name;
+      if (slug !== undefined) updateData.slug = slug;
+      if (description !== undefined) updateData.description = description;
+      if (feature_image !== undefined) updateData.feature_image = feature_image;
+      if (meta_title !== undefined) updateData.meta_title = meta_title;
+      if (meta_description !== undefined) updateData.meta_description = meta_description;
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const updatedTag = await ghostServiceImproved.updateTag(id, updateData);
+      console.error(`Tag updated successfully. Tag ID: ${updatedTag.id}`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(updatedTag, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_update_tag:`, error);
+      return {
+        content: [{ type: 'text', text: `Error: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Delete Tag Tool
+server.tool(
+  'ghost_delete_tag',
+  'Deletes a tag from Ghost CMS by ID. This operation is permanent.',
+  {
+    id: z.string().describe('The ID of the tag to delete.'),
+  },
+  async ({ id }) => {
+    console.error(`Executing tool: ghost_delete_tag for ID: ${id}`);
+    try {
+      if (!id) {
+        throw new Error('Tag ID is required');
+      }
+
+      await loadServices();
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      await ghostServiceImproved.deleteTag(id);
+      console.error(`Tag deleted successfully. Tag ID: ${id}`);
+
+      return {
+        content: [{ type: 'text', text: `Tag with ID ${id} has been successfully deleted.` }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_delete_tag:`, error);
+      return {
+        content: [{ type: 'text', text: `Error: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
 // Upload Image Tool
 server.tool(
   'ghost_upload_image',
@@ -896,6 +1019,198 @@ server.tool(
   }
 );
 
+// =============================================================================
+// NEWSLETTER TOOLS
+// =============================================================================
+
+// Get Newsletters Tool
+server.tool(
+  'ghost_get_newsletters',
+  'Retrieves a list of newsletters from Ghost CMS with optional filtering.',
+  {
+    limit: z
+      .number()
+      .min(1)
+      .max(100)
+      .optional()
+      .describe('Number of newsletters to retrieve (1-100). Default is all.'),
+    filter: z.string().optional().describe('Ghost NQL filter string for advanced filtering.'),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_get_newsletters`);
+    try {
+      await loadServices();
+
+      const options = {};
+      if (input.limit !== undefined) options.limit = input.limit;
+      if (input.filter !== undefined) options.filter = input.filter;
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const newsletters = await ghostServiceImproved.getNewsletters(options);
+      console.error(`Retrieved ${newsletters.length} newsletters from Ghost.`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(newsletters, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_get_newsletters:`, error);
+      return {
+        content: [{ type: 'text', text: `Error retrieving newsletters: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Get Newsletter Tool
+server.tool(
+  'ghost_get_newsletter',
+  'Retrieves a single newsletter from Ghost CMS by ID.',
+  {
+    id: z.string().describe('The ID of the newsletter to retrieve.'),
+  },
+  async ({ id }) => {
+    console.error(`Executing tool: ghost_get_newsletter for ID: ${id}`);
+    try {
+      await loadServices();
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const newsletter = await ghostServiceImproved.getNewsletter(id);
+      console.error(`Retrieved newsletter: ${newsletter.name} (ID: ${newsletter.id})`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(newsletter, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_get_newsletter:`, error);
+      return {
+        content: [{ type: 'text', text: `Error retrieving newsletter: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Create Newsletter Tool
+server.tool(
+  'ghost_create_newsletter',
+  'Creates a new newsletter in Ghost CMS with customizable sender settings and display options.',
+  {
+    name: z.string().describe('The name of the newsletter.'),
+    description: z.string().optional().describe('A description for the newsletter.'),
+    sender_name: z.string().optional().describe('The sender name for newsletter emails.'),
+    sender_email: z
+      .string()
+      .email()
+      .optional()
+      .describe('The sender email address for newsletter emails.'),
+    sender_reply_to: z
+      .enum(['newsletter', 'support'])
+      .optional()
+      .describe('Reply-to address setting. Options: newsletter, support.'),
+    subscribe_on_signup: z
+      .boolean()
+      .optional()
+      .describe('Whether new members are automatically subscribed to this newsletter on signup.'),
+    show_header_icon: z
+      .boolean()
+      .optional()
+      .describe('Whether to show the site icon in the newsletter header.'),
+    show_header_title: z
+      .boolean()
+      .optional()
+      .describe('Whether to show the site title in the newsletter header.'),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_create_newsletter with name: ${input.name}`);
+    try {
+      await loadServices();
+
+      const newsletterService = await import('./services/newsletterService.js');
+      const createdNewsletter = await newsletterService.createNewsletterService(input);
+      console.error(`Newsletter created successfully. Newsletter ID: ${createdNewsletter.id}`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(createdNewsletter, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_create_newsletter:`, error);
+      return {
+        content: [{ type: 'text', text: `Error creating newsletter: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Update Newsletter Tool
+server.tool(
+  'ghost_update_newsletter',
+  'Updates an existing newsletter in Ghost CMS. Can update name, description, sender settings, and display options.',
+  {
+    id: z.string().describe('The ID of the newsletter to update.'),
+    name: z.string().optional().describe('New name for the newsletter.'),
+    description: z.string().optional().describe('New description for the newsletter.'),
+    sender_name: z.string().optional().describe('New sender name for newsletter emails.'),
+    sender_email: z.string().email().optional().describe('New sender email address.'),
+    subscribe_on_signup: z
+      .boolean()
+      .optional()
+      .describe('Whether new members are automatically subscribed to this newsletter on signup.'),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_update_newsletter for newsletter ID: ${input.id}`);
+    try {
+      await loadServices();
+
+      const { id, ...updateData } = input;
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const updatedNewsletter = await ghostServiceImproved.updateNewsletter(id, updateData);
+      console.error(`Newsletter updated successfully. Newsletter ID: ${updatedNewsletter.id}`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(updatedNewsletter, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_update_newsletter:`, error);
+      return {
+        content: [{ type: 'text', text: `Error updating newsletter: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Delete Newsletter Tool
+server.tool(
+  'ghost_delete_newsletter',
+  'Deletes a newsletter from Ghost CMS by ID. This operation is permanent and cannot be undone.',
+  {
+    id: z.string().describe('The ID of the newsletter to delete.'),
+  },
+  async ({ id }) => {
+    console.error(`Executing tool: ghost_delete_newsletter for newsletter ID: ${id}`);
+    try {
+      await loadServices();
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      await ghostServiceImproved.deleteNewsletter(id);
+      console.error(`Newsletter deleted successfully. Newsletter ID: ${id}`);
+
+      return {
+        content: [{ type: 'text', text: `Newsletter ${id} has been successfully deleted.` }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_delete_newsletter:`, error);
+      return {
+        content: [{ type: 'text', text: `Error deleting newsletter: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
 // --- Main Entry Point ---
 
 async function main() {
@@ -906,10 +1221,11 @@ async function main() {
 
   console.error('Ghost MCP Server running on stdio transport');
   console.error(
-    'Available tools: ghost_get_tags, ghost_create_tag, ghost_upload_image, ' +
+    'Available tools: ghost_get_tags, ghost_create_tag, ghost_get_tag, ghost_update_tag, ghost_delete_tag, ghost_upload_image, ' +
       'ghost_create_post, ghost_get_posts, ghost_get_post, ghost_search_posts, ghost_update_post, ghost_delete_post, ' +
       'ghost_get_pages, ghost_get_page, ghost_create_page, ghost_update_page, ghost_delete_page, ghost_search_pages, ' +
-      'ghost_create_member, ghost_update_member, ghost_delete_member'
+      'ghost_create_member, ghost_update_member, ghost_delete_member, ' +
+      'ghost_get_newsletters, ghost_get_newsletter, ghost_create_newsletter, ghost_update_newsletter, ghost_delete_newsletter'
   );
 }
 

@@ -224,6 +224,18 @@ const validators = {
       throw new ValidationError('Page validation failed', errors);
     }
   },
+
+  validateNewsletterData(newsletterData) {
+    const errors = [];
+
+    if (!newsletterData.name || newsletterData.name.trim().length === 0) {
+      errors.push({ field: 'name', message: 'Newsletter name is required' });
+    }
+
+    if (errors.length > 0) {
+      throw new ValidationError('Newsletter validation failed', errors);
+    }
+  },
 };
 
 /**
@@ -844,6 +856,103 @@ export async function deleteMember(memberId) {
 }
 
 /**
+ * Newsletter CRUD Operations
+ */
+
+export async function getNewsletters(options = {}) {
+  const defaultOptions = {
+    limit: 'all',
+    ...options,
+  };
+
+  try {
+    const newsletters = await handleApiRequest('newsletters', 'browse', {}, defaultOptions);
+    return newsletters || [];
+  } catch (error) {
+    console.error('Failed to get newsletters:', error);
+    throw error;
+  }
+}
+
+export async function getNewsletter(newsletterId) {
+  if (!newsletterId) {
+    throw new ValidationError('Newsletter ID is required');
+  }
+
+  try {
+    return await handleApiRequest('newsletters', 'read', { id: newsletterId });
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError('Newsletter', newsletterId);
+    }
+    throw error;
+  }
+}
+
+export async function createNewsletter(newsletterData) {
+  // Validate input
+  validators.validateNewsletterData(newsletterData);
+
+  try {
+    return await handleApiRequest('newsletters', 'add', newsletterData);
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
+      throw new ValidationError('Newsletter creation failed', [
+        { field: 'newsletter', message: error.originalError },
+      ]);
+    }
+    throw error;
+  }
+}
+
+export async function updateNewsletter(newsletterId, updateData) {
+  if (!newsletterId) {
+    throw new ValidationError('Newsletter ID is required for update');
+  }
+
+  try {
+    // Get existing newsletter to retrieve updated_at for conflict resolution
+    const existingNewsletter = await handleApiRequest('newsletters', 'read', {
+      id: newsletterId,
+    });
+
+    // Merge existing data with updates, preserving updated_at
+    const mergedData = {
+      ...existingNewsletter,
+      ...updateData,
+      updated_at: existingNewsletter.updated_at,
+    };
+
+    return await handleApiRequest('newsletters', 'edit', mergedData, { id: newsletterId });
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError('Newsletter', newsletterId);
+    }
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
+      throw new ValidationError('Newsletter update failed', [
+        { field: 'newsletter', message: error.originalError },
+      ]);
+    }
+    throw error;
+  }
+}
+
+export async function deleteNewsletter(newsletterId) {
+  if (!newsletterId) {
+    throw new ValidationError('Newsletter ID is required for deletion');
+  }
+
+  try {
+    return await handleApiRequest('newsletters', 'delete', newsletterId);
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError('Newsletter', newsletterId);
+    }
+    throw error;
+  }
+}
+
+/**
  * Health check for Ghost API connection
  */
 export async function checkHealth() {
@@ -897,5 +1006,10 @@ export default {
   createMember,
   updateMember,
   deleteMember,
+  getNewsletters,
+  getNewsletter,
+  createNewsletter,
+  updateNewsletter,
+  deleteNewsletter,
   checkHealth,
 };
