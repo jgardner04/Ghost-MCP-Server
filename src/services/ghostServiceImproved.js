@@ -740,6 +740,106 @@ export async function deleteTag(tagId) {
 }
 
 /**
+ * Tier CRUD Operations
+ * Tiers represent subscription levels for paid memberships
+ */
+
+export async function getTiers(options = {}) {
+  const defaultOptions = {
+    limit: 'all',
+    ...options,
+  };
+
+  try {
+    const tiers = await handleApiRequest('tiers', 'browse', {}, defaultOptions);
+    return tiers || [];
+  } catch (error) {
+    console.error('Failed to get tiers:', error);
+    throw error;
+  }
+}
+
+export async function getTier(tierId) {
+  if (!tierId) {
+    throw new ValidationError('Tier ID is required');
+  }
+
+  try {
+    return await handleApiRequest('tiers', 'read', { id: tierId });
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError('Tier', tierId);
+    }
+    throw error;
+  }
+}
+
+export async function createTier(tierData) {
+  // Validate tier name is provided
+  if (!tierData.name || tierData.name.trim().length === 0) {
+    throw new ValidationError('Tier name is required', [
+      { field: 'name', message: 'Name is required' },
+    ]);
+  }
+
+  try {
+    return await handleApiRequest('tiers', 'add', tierData);
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
+      throw new ValidationError('Tier creation failed due to validation errors', [
+        { field: 'tier', message: error.originalError },
+      ]);
+    }
+    throw error;
+  }
+}
+
+export async function updateTier(tierId, updateData) {
+  if (!tierId) {
+    throw new ValidationError('Tier ID is required for update');
+  }
+
+  try {
+    // Get existing tier to retrieve updated_at for conflict resolution
+    const existingTier = await handleApiRequest('tiers', 'read', { id: tierId });
+
+    // Merge existing data with updates, preserving updated_at
+    const mergedData = {
+      ...existingTier,
+      ...updateData,
+      updated_at: existingTier.updated_at,
+    };
+
+    return await handleApiRequest('tiers', 'edit', mergedData, { id: tierId });
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError('Tier', tierId);
+    }
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
+      throw new ValidationError('Tier update failed', [
+        { field: 'tier', message: error.originalError },
+      ]);
+    }
+    throw error;
+  }
+}
+
+export async function deleteTier(tierId) {
+  if (!tierId) {
+    throw new ValidationError('Tier ID is required for deletion');
+  }
+
+  try {
+    return await handleApiRequest('tiers', 'delete', { id: tierId });
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError('Tier', tierId);
+    }
+    throw error;
+  }
+}
+
+/**
  * Health check for Ghost API connection
  */
 export async function checkHealth() {
@@ -790,5 +890,10 @@ export default {
   getTag,
   updateTag,
   deleteTag,
+  getTiers,
+  getTier,
+  createTier,
+  updateTier,
+  deleteTier,
   checkHealth,
 };

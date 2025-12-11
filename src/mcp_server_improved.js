@@ -780,6 +780,190 @@ server.tool(
   }
 );
 
+// =============================================================================
+// TIER TOOLS
+// Tiers represent subscription levels for paid memberships
+// =============================================================================
+
+// Get Tiers Tool
+server.tool(
+  'ghost_get_tiers',
+  'Retrieves a list of subscription tiers from Ghost CMS with optional filtering.',
+  {
+    limit: z.number().min(1).optional().describe('Number of tiers to retrieve. Default is all.'),
+    filter: z
+      .string()
+      .optional()
+      .describe('Ghost NQL filter string (e.g., "type:paid" or "type:free").'),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_get_tiers`);
+    try {
+      await loadServices();
+
+      const options = {};
+      if (input.limit !== undefined) options.limit = input.limit;
+      if (input.filter !== undefined) options.filter = input.filter;
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const tiers = await ghostServiceImproved.getTiers(options);
+      console.error(`Retrieved ${tiers.length} tiers from Ghost.`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(tiers, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_get_tiers:`, error);
+      return {
+        content: [{ type: 'text', text: `Error retrieving tiers: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Get Tier Tool
+server.tool(
+  'ghost_get_tier',
+  'Retrieves a single subscription tier from Ghost CMS by ID.',
+  {
+    id: z.string().describe('The ID of the tier to retrieve.'),
+  },
+  async ({ id }) => {
+    console.error(`Executing tool: ghost_get_tier for tier ID: ${id}`);
+    try {
+      await loadServices();
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const tier = await ghostServiceImproved.getTier(id);
+      console.error(`Retrieved tier: ${tier.name} (ID: ${tier.id})`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(tier, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_get_tier:`, error);
+      return {
+        content: [{ type: 'text', text: `Error retrieving tier: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Create Tier Tool
+server.tool(
+  'ghost_create_tier',
+  'Creates a new subscription tier in Ghost CMS for paid memberships.',
+  {
+    name: z.string().describe('The name of the tier (required).'),
+    description: z.string().optional().describe('A description of the tier.'),
+    monthly_price: z
+      .number()
+      .min(0)
+      .optional()
+      .describe('Monthly subscription price in cents (e.g., 999 for $9.99).'),
+    yearly_price: z
+      .number()
+      .min(0)
+      .optional()
+      .describe('Yearly subscription price in cents (e.g., 9999 for $99.99).'),
+    currency: z.string().optional().describe('Currency code (e.g., "USD", "EUR").'),
+    benefits: z.array(z.string()).optional().describe('Array of benefit strings for this tier.'),
+    welcome_page_url: z
+      .string()
+      .url()
+      .optional()
+      .describe('URL of the welcome page for new subscribers.'),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_create_tier with name: ${input.name}`);
+    try {
+      await loadServices();
+
+      const tierService = await import('./services/tierService.js');
+      const createdTier = await tierService.createTierService(input);
+      console.error(`Tier created successfully. Tier ID: ${createdTier.id}`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(createdTier, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_create_tier:`, error);
+      return {
+        content: [{ type: 'text', text: `Error creating tier: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Update Tier Tool
+server.tool(
+  'ghost_update_tier',
+  'Updates an existing subscription tier in Ghost CMS. Can update pricing, benefits, and other properties.',
+  {
+    id: z.string().describe('The ID of the tier to update.'),
+    name: z.string().optional().describe('New name for the tier.'),
+    description: z.string().optional().describe('New description for the tier.'),
+    monthly_price: z.number().min(0).optional().describe('New monthly price in cents.'),
+    yearly_price: z.number().min(0).optional().describe('New yearly price in cents.'),
+    currency: z.string().optional().describe('New currency code.'),
+    benefits: z.array(z.string()).optional().describe('New array of benefit strings.'),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_update_tier for tier ID: ${input.id}`);
+    try {
+      await loadServices();
+
+      const { id, ...updateData } = input;
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const updatedTier = await ghostServiceImproved.updateTier(id, updateData);
+      console.error(`Tier updated successfully. Tier ID: ${updatedTier.id}`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(updatedTier, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_update_tier:`, error);
+      return {
+        content: [{ type: 'text', text: `Error updating tier: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Delete Tier Tool
+server.tool(
+  'ghost_delete_tier',
+  'Deletes a subscription tier from Ghost CMS by ID. This operation is permanent and cannot be undone.',
+  {
+    id: z.string().describe('The ID of the tier to delete.'),
+  },
+  async ({ id }) => {
+    console.error(`Executing tool: ghost_delete_tier for tier ID: ${id}`);
+    try {
+      await loadServices();
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      await ghostServiceImproved.deleteTier(id);
+      console.error(`Tier deleted successfully. Tier ID: ${id}`);
+
+      return {
+        content: [{ type: 'text', text: `Tier ${id} has been successfully deleted.` }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_delete_tier:`, error);
+      return {
+        content: [{ type: 'text', text: `Error deleting tier: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
 // --- Main Entry Point ---
 
 async function main() {
@@ -792,7 +976,8 @@ async function main() {
   console.error(
     'Available tools: ghost_get_tags, ghost_create_tag, ghost_upload_image, ' +
       'ghost_create_post, ghost_get_posts, ghost_get_post, ghost_search_posts, ghost_update_post, ghost_delete_post, ' +
-      'ghost_get_pages, ghost_get_page, ghost_create_page, ghost_update_page, ghost_delete_page, ghost_search_pages'
+      'ghost_get_pages, ghost_get_page, ghost_create_page, ghost_update_page, ghost_delete_page, ghost_search_pages, ' +
+      'ghost_get_tiers, ghost_get_tier, ghost_create_tier, ghost_update_tier, ghost_delete_tier'
   );
 }
 
