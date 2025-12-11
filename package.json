@@ -91,7 +91,10 @@
   },
   "license": "MIT",
   "lint-staged": {
-    "*.js": ["eslint --fix", "prettier --write"]
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -103,6 +106,7 @@
     "lint-staged": "^16.2.7",
     "prettier": "^3.7.4",
     "semantic-release": "^25.0.2",
+    "supertest": "^7.1.4",
     "vitest": "^4.0.15"
   }
 }
