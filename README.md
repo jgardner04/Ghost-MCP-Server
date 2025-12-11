@@ -112,9 +112,53 @@ Below is a guide for using the available MCP tools:
     npm run dev
     ```
 
+## Claude Code GitHub Action
+
+This repository includes an automated code review system powered by Claude AI that runs on every pull request.
+
+### Features
+
+- **Automated Code Review**: Claude analyzes pull request changes and provides detailed feedback on:
+  - Security concerns (OWASP vulnerabilities)
+  - Code quality issues
+  - Best practice violations
+  - Suggestions for improvement
+  - Recognition of good practices
+
+- **Context-Aware**: The review considers the project-specific guidelines from `CLAUDE.md`
+
+- **Interactive**: You can trigger a review on-demand by commenting `@claude` on any pull request
+
+### Setup
+
+To enable Claude Code reviews, add your Anthropic API key as a repository secret:
+
+1. Go to your repository **Settings** → **Secrets and variables** → **Actions**
+2. Click **New repository secret**
+3. Name: `ANTHROPIC_API_KEY`
+4. Value: Your Anthropic API key (get one at [console.anthropic.com](https://console.anthropic.com))
+5. Click **Add secret**
+
+### Usage
+
+The Claude Code review workflow automatically runs when:
+- A pull request is opened
+- New commits are pushed to an open pull request
+- Someone comments `@claude` on a pull request
+
+The review appears as a comment on the pull request with detailed feedback and actionable suggestions.
+
+### Configuration
+
+The workflow is located at `.github/workflows/claude-code.yml`. You can customize:
+- The Claude model used (default: `claude-3-5-sonnet-20241022`)
+- The maximum tokens for responses (default: 4096)
+- The types of feedback prioritized
+
 ## Troubleshooting
 
 - **401 Unauthorized Error from Ghost:** Check that your `GHOST_ADMIN_API_URL` and `GHOST_ADMIN_API_KEY` in the `.env` file are correct and that the Custom Integration in Ghost is enabled.
 - **MCP Server Connection Issues:** Ensure the MCP server is running (check console logs). Verify the port (`MCP_PORT`, default 3001) is not blocked by a firewall. Check that the client is connecting to the correct address and port.
 - **Tool Execution Errors:** Check the server console logs for detailed error messages from the specific tool implementation (e.g., `ghost_create_post`, `ghost_upload_image`). Common issues include invalid input (check against tool schemas in `src/mcp_server.js` and the README guide), problems downloading from `imageUrl`, image processing failures, or upstream errors from the Ghost API.
 - **Dependency Installation Issues:** Ensure you have a compatible Node.js version installed (see Requirements section). Try removing `node_modules` and `package-lock.json` and running `npm install` again.
+- **Claude Code Review Failures:** If the automated review fails, check that the `ANTHROPIC_API_KEY` repository secret is configured correctly and has sufficient API credits. Review the workflow logs in the Actions tab for detailed error messages.
