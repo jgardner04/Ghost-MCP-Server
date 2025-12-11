@@ -376,6 +376,94 @@ server.tool(
   }
 );
 
+// Update Post Tool
+server.tool(
+  'ghost_update_post',
+  'Updates an existing post in Ghost CMS. Can update title, content, status, tags, images, and SEO fields.',
+  {
+    id: z.string().describe('The ID of the post to update.'),
+    title: z.string().optional().describe('New title for the post.'),
+    html: z.string().optional().describe('New HTML content for the post.'),
+    status: z
+      .enum(['draft', 'published', 'scheduled'])
+      .optional()
+      .describe('New status for the post.'),
+    tags: z
+      .array(z.string())
+      .optional()
+      .describe('New list of tag names to associate with the post.'),
+    feature_image: z.string().optional().describe('New featured image URL.'),
+    feature_image_alt: z.string().optional().describe('New alt text for the featured image.'),
+    feature_image_caption: z.string().optional().describe('New caption for the featured image.'),
+    meta_title: z.string().optional().describe('New custom title for SEO (max 300 chars).'),
+    meta_description: z
+      .string()
+      .optional()
+      .describe('New custom description for SEO (max 500 chars).'),
+    published_at: z
+      .string()
+      .optional()
+      .describe(
+        "New publication date/time in ISO 8601 format. Required if changing status to 'scheduled'."
+      ),
+    custom_excerpt: z.string().optional().describe('New custom short summary for the post.'),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_update_post for post ID: ${input.id}`);
+    try {
+      await loadServices();
+
+      // Extract ID from input and build update data
+      const { id, ...updateData } = input;
+
+      // Update the post using ghostServiceImproved
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const updatedPost = await ghostServiceImproved.updatePost(id, updateData);
+      console.error(`Post updated successfully. Post ID: ${updatedPost.id}`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(updatedPost, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_update_post:`, error);
+      return {
+        content: [{ type: 'text', text: `Error updating post: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Delete Post Tool
+server.tool(
+  'ghost_delete_post',
+  'Deletes a post from Ghost CMS by ID. This operation is permanent and cannot be undone.',
+  {
+    id: z.string().describe('The ID of the post to delete.'),
+  },
+  async ({ id }) => {
+    console.error(`Executing tool: ghost_delete_post for post ID: ${id}`);
+    try {
+      await loadServices();
+
+      // Delete the post using ghostServiceImproved
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      await ghostServiceImproved.deletePost(id);
+      console.error(`Post deleted successfully. Post ID: ${id}`);
+
+      return {
+        content: [{ type: 'text', text: `Post ${id} has been successfully deleted.` }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_delete_post:`, error);
+      return {
+        content: [{ type: 'text', text: `Error deleting post: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
 // --- Main Entry Point ---
 
 async function main() {
@@ -386,7 +474,7 @@ async function main() {
 
   console.error('Ghost MCP Server running on stdio transport');
   console.error(
-    'Available tools: ghost_get_tags, ghost_create_tag, ghost_upload_image, ghost_create_post, ghost_get_posts, ghost_get_post'
+    'Available tools: ghost_get_tags, ghost_create_tag, ghost_upload_image, ghost_create_post, ghost_get_posts, ghost_get_post, ghost_update_post, ghost_delete_post'
   );
 }
 
