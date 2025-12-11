@@ -30,7 +30,8 @@
       "Bash(npm run test:coverage:*)",
       "Bash(npm run lint:fix:*)",
       "Bash(npm run format:check:*)",
-      "Bash(gh pr checks:*)"
+      "Bash(gh pr checks:*)",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "ask": []

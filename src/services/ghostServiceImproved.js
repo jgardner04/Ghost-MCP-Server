@@ -1079,6 +1079,131 @@ export async function deleteNewsletter(newsletterId) {
 }
 
 /**
+ * Create a new tier (membership level)
+ * @param {Object} tierData - Tier data
+ * @param {Object} [options={}] - Options for the API request
+ * @returns {Promise<Object>} Created tier
+ */
+export async function createTier(tierData, options = {}) {
+  const { validateTierData } = await import('./tierService.js');
+  validateTierData(tierData);
+
+  try {
+    return await handleApiRequest('tiers', 'add', tierData, options);
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
+      throw new ValidationError('Tier creation failed due to validation errors', [
+        { field: 'tier', message: error.originalError },
+      ]);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Update an existing tier
+ * @param {string} id - Tier ID
+ * @param {Object} updateData - Tier update data
+ * @param {Object} [options={}] - Options for the API request
+ * @returns {Promise<Object>} Updated tier
+ */
+export async function updateTier(id, updateData, options = {}) {
+  if (!id || typeof id !== 'string' || id.trim().length === 0) {
+    throw new ValidationError('Tier ID is required for update');
+  }
+
+  const { validateTierUpdateData } = await import('./tierService.js');
+  validateTierUpdateData(updateData);
+
+  try {
+    // Get existing tier for merge
+    const existingTier = await handleApiRequest('tiers', 'read', { id }, { id });
+
+    // Merge updates with existing data
+    const mergedData = {
+      ...existingTier,
+      ...updateData,
+      updated_at: existingTier.updated_at,
+    };
+
+    return await handleApiRequest('tiers', 'edit', mergedData, { id, ...options });
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError('Tier', id);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Delete a tier
+ * @param {string} id - Tier ID
+ * @returns {Promise<Object>} Deletion result
+ */
+export async function deleteTier(id) {
+  if (!id || typeof id !== 'string' || id.trim().length === 0) {
+    throw new ValidationError('Tier ID is required for deletion');
+  }
+
+  try {
+    return await handleApiRequest('tiers', 'delete', { id });
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError('Tier', id);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get all tiers with optional filtering
+ * @param {Object} [options={}] - Query options
+ * @param {number} [options.limit] - Number of tiers to return (1-100, default 15)
+ * @param {number} [options.page] - Page number
+ * @param {string} [options.filter] - NQL filter string (e.g., "type:paid", "type:free")
+ * @param {string} [options.order] - Order string
+ * @param {string} [options.include] - Include string
+ * @returns {Promise<Array>} Array of tiers
+ */
+export async function getTiers(options = {}) {
+  const { validateTierQueryOptions } = await import('./tierService.js');
+  validateTierQueryOptions(options);
+
+  const defaultOptions = {
+    limit: 15,
+    ...options,
+  };
+
+  try {
+    const tiers = await handleApiRequest('tiers', 'browse', {}, defaultOptions);
+    return tiers || [];
+  } catch (error) {
+    console.error('Failed to get tiers:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get a single tier by ID
+ * @param {string} id - Tier ID
+ * @returns {Promise<Object>} Tier object
+ */
+export async function getTier(id) {
+  if (!id || typeof id !== 'string' || id.trim().length === 0) {
+    throw new ValidationError('Tier ID is required and must be a non-empty string');
+  }
+
+  try {
+    return await handleApiRequest('tiers', 'read', { id }, { id });
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError('Tier', id);
+    }
+    throw error;
+  }
+}
+
+/**
  * Health check for Ghost API connection
  */
 export async function checkHealth() {
@@ -1140,5 +1265,10 @@ export default {
   createNewsletter,
   updateNewsletter,
   deleteNewsletter,
+  createTier,
+  updateTier,
+  deleteTier,
+  getTiers,
+  getTier,
   checkHealth,
 };
