@@ -173,16 +173,17 @@ MCP_PORT=3001            # MCP server port
 
 This project maintains detailed documentation in the `docs/` directory:
 
-| File | Description |
-|------|-------------|
-| [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md) | Error types, circuit breaker pattern, retry mechanisms, error logging strategies |
-| [docs/MCP_TRANSPORT.md](docs/MCP_TRANSPORT.md) | Transport configuration (stdio, HTTP/SSE, WebSocket), use cases, security considerations |
+| File                                                   | Description                                                                                    |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md)       | Error types, circuit breaker pattern, retry mechanisms, error logging strategies               |
+| [docs/MCP_TRANSPORT.md](docs/MCP_TRANSPORT.md)         | Transport configuration (stdio, HTTP/SSE, WebSocket), use cases, security considerations       |
 | [docs/RESOURCE_FETCHING.md](docs/RESOURCE_FETCHING.md) | Resource URI patterns, caching strategies (LRU/TTL), real-time subscriptions, batch operations |
-| [docs/TESTING.md](docs/TESTING.md) | Manual testing setup with Ghost CMS, MCP Inspector usage, debugging tips |
+| [docs/TESTING.md](docs/TESTING.md)                     | Manual testing setup with Ghost CMS, MCP Inspector usage, debugging tips                       |
 
 ### When to Update Documentation
 
 Update documentation when you:
+
 - Add new error types or change error handling patterns → Update ERROR_HANDLING.md
 - Modify transport configuration or add transport options → Update MCP_TRANSPORT.md
 - Change resource URI patterns or caching behavior → Update RESOURCE_FETCHING.md
@@ -191,6 +192,7 @@ Update documentation when you:
 ### Post-Task Documentation Checklist
 
 After completing a task, verify:
+
 - [ ] Updated relevant documentation files if patterns changed
 - [ ] Added examples for new features in appropriate docs
 - [ ] Updated CLAUDE.md if development workflow changed
@@ -203,6 +205,7 @@ For complex tasks that span multiple work sessions, create task files to track p
 ### When to Create Task Files
 
 Create a task file in `docs/tasks/` when:
+
 - The task will take multiple sessions to complete
 - You need to track subtasks and their dependencies
 - You want to document decisions made during implementation
@@ -220,9 +223,11 @@ Create files as `docs/tasks/issue-XX-brief-description.md`:
 **Started:** YYYY-MM-DD
 
 ## Goal
+
 [What you're trying to accomplish]
 
 ## Subtasks
+
 - [ ] Subtask 1
 - [ ] Subtask 2
 - [x] Completed subtask
@@ -230,14 +235,17 @@ Create files as `docs/tasks/issue-XX-brief-description.md`:
 ## Progress Log
 
 ### YYYY-MM-DD
+
 - Completed subtask X
 - Discovered issue with Y
 - Next: Work on Z
 
 ## Decisions
+
 - [Document key architectural or implementation decisions]
 
 ## Blockers
+
 - [List anything blocking progress]
 ```
 
