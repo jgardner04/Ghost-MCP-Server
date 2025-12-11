@@ -185,6 +185,45 @@ const validators = {
       throw new NotFoundError('Image file', imagePath);
     }
   },
+
+  validatePageData(pageData) {
+    const errors = [];
+
+    if (!pageData.title || pageData.title.trim().length === 0) {
+      errors.push({ field: 'title', message: 'Title is required' });
+    }
+
+    if (!pageData.html && !pageData.mobiledoc) {
+      errors.push({ field: 'content', message: 'Either html or mobiledoc content is required' });
+    }
+
+    if (pageData.status && !['draft', 'published', 'scheduled'].includes(pageData.status)) {
+      errors.push({
+        field: 'status',
+        message: 'Invalid status. Must be draft, published, or scheduled',
+      });
+    }
+
+    if (pageData.status === 'scheduled' && !pageData.published_at) {
+      errors.push({
+        field: 'published_at',
+        message: 'published_at is required when status is scheduled',
+      });
+    }
+
+    if (pageData.published_at) {
+      const publishDate = new Date(pageData.published_at);
+      if (isNaN(publishDate.getTime())) {
+        errors.push({ field: 'published_at', message: 'Invalid date format' });
+      } else if (pageData.status === 'scheduled' && publishDate <= new Date()) {
+        errors.push({ field: 'published_at', message: 'Scheduled date must be in the future' });
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new ValidationError('Page validation failed', errors);
+    }
+  },
 };
 
 /**
@@ -367,6 +406,218 @@ export async function searchPosts(query, options = {}) {
   }
 }
 
+/**
+ * Page CRUD Operations
+ * Pages are similar to posts but do NOT support tags
+ */
+
+export async function createPage(pageData, options = { source: 'html' }) {
+  // Validate input
+  validators.validatePageData(pageData);
+
+  // Add defaults
+  const dataWithDefaults = {
+    status: 'draft',
+    ...pageData,
+  };
+
+  // Sanitize HTML content if provided (use same sanitization as posts)
+  if (dataWithDefaults.html) {
+    dataWithDefaults.html = sanitizeHtml(dataWithDefaults.html, {
+      allowedTags: [
+        'h1',
+        'h2',
+        'h3',
+        'h4',
+        'h5',
+        'h6',
+        'blockquote',
+        'p',
+        'a',
+        'ul',
+        'ol',
+        'nl',
+        'li',
+        'b',
+        'i',
+        'strong',
+        'em',
+        'strike',
+        'code',
+        'hr',
+        'br',
+        'div',
+        'span',
+        'img',
+        'pre',
+      ],
+      allowedAttributes: {
+        a: ['href', 'title'],
+        img: ['src', 'alt', 'title', 'width', 'height'],
+        '*': ['class', 'id'],
+      },
+      allowedSchemes: ['http', 'https', 'mailto'],
+      allowedSchemesByTag: {
+        img: ['http', 'https', 'data'],
+      },
+    });
+  }
+
+  try {
+    return await handleApiRequest('pages', 'add', dataWithDefaults, options);
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
+      throw new ValidationError('Page creation failed due to validation errors', [
+        { field: 'page', message: error.originalError },
+      ]);
+    }
+    throw error;
+  }
+}
+
+export async function updatePage(pageId, updateData, options = {}) {
+  if (!pageId) {
+    throw new ValidationError('Page ID is required for update');
+  }
+
+  // Sanitize HTML if being updated
+  if (updateData.html) {
+    updateData.html = sanitizeHtml(updateData.html, {
+      allowedTags: [
+        'h1',
+        'h2',
+        'h3',
+        'h4',
+        'h5',
+        'h6',
+        'blockquote',
+        'p',
+        'a',
+        'ul',
+        'ol',
+        'nl',
+        'li',
+        'b',
+        'i',
+        'strong',
+        'em',
+        'strike',
+        'code',
+        'hr',
+        'br',
+        'div',
+        'span',
+        'img',
+        'pre',
+      ],
+      allowedAttributes: {
+        a: ['href', 'title'],
+        img: ['src', 'alt', 'title', 'width', 'height'],
+        '*': ['class', 'id'],
+      },
+      allowedSchemes: ['http', 'https', 'mailto'],
+      allowedSchemesByTag: {
+        img: ['http', 'https', 'data'],
+      },
+    });
+  }
+
+  try {
+    // Get existing page to retrieve updated_at for conflict resolution
+    const existingPage = await handleApiRequest('pages', 'read', { id: pageId });
+
+    // Merge existing data with updates, preserving updated_at
+    const mergedData = {
+      ...existingPage,
+      ...updateData,
+      updated_at: existingPage.updated_at,
+    };
+
+    return await handleApiRequest('pages', 'edit', mergedData, { id: pageId, ...options });
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError('Page', pageId);
+    }
+    throw error;
+  }
+}
+
+export async function deletePage(pageId) {
+  if (!pageId) {
+    throw new ValidationError('Page ID is required for delete');
+  }
+
+  try {
+    return await handleApiRequest('pages', 'delete', { id: pageId });
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError('Page', pageId);
+    }
+    throw error;
+  }
+}
+
+export async function getPage(pageId, options = {}) {
+  if (!pageId) {
+    throw new ValidationError('Page ID is required');
+  }
+
+  try {
+    return await handleApiRequest('pages', 'read', { id: pageId }, options);
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError('Page', pageId);
+    }
+    throw error;
+  }
+}
+
+export async function getPages(options = {}) {
+  const defaultOptions = {
+    limit: 15,
+    include: 'authors',
+    ...options,
+  };
+
+  try {
+    return await handleApiRequest('pages', 'browse', {}, defaultOptions);
+  } catch (error) {
+    console.error('Failed to get pages:', error);
+    throw error;
+  }
+}
+
+export async function searchPages(query, options = {}) {
+  // Validate query
+  if (!query || query.trim().length === 0) {
+    throw new ValidationError('Search query is required');
+  }
+
+  // Sanitize query - escape special NQL characters to prevent injection
+  const sanitizedQuery = query.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+  // Build filter with fuzzy title match using Ghost NQL
+  const filterParts = [`title:~'${sanitizedQuery}'`];
+
+  // Add status filter if provided and not 'all'
+  if (options.status && options.status !== 'all') {
+    filterParts.push(`status:${options.status}`);
+  }
+
+  const searchOptions = {
+    limit: options.limit || 15,
+    include: 'authors',
+    filter: filterParts.join('+'),
+  };
+
+  try {
+    return await handleApiRequest('pages', 'browse', {}, searchOptions);
+  } catch (error) {
+    console.error('Failed to search pages:', error);
+    throw error;
+  }
+}
+
 export async function uploadImage(imagePath) {
   // Validate input
   await validators.validateImagePath(imagePath);
@@ -527,6 +778,12 @@ export default {
   getPost,
   getPosts,
   searchPosts,
+  createPage,
+  updatePage,
+  deletePage,
+  getPage,
+  getPages,
+  searchPages,
   uploadImage,
   createTag,
   getTags,

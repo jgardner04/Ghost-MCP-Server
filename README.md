@@ -10,7 +10,7 @@ This project (`ghost-mcp-server`) implements a **Model Context Protocol (MCP) Se
 
 ## Requirements
 
-- Node.js 14.0.0 or higher
+- Node.js 18.0.0 or higher
 - Ghost Admin API URL and Key
 
 ## Ghost MCP Server Details
@@ -68,13 +68,70 @@ Below is a guide for using the available MCP tools:
       - `meta_description` (string, optional): Custom SEO description.
     - **Output**: The created `ghost/post` resource.
 
-## Installation and Running
+## Installation
+
+### NPM Installation (Recommended)
+
+Install globally using npm:
+
+```bash
+npm install -g @jgardner04/ghost-mcp-server
+```
+
+Or use npx to run without installing:
+
+```bash
+npx @jgardner04/ghost-mcp-server
+```
+
+### Available Commands
+
+After installation, the following CLI commands are available:
+
+- **`ghost-mcp-server`**: Starts the Express REST API server and MCP server (default)
+- **`ghost-mcp`**: Starts the improved MCP server with transport configuration support
+
+### Configuration
+
+Before running the server, configure your Ghost Admin API credentials:
+
+1. Create a `.env` file in your working directory:
+
+   ```dotenv
+   # Required:
+   GHOST_ADMIN_API_URL=https://your-ghost-site.com
+   GHOST_ADMIN_API_KEY=your_admin_api_key
+   ```
+
+2. Find your Ghost Admin API URL and Key in your Ghost Admin settings under Integrations -> Custom Integrations.
+
+### Running the Server
+
+After installation and configuration:
+
+```bash
+# Using the global installation
+ghost-mcp-server
+
+# Or using npx
+npx @jgardner04/ghost-mcp-server
+
+# Run the MCP server with transport options
+ghost-mcp
+
+# Or with specific transport
+MCP_TRANSPORT=stdio ghost-mcp
+```
+
+## Development Setup
+
+For contributors or advanced users who want to modify the source code:
 
 1.  **Clone the Repository**:
 
     ```bash
-    git clone <repository_url>
-    cd ghost-mcp-server
+    git clone https://github.com/jgardner04/Ghost-MCP-Server.git
+    cd Ghost-MCP-Server
     ```
 
 2.  **Install Dependencies**:
@@ -84,28 +141,15 @@ Below is a guide for using the available MCP tools:
     ```
 
 3.  **Configure Environment Variables**:
-    Create a `.env` file in the project root and add your Ghost Admin API credentials:
+    Create a `.env` file in the project root (see Configuration section above).
 
-    ```dotenv
-    # Required:
-    GHOST_ADMIN_API_URL=https://your-ghost-site.com
-    GHOST_ADMIN_API_KEY=your_admin_api_key
-
-    # If using 1Password CLI for secrets:
-    # You might store the API key in 1Password and use `op run --env-file=.env -- ...`
-    ```
-
-    - Find your Ghost Admin API URL and Key in your Ghost Admin settings under Integrations -> Custom Integrations.
-
-4.  **Run the Server**:
+4.  **Run from Source**:
 
     ```bash
     npm start
     # OR directly:
     # node src/index.js
     ```
-
-    This command will start the MCP server.
 
 5.  **Development Mode (using nodemon)**:
     For development with automatic restarting:
@@ -163,3 +207,5 @@ The workflow is located at `.github/workflows/claude-code.yml`. You can customiz
 - **Tool Execution Errors:** Check the server console logs for detailed error messages from the specific tool implementation (e.g., `ghost_create_post`, `ghost_upload_image`). Common issues include invalid input (check against tool schemas in `src/mcp_server.js` and the README guide), problems downloading from `imageUrl`, image processing failures, or upstream errors from the Ghost API.
 - **Dependency Installation Issues:** Ensure you have a compatible Node.js version installed (see Requirements section). Try removing `node_modules` and `package-lock.json` and running `npm install` again.
 - **Claude Code Review Failures:** If the automated review fails, check that the `ANTHROPIC_API_KEY` repository secret is configured correctly and has sufficient API credits. Review the workflow logs in the Actions tab for detailed error messages.
+- **Command Not Found:** If `ghost-mcp-server` or `ghost-mcp` commands are not found after global installation, ensure npm's global bin directory is in your PATH. You can find it with `npm bin -g`.
+- **Dependency Installation Issues:** Ensure you have a compatible Node.js version installed (Node.js 18.0.0 or higher - see Requirements section). For global installation issues, try `npm install -g @jgardner04/ghost-mcp-server --force`. For development setup, try removing `node_modules` and `package-lock.json` and running `npm install` again.
