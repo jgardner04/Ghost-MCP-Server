@@ -173,6 +173,27 @@ const validators = {
     }
   },
 
+  validateTagUpdateData(updateData) {
+    const errors = [];
+
+    // Name is optional in updates, but if provided, it cannot be empty
+    if (updateData.name !== undefined && updateData.name.trim().length === 0) {
+      errors.push({ field: 'name', message: 'Tag name cannot be empty' });
+    }
+
+    // Validate slug format if provided
+    if (updateData.slug && !/^[a-z0-9-]+$/.test(updateData.slug)) {
+      errors.push({
+        field: 'slug',
+        message: 'Slug must contain only lowercase letters, numbers, and hyphens',
+      });
+    }
+
+    if (errors.length > 0) {
+      throw new ValidationError('Tag update validation failed', errors);
+    }
+  },
+
   async validateImagePath(imagePath) {
     if (!imagePath || typeof imagePath !== 'string') {
       throw new ValidationError('Image path is required and must be a string');
@@ -701,7 +722,7 @@ export async function updateTag(tagId, updateData) {
     throw new ValidationError('Tag ID is required for update');
   }
 
-  validators.validateTagData({ name: 'dummy', ...updateData }); // Validate update data
+  validators.validateTagUpdateData(updateData); // Validate update data
 
   try {
     const existingTag = await getTag(tagId);
