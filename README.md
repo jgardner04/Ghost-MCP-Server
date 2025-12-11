@@ -1,5 +1,10 @@
 # Ghost MCP Server
 
+[![npm version](https://badge.fury.io/js/%40jgardner04%2Fghost-mcp-server.svg)](https://badge.fury.io/js/%40jgardner04%2Fghost-mcp-server)
+[![CI](https://github.com/jgardner04/Ghost-MCP-Server/actions/workflows/ci.yml/badge.svg)](https://github.com/jgardner04/Ghost-MCP-Server/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](https://github.com/jgardner04/Ghost-MCP-Server)
+
 This project (`ghost-mcp-server`) implements a **Model Context Protocol (MCP) Server** that allows an MCP client (like Cursor or Claude Desktop) to interact with a Ghost CMS instance via defined tools.
 
 ## Requirements
