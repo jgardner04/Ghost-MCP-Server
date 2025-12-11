@@ -15,6 +15,13 @@ const MAX_NOTE_LENGTH = 2000; // Reasonable limit for notes
 const MAX_LABEL_LENGTH = 191; // Label name limit
 
 /**
+ * Query constraints for member browsing
+ */
+const MIN_LIMIT = 1;
+const MAX_LIMIT = 100;
+const MIN_PAGE = 1;
+
+/**
  * Validates member data for creation
  * @param {Object} memberData - The member data to validate
  * @throws {ValidationError} If validation fails
@@ -196,7 +203,159 @@ export function validateMemberUpdateData(updateData) {
   }
 }
 
+/**
+ * Sanitizes a value for use in NQL filters to prevent injection
+ * Escapes backslashes, single quotes, and double quotes
+ * @param {string} value - The value to sanitize
+ * @returns {string} The sanitized value
+ */
+export function sanitizeNqlValue(value) {
+  if (!value) return value;
+  // Escape backslashes first, then quotes
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+}
+
+/**
+ * Validates query options for member browsing
+ * @param {Object} options - The query options to validate
+ * @param {number} [options.limit] - Number of members to return (1-100)
+ * @param {number} [options.page] - Page number (1+)
+ * @param {string} [options.filter] - NQL filter string
+ * @param {string} [options.order] - Order string (e.g., 'created_at desc')
+ * @param {string} [options.include] - Include string (e.g., 'labels,newsletters')
+ * @throws {ValidationError} If validation fails
+ */
+export function validateMemberQueryOptions(options) {
+  const errors = [];
+
+  // Validate limit
+  if (options.limit !== undefined) {
+    if (
+      typeof options.limit !== 'number' ||
+      options.limit < MIN_LIMIT ||
+      options.limit > MAX_LIMIT
+    ) {
+      errors.push({
+        field: 'limit',
+        message: `Limit must be a number between ${MIN_LIMIT} and ${MAX_LIMIT}`,
+      });
+    }
+  }
+
+  // Validate page
+  if (options.page !== undefined) {
+    if (typeof options.page !== 'number' || options.page < MIN_PAGE) {
+      errors.push({
+        field: 'page',
+        message: `Page must be a number >= ${MIN_PAGE}`,
+      });
+    }
+  }
+
+  // Validate filter (must be non-empty string if provided)
+  if (options.filter !== undefined) {
+    if (typeof options.filter !== 'string' || options.filter.trim().length === 0) {
+      errors.push({
+        field: 'filter',
+        message: 'Filter must be a non-empty string',
+      });
+    }
+  }
+
+  // Validate order (must be non-empty string if provided)
+  if (options.order !== undefined) {
+    if (typeof options.order !== 'string' || options.order.trim().length === 0) {
+      errors.push({
+        field: 'order',
+        message: 'Order must be a non-empty string',
+      });
+    }
+  }
+
+  // Validate include (must be non-empty string if provided)
+  if (options.include !== undefined) {
+    if (typeof options.include !== 'string' || options.include.trim().length === 0) {
+      errors.push({
+        field: 'include',
+        message: 'Include must be a non-empty string',
+      });
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new ValidationError('Member query validation failed', errors);
+  }
+}
+
+/**
+ * Validates member lookup parameters (id OR email required)
+ * @param {Object} params - The lookup parameters
+ * @param {string} [params.id] - Member ID
+ * @param {string} [params.email] - Member email
+ * @returns {Object} Normalized params with lookupType ('id' or 'email')
+ * @throws {ValidationError} If validation fails
+ */
+export function validateMemberLookup(params) {
+  const errors = [];
+
+  // Check if id is provided and valid
+  const hasValidId = params.id && typeof params.id === 'string' && params.id.trim().length > 0;
+
+  // Check if email is provided and valid
+  const hasEmail = params.email !== undefined;
+  const hasValidEmail =
+    hasEmail && typeof params.email === 'string' && EMAIL_REGEX.test(params.email);
+
+  // Must have at least one valid identifier
+  if (!hasValidId && !hasValidEmail) {
+    if (params.id !== undefined && !hasValidId) {
+      errors.push({ field: 'id', message: 'ID must be a non-empty string' });
+    }
+    if (hasEmail && !hasValidEmail) {
+      errors.push({ field: 'email', message: 'Invalid email format' });
+    }
+    if (!params.id && !params.email) {
+      errors.push({ field: 'id|email', message: 'Either id or email is required' });
+    }
+
+    throw new ValidationError('Member lookup validation failed', errors);
+  }
+
+  // Return normalized result - ID takes precedence if both provided
+  if (hasValidId) {
+    return { id: params.id, lookupType: 'id' };
+  }
+  return { email: params.email, lookupType: 'email' };
+}
+
+/**
+ * Validates and sanitizes a search query
+ * @param {string} query - The search query
+ * @returns {string} The sanitized query
+ * @throws {ValidationError} If validation fails
+ */
+export function validateSearchQuery(query) {
+  const errors = [];
+
+  if (query === null || query === undefined || typeof query !== 'string') {
+    errors.push({ field: 'query', message: 'Query must be a string' });
+    throw new ValidationError('Search query validation failed', errors);
+  }
+
+  const trimmedQuery = query.trim();
+  if (trimmedQuery.length === 0) {
+    errors.push({ field: 'query', message: 'Query must not be empty' });
+    throw new ValidationError('Search query validation failed', errors);
+  }
+
+  return trimmedQuery;
+}
+
 export default {
   validateMemberData,
   validateMemberUpdateData,
+  validateMemberQueryOptions,
+  validateMemberLookup,
+  validateSearchQuery,
+  sanitizeNqlValue,
 };
