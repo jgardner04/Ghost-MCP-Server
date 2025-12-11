@@ -509,6 +509,277 @@ server.tool(
   }
 );
 
+// =============================================================================
+// PAGE TOOLS
+// Pages are similar to posts but do NOT support tags
+// =============================================================================
+
+// Get Pages Tool
+server.tool(
+  'ghost_get_pages',
+  'Retrieves a list of pages from Ghost CMS with pagination, filtering, and sorting options.',
+  {
+    limit: z
+      .number()
+      .min(1)
+      .max(100)
+      .optional()
+      .describe('Number of pages to retrieve (1-100). Default is 15.'),
+    page: z.number().min(1).optional().describe('Page number for pagination. Default is 1.'),
+    status: z
+      .enum(['published', 'draft', 'scheduled', 'all'])
+      .optional()
+      .describe('Filter pages by status.'),
+    include: z
+      .string()
+      .optional()
+      .describe('Comma-separated list of relations to include (e.g., "authors").'),
+    filter: z.string().optional().describe('Ghost NQL filter string for advanced filtering.'),
+    order: z.string().optional().describe('Sort order for results (e.g., "published_at DESC").'),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_get_pages`);
+    try {
+      await loadServices();
+
+      const options = {};
+      if (input.limit !== undefined) options.limit = input.limit;
+      if (input.page !== undefined) options.page = input.page;
+      if (input.status !== undefined) options.status = input.status;
+      if (input.include !== undefined) options.include = input.include;
+      if (input.filter !== undefined) options.filter = input.filter;
+      if (input.order !== undefined) options.order = input.order;
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const pages = await ghostServiceImproved.getPages(options);
+      console.error(`Retrieved ${pages.length} pages from Ghost.`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(pages, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_get_pages:`, error);
+      return {
+        content: [{ type: 'text', text: `Error retrieving pages: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Get Page Tool
+server.tool(
+  'ghost_get_page',
+  'Retrieves a single page from Ghost CMS by ID or slug.',
+  {
+    id: z.string().optional().describe('The ID of the page to retrieve.'),
+    slug: z.string().optional().describe('The slug of the page to retrieve.'),
+    include: z
+      .string()
+      .optional()
+      .describe('Comma-separated list of relations to include (e.g., "authors").'),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_get_page`);
+    try {
+      if (!input.id && !input.slug) {
+        throw new Error('Either id or slug is required to retrieve a page');
+      }
+
+      await loadServices();
+
+      const options = {};
+      if (input.include !== undefined) options.include = input.include;
+
+      const identifier = input.id || `slug/${input.slug}`;
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const page = await ghostServiceImproved.getPage(identifier, options);
+      console.error(`Retrieved page: ${page.title} (ID: ${page.id})`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(page, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_get_page:`, error);
+      return {
+        content: [{ type: 'text', text: `Error retrieving page: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Create Page Tool
+server.tool(
+  'ghost_create_page',
+  'Creates a new page in Ghost CMS. Note: Pages do NOT support tags (unlike posts).',
+  {
+    title: z.string().describe('The title of the page.'),
+    html: z.string().describe('The HTML content of the page.'),
+    status: z
+      .enum(['draft', 'published', 'scheduled'])
+      .optional()
+      .describe("The status of the page. Defaults to 'draft'."),
+    // NO tags parameter - pages don't support tags
+    published_at: z
+      .string()
+      .optional()
+      .describe("ISO 8601 date/time to publish the page. Required if status is 'scheduled'."),
+    custom_excerpt: z.string().optional().describe('A custom short summary for the page.'),
+    feature_image: z.string().optional().describe('URL of the image to use as the featured image.'),
+    feature_image_alt: z.string().optional().describe('Alt text for the featured image.'),
+    feature_image_caption: z.string().optional().describe('Caption for the featured image.'),
+    meta_title: z
+      .string()
+      .optional()
+      .describe('Custom title for SEO (max 70 chars). Defaults to page title if omitted.'),
+    meta_description: z
+      .string()
+      .optional()
+      .describe(
+        'Custom description for SEO (max 160 chars). Defaults to excerpt or generated summary if omitted.'
+      ),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_create_page with title: ${input.title}`);
+    try {
+      await loadServices();
+
+      const pageService = await import('./services/pageService.js');
+      const createdPage = await pageService.createPageService(input);
+      console.error(`Page created successfully. Page ID: ${createdPage.id}`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(createdPage, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_create_page:`, error);
+      return {
+        content: [{ type: 'text', text: `Error creating page: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Update Page Tool
+server.tool(
+  'ghost_update_page',
+  'Updates an existing page in Ghost CMS. Can update title, content, status, images, and SEO fields. Note: Pages do NOT support tags.',
+  {
+    id: z.string().describe('The ID of the page to update.'),
+    title: z.string().optional().describe('New title for the page.'),
+    html: z.string().optional().describe('New HTML content for the page.'),
+    status: z
+      .enum(['draft', 'published', 'scheduled'])
+      .optional()
+      .describe('New status for the page.'),
+    // NO tags parameter - pages don't support tags
+    feature_image: z.string().optional().describe('New featured image URL.'),
+    feature_image_alt: z.string().optional().describe('New alt text for the featured image.'),
+    feature_image_caption: z.string().optional().describe('New caption for the featured image.'),
+    meta_title: z.string().optional().describe('New custom title for SEO.'),
+    meta_description: z.string().optional().describe('New custom description for SEO.'),
+    published_at: z.string().optional().describe('New publication date/time in ISO 8601 format.'),
+    custom_excerpt: z.string().optional().describe('New custom short summary for the page.'),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_update_page for page ID: ${input.id}`);
+    try {
+      await loadServices();
+
+      const { id, ...updateData } = input;
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const updatedPage = await ghostServiceImproved.updatePage(id, updateData);
+      console.error(`Page updated successfully. Page ID: ${updatedPage.id}`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(updatedPage, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_update_page:`, error);
+      return {
+        content: [{ type: 'text', text: `Error updating page: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Delete Page Tool
+server.tool(
+  'ghost_delete_page',
+  'Deletes a page from Ghost CMS by ID. This operation is permanent and cannot be undone.',
+  {
+    id: z.string().describe('The ID of the page to delete.'),
+  },
+  async ({ id }) => {
+    console.error(`Executing tool: ghost_delete_page for page ID: ${id}`);
+    try {
+      await loadServices();
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      await ghostServiceImproved.deletePage(id);
+      console.error(`Page deleted successfully. Page ID: ${id}`);
+
+      return {
+        content: [{ type: 'text', text: `Page ${id} has been successfully deleted.` }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_delete_page:`, error);
+      return {
+        content: [{ type: 'text', text: `Error deleting page: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Search Pages Tool
+server.tool(
+  'ghost_search_pages',
+  'Search for pages in Ghost CMS by query string with optional status filtering.',
+  {
+    query: z.string().describe('Search query to find in page titles.'),
+    status: z
+      .enum(['published', 'draft', 'scheduled', 'all'])
+      .optional()
+      .describe('Filter by page status. Default searches all statuses.'),
+    limit: z
+      .number()
+      .min(1)
+      .max(50)
+      .optional()
+      .describe('Maximum number of results (1-50). Default is 15.'),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_search_pages with query: ${input.query}`);
+    try {
+      await loadServices();
+
+      const options = {};
+      if (input.status !== undefined) options.status = input.status;
+      if (input.limit !== undefined) options.limit = input.limit;
+
+      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
+      const pages = await ghostServiceImproved.searchPages(input.query, options);
+      console.error(`Found ${pages.length} pages matching "${input.query}".`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(pages, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_search_pages:`, error);
+      return {
+        content: [{ type: 'text', text: `Error searching pages: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
 // --- Main Entry Point ---
 
 async function main() {
@@ -519,7 +790,9 @@ async function main() {
 
   console.error('Ghost MCP Server running on stdio transport');
   console.error(
-    'Available tools: ghost_get_tags, ghost_create_tag, ghost_upload_image, ghost_create_post, ghost_get_posts, ghost_get_post, ghost_update_post, ghost_delete_post'
+    'Available tools: ghost_get_tags, ghost_create_tag, ghost_upload_image, ' +
+      'ghost_create_post, ghost_get_posts, ghost_get_post, ghost_search_posts, ghost_update_post, ghost_delete_post, ' +
+      'ghost_get_pages, ghost_get_page, ghost_create_page, ghost_update_page, ghost_delete_page, ghost_search_pages'
   );
 }
 
