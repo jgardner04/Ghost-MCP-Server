@@ -1,12 +1,10 @@
 import sanitizeHtml from 'sanitize-html';
-import Joi from 'joi';
 import { createContextLogger } from '../utils/logger.js';
 import {
   createPost as createGhostPost,
   getTags as getGhostTags,
   createTag as createGhostTag,
-  // Import other necessary functions from ghostService later
-} from './ghostService.js'; // Note the relative path
+} from './ghostService.js';
 
 /**
  * Helper to generate a simple meta description from HTML content.
@@ -37,36 +35,12 @@ const generateSimpleMetaDescription = (htmlContent, maxLength = 500) => {
 /**
  * Service layer function to handle the business logic of creating a post.
  * Transforms input data, handles/resolves tags, includes feature image and metadata.
- * @param {object} postInput - Data received from the controller.
+ * Input validation is handled at the MCP layer using Zod schemas.
+ * @param {object} postInput - Validated data received from the MCP tool.
  * @returns {Promise<object>} The created post object from the Ghost API.
  */
-// Validation schema for post input
-const postInputSchema = Joi.object({
-  title: Joi.string().max(255).required(),
-  html: Joi.string().required(),
-  custom_excerpt: Joi.string().max(500).optional(),
-  status: Joi.string().valid('draft', 'published', 'scheduled').optional(),
-  published_at: Joi.string().isoDate().optional(),
-  tags: Joi.array().items(Joi.string().max(50)).max(10).optional(),
-  feature_image: Joi.string().uri().optional(),
-  feature_image_alt: Joi.string().max(255).optional(),
-  feature_image_caption: Joi.string().max(500).optional(),
-  meta_title: Joi.string().max(70).optional(),
-  meta_description: Joi.string().max(160).optional(),
-});
-
 const createPostService = async (postInput) => {
   const logger = createContextLogger('post-service');
-
-  // Validate input to prevent format string vulnerabilities
-  const { error, value: validatedInput } = postInputSchema.validate(postInput);
-  if (error) {
-    logger.error('Post input validation failed', {
-      error: error.details[0].message,
-      inputKeys: Object.keys(postInput),
-    });
-    throw new Error(`Invalid post input: ${error.details[0].message}`);
-  }
 
   const {
     title,
@@ -80,7 +54,7 @@ const createPostService = async (postInput) => {
     feature_image_caption,
     meta_title,
     meta_description,
-  } = validatedInput;
+  } = postInput;
 
   // --- Resolve Tag Names to Tag Objects (ID/Slug/Name) ---
   let resolvedTags = [];

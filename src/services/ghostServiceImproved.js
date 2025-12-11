@@ -792,10 +792,7 @@ export async function deleteTag(tagId) {
  * @throws {GhostAPIError} If the API request fails
  */
 export async function createMember(memberData, options = {}) {
-  // Import and validate input
-  const { validateMemberData } = await import('./memberService.js');
-  validateMemberData(memberData);
-
+  // Input validation is performed at the MCP tool layer using Zod schemas
   try {
     return await handleApiRequest('members', 'add', memberData, options);
   } catch (error) {
@@ -825,13 +822,10 @@ export async function createMember(memberData, options = {}) {
  * @throws {GhostAPIError} If the API request fails
  */
 export async function updateMember(memberId, updateData, options = {}) {
+  // Input validation is performed at the MCP tool layer using Zod schemas
   if (!memberId) {
     throw new ValidationError('Member ID is required for update');
   }
-
-  // Import and validate update data
-  const { validateMemberUpdateData } = await import('./memberService.js');
-  validateMemberUpdateData(updateData);
 
   try {
     // Get existing member to retrieve updated_at for conflict resolution
@@ -889,10 +883,7 @@ export async function deleteMember(memberId) {
  * @throws {GhostAPIError} If the API request fails
  */
 export async function getMembers(options = {}) {
-  // Import and validate query options
-  const { validateMemberQueryOptions } = await import('./memberService.js');
-  validateMemberQueryOptions(options);
-
+  // Input validation is performed at the MCP tool layer using Zod schemas
   const defaultOptions = {
     limit: 15,
     ...options,
@@ -918,12 +909,12 @@ export async function getMembers(options = {}) {
  * @throws {GhostAPIError} If the API request fails
  */
 export async function getMember(params) {
-  // Import and validate lookup parameters
-  const { validateMemberLookup, sanitizeNqlValue } = await import('./memberService.js');
-  const { lookupType, id, email } = validateMemberLookup(params);
+  // Input validation is performed at the MCP tool layer using Zod schemas
+  const { sanitizeNqlValue } = await import('./memberService.js');
+  const { id, email } = params;
 
   try {
-    if (lookupType === 'id') {
+    if (id) {
       // Lookup by ID using read endpoint
       return await handleApiRequest('members', 'read', { id }, { id });
     } else {
@@ -960,11 +951,9 @@ export async function getMember(params) {
  * @throws {GhostAPIError} If the API request fails
  */
 export async function searchMembers(query, options = {}) {
-  // Import and validate search query and options
-  const { validateSearchQuery, validateSearchOptions, sanitizeNqlValue } =
-    await import('./memberService.js');
-  validateSearchOptions(options);
-  const sanitizedQuery = sanitizeNqlValue(validateSearchQuery(query));
+  // Input validation is performed at the MCP tool layer using Zod schemas
+  const { sanitizeNqlValue } = await import('./memberService.js');
+  const sanitizedQuery = sanitizeNqlValue(query.trim());
 
   const limit = options.limit || 15;
 

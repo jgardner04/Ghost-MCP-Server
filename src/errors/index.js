@@ -48,6 +48,16 @@ export class ValidationError extends BaseError {
     }));
     return new ValidationError('Validation failed', errors);
   }
+
+  static fromZod(zodError, context = '') {
+    const errors = zodError.errors.map((err) => ({
+      field: err.path.join('.'),
+      message: err.message,
+      type: err.code,
+    }));
+    const message = context ? `${context}: Validation failed` : 'Validation failed';
+    return new ValidationError(message, errors);
+  }
 }
 
 /**

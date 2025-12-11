@@ -133,12 +133,13 @@ describe('mcp_server_improved - ghost_get_posts tool', () => {
     expect(tool).toBeDefined();
     expect(tool.description).toContain('posts');
     expect(tool.schema).toBeDefined();
-    expect(tool.schema.limit).toBeDefined();
-    expect(tool.schema.page).toBeDefined();
-    expect(tool.schema.status).toBeDefined();
-    expect(tool.schema.include).toBeDefined();
-    expect(tool.schema.filter).toBeDefined();
-    expect(tool.schema.order).toBeDefined();
+    // Zod schemas store field definitions in schema.shape
+    expect(tool.schema.shape.limit).toBeDefined();
+    expect(tool.schema.shape.page).toBeDefined();
+    expect(tool.schema.shape.status).toBeDefined();
+    expect(tool.schema.shape.include).toBeDefined();
+    expect(tool.schema.shape.filter).toBeDefined();
+    expect(tool.schema.shape.order).toBeDefined();
   });
 
   it('should retrieve posts with default options', async () => {
@@ -168,22 +169,24 @@ describe('mcp_server_improved - ghost_get_posts tool', () => {
 
   it('should validate limit is between 1 and 100', () => {
     const tool = mockTools.get('ghost_get_posts');
-    const schema = tool.schema;
+    // Zod schemas store field definitions in schema.shape
+    const shape = tool.schema.shape;
 
     // Test that limit schema exists and has proper validation
-    expect(schema.limit).toBeDefined();
-    expect(() => schema.limit.parse(0)).toThrow();
-    expect(() => schema.limit.parse(101)).toThrow();
-    expect(schema.limit.parse(50)).toBe(50);
+    expect(shape.limit).toBeDefined();
+    expect(() => shape.limit.parse(0)).toThrow();
+    expect(() => shape.limit.parse(101)).toThrow();
+    expect(shape.limit.parse(50)).toBe(50);
   });
 
   it('should validate page is at least 1', () => {
     const tool = mockTools.get('ghost_get_posts');
-    const schema = tool.schema;
+    // Zod schemas store field definitions in schema.shape
+    const shape = tool.schema.shape;
 
-    expect(schema.page).toBeDefined();
-    expect(() => schema.page.parse(0)).toThrow();
-    expect(schema.page.parse(1)).toBe(1);
+    expect(shape.page).toBeDefined();
+    expect(() => shape.page.parse(0)).toThrow();
+    expect(shape.page.parse(1)).toBe(1);
   });
 
   it('should pass status filter', async () => {
@@ -198,14 +201,15 @@ describe('mcp_server_improved - ghost_get_posts tool', () => {
 
   it('should validate status enum values', () => {
     const tool = mockTools.get('ghost_get_posts');
-    const schema = tool.schema;
+    // Zod schemas store field definitions in schema.shape
+    const shape = tool.schema.shape;
 
-    expect(schema.status).toBeDefined();
-    expect(() => schema.status.parse('invalid')).toThrow();
-    expect(schema.status.parse('published')).toBe('published');
-    expect(schema.status.parse('draft')).toBe('draft');
-    expect(schema.status.parse('scheduled')).toBe('scheduled');
-    expect(schema.status.parse('all')).toBe('all');
+    expect(shape.status).toBeDefined();
+    expect(() => shape.status.parse('invalid')).toThrow();
+    expect(shape.status.parse('published')).toBe('published');
+    expect(shape.status.parse('draft')).toBe('draft');
+    expect(shape.status.parse('scheduled')).toBe('scheduled');
+    expect(shape.status.parse('all')).toBe('all');
   });
 
   it('should pass include parameter', async () => {
@@ -322,9 +326,10 @@ describe('mcp_server_improved - ghost_get_post tool', () => {
     expect(tool).toBeDefined();
     expect(tool.description).toContain('post');
     expect(tool.schema).toBeDefined();
-    expect(tool.schema.id).toBeDefined();
-    expect(tool.schema.slug).toBeDefined();
-    expect(tool.schema.include).toBeDefined();
+    // Zod schemas store field definitions in schema.shape
+    expect(tool.schema.shape.id).toBeDefined();
+    expect(tool.schema.shape.slug).toBeDefined();
+    expect(tool.schema.shape.include).toBeDefined();
   });
 
   it('should retrieve post by ID', async () => {
@@ -472,18 +477,19 @@ describe('mcp_server_improved - ghost_update_post tool', () => {
     expect(tool).toBeDefined();
     expect(tool.description).toContain('Updates an existing post');
     expect(tool.schema).toBeDefined();
-    expect(tool.schema.id).toBeDefined();
-    expect(tool.schema.title).toBeDefined();
-    expect(tool.schema.html).toBeDefined();
-    expect(tool.schema.status).toBeDefined();
-    expect(tool.schema.tags).toBeDefined();
-    expect(tool.schema.feature_image).toBeDefined();
-    expect(tool.schema.feature_image_alt).toBeDefined();
-    expect(tool.schema.feature_image_caption).toBeDefined();
-    expect(tool.schema.meta_title).toBeDefined();
-    expect(tool.schema.meta_description).toBeDefined();
-    expect(tool.schema.published_at).toBeDefined();
-    expect(tool.schema.custom_excerpt).toBeDefined();
+    // Zod schemas store field definitions in schema.shape
+    expect(tool.schema.shape.id).toBeDefined();
+    expect(tool.schema.shape.title).toBeDefined();
+    expect(tool.schema.shape.html).toBeDefined();
+    expect(tool.schema.shape.status).toBeDefined();
+    expect(tool.schema.shape.tags).toBeDefined();
+    expect(tool.schema.shape.feature_image).toBeDefined();
+    expect(tool.schema.shape.feature_image_alt).toBeDefined();
+    expect(tool.schema.shape.feature_image_caption).toBeDefined();
+    expect(tool.schema.shape.meta_title).toBeDefined();
+    expect(tool.schema.shape.meta_description).toBeDefined();
+    expect(tool.schema.shape.published_at).toBeDefined();
+    expect(tool.schema.shape.custom_excerpt).toBeDefined();
   });
 
   it('should update post title', async () => {
@@ -707,7 +713,8 @@ describe('mcp_server_improved - ghost_delete_post tool', () => {
     expect(tool.description).toContain('Deletes a post');
     expect(tool.description).toContain('permanent');
     expect(tool.schema).toBeDefined();
-    expect(tool.schema.id).toBeDefined();
+    // Zod schemas store field definitions in schema.shape
+    expect(tool.schema.shape.id).toBeDefined();
   });
 
   it('should delete post by ID', async () => {
@@ -781,9 +788,10 @@ describe('mcp_server_improved - ghost_search_posts tool', () => {
     expect(tool).toBeDefined();
     expect(tool.description).toContain('Search');
     expect(tool.schema).toBeDefined();
-    expect(tool.schema.query).toBeDefined();
-    expect(tool.schema.status).toBeDefined();
-    expect(tool.schema.limit).toBeDefined();
+    // Zod schemas store field definitions in schema.shape
+    expect(tool.schema.shape.query).toBeDefined();
+    expect(tool.schema.shape.status).toBeDefined();
+    expect(tool.schema.shape.limit).toBeDefined();
   });
 
   it('should search posts with query only', async () => {
@@ -825,24 +833,26 @@ describe('mcp_server_improved - ghost_search_posts tool', () => {
 
   it('should validate limit is between 1 and 50', () => {
     const tool = mockTools.get('ghost_search_posts');
-    const schema = tool.schema;
+    // Zod schemas store field definitions in schema.shape
+    const shape = tool.schema.shape;
 
-    expect(schema.limit).toBeDefined();
-    expect(() => schema.limit.parse(0)).toThrow();
-    expect(() => schema.limit.parse(51)).toThrow();
-    expect(schema.limit.parse(25)).toBe(25);
+    expect(shape.limit).toBeDefined();
+    expect(() => shape.limit.parse(0)).toThrow();
+    expect(() => shape.limit.parse(51)).toThrow();
+    expect(shape.limit.parse(25)).toBe(25);
   });
 
   it('should validate status enum values', () => {
     const tool = mockTools.get('ghost_search_posts');
-    const schema = tool.schema;
+    // Zod schemas store field definitions in schema.shape
+    const shape = tool.schema.shape;
 
-    expect(schema.status).toBeDefined();
-    expect(() => schema.status.parse('invalid')).toThrow();
-    expect(schema.status.parse('published')).toBe('published');
-    expect(schema.status.parse('draft')).toBe('draft');
-    expect(schema.status.parse('scheduled')).toBe('scheduled');
-    expect(schema.status.parse('all')).toBe('all');
+    expect(shape.status).toBeDefined();
+    expect(() => shape.status.parse('invalid')).toThrow();
+    expect(shape.status.parse('published')).toBe('published');
+    expect(shape.status.parse('draft')).toBe('draft');
+    expect(shape.status.parse('scheduled')).toBe('scheduled');
+    expect(shape.status.parse('all')).toBe('all');
   });
 
   it('should pass all parameters combined', async () => {
@@ -930,9 +940,10 @@ describe('ghost_get_tag', () => {
 
   it('should have correct schema with id and slug as optional', () => {
     const tool = mockTools.get('ghost_get_tag');
-    expect(tool.schema.id).toBeDefined();
-    expect(tool.schema.slug).toBeDefined();
-    expect(tool.schema.include).toBeDefined();
+    // Zod schemas store field definitions in schema.shape
+    expect(tool.schema.shape.id).toBeDefined();
+    expect(tool.schema.shape.slug).toBeDefined();
+    expect(tool.schema.shape.include).toBeDefined();
   });
 
   it('should retrieve tag by ID', async () => {
@@ -1022,13 +1033,14 @@ describe('ghost_update_tag', () => {
 
   it('should have correct schema with all update fields', () => {
     const tool = mockTools.get('ghost_update_tag');
-    expect(tool.schema.id).toBeDefined();
-    expect(tool.schema.name).toBeDefined();
-    expect(tool.schema.slug).toBeDefined();
-    expect(tool.schema.description).toBeDefined();
-    expect(tool.schema.feature_image).toBeDefined();
-    expect(tool.schema.meta_title).toBeDefined();
-    expect(tool.schema.meta_description).toBeDefined();
+    // Zod schemas store field definitions in schema.shape
+    expect(tool.schema.shape.id).toBeDefined();
+    expect(tool.schema.shape.name).toBeDefined();
+    expect(tool.schema.shape.slug).toBeDefined();
+    expect(tool.schema.shape.description).toBeDefined();
+    expect(tool.schema.shape.feature_image).toBeDefined();
+    expect(tool.schema.shape.meta_title).toBeDefined();
+    expect(tool.schema.shape.meta_description).toBeDefined();
   });
 
   it('should update tag name', async () => {
@@ -1150,7 +1162,8 @@ describe('ghost_delete_tag', () => {
 
   it('should have correct schema with id field', () => {
     const tool = mockTools.get('ghost_delete_tag');
-    expect(tool.schema.id).toBeDefined();
+    // Zod schemas store field definitions in schema.shape
+    expect(tool.schema.shape.id).toBeDefined();
   });
 
   it('should delete tag successfully', async () => {
