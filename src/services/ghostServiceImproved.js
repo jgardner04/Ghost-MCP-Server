@@ -336,6 +336,37 @@ export async function getPosts(options = {}) {
   }
 }
 
+export async function searchPosts(query, options = {}) {
+  // Validate query
+  if (!query || query.trim().length === 0) {
+    throw new ValidationError('Search query is required');
+  }
+
+  // Sanitize query - escape special NQL characters to prevent injection
+  const sanitizedQuery = query.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+  // Build filter with fuzzy title match using Ghost NQL
+  const filterParts = [`title:~'${sanitizedQuery}'`];
+
+  // Add status filter if provided and not 'all'
+  if (options.status && options.status !== 'all') {
+    filterParts.push(`status:${options.status}`);
+  }
+
+  const searchOptions = {
+    limit: options.limit || 15,
+    include: 'tags,authors',
+    filter: filterParts.join('+'),
+  };
+
+  try {
+    return await handleApiRequest('posts', 'browse', {}, searchOptions);
+  } catch (error) {
+    console.error('Failed to search posts:', error);
+    throw error;
+  }
+}
+
 export async function uploadImage(imagePath) {
   // Validate input
   await validators.validateImagePath(imagePath);
@@ -495,6 +526,7 @@ export default {
   deletePost,
   getPost,
   getPosts,
+  searchPosts,
   uploadImage,
   createTag,
   getTags,
