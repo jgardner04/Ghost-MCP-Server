@@ -272,6 +272,110 @@ server.tool(
   }
 );
 
+// Get Posts Tool
+server.tool(
+  'ghost_get_posts',
+  'Retrieves a list of posts from Ghost CMS with pagination, filtering, and sorting options.',
+  {
+    limit: z
+      .number()
+      .min(1)
+      .max(100)
+      .optional()
+      .describe('Number of posts to retrieve (1-100). Default is 15.'),
+    page: z.number().min(1).optional().describe('Page number for pagination. Default is 1.'),
+    status: z
+      .enum(['published', 'draft', 'scheduled', 'all'])
+      .optional()
+      .describe('Filter posts by status. Options: published, draft, scheduled, all.'),
+    include: z
+      .string()
+      .optional()
+      .describe('Comma-separated list of relations to include (e.g., "tags,authors").'),
+    filter: z
+      .string()
+      .optional()
+      .describe('Ghost NQL filter string for advanced filtering (e.g., "featured:true").'),
+    order: z
+      .string()
+      .optional()
+      .describe('Sort order for results (e.g., "published_at DESC", "title ASC").'),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_get_posts`);
+    try {
+      await loadServices();
+
+      // Build options object with provided parameters
+      const options = {};
+      if (input.limit !== undefined) options.limit = input.limit;
+      if (input.page !== undefined) options.page = input.page;
+      if (input.status !== undefined) options.status = input.status;
+      if (input.include !== undefined) options.include = input.include;
+      if (input.filter !== undefined) options.filter = input.filter;
+      if (input.order !== undefined) options.order = input.order;
+
+      const posts = await ghostService.getPosts(options);
+      console.error(`Retrieved ${posts.length} posts from Ghost.`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(posts, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_get_posts:`, error);
+      return {
+        content: [{ type: 'text', text: `Error retrieving posts: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Get Post Tool
+server.tool(
+  'ghost_get_post',
+  'Retrieves a single post from Ghost CMS by ID or slug.',
+  {
+    id: z.string().optional().describe('The ID of the post to retrieve.'),
+    slug: z.string().optional().describe('The slug of the post to retrieve.'),
+    include: z
+      .string()
+      .optional()
+      .describe('Comma-separated list of relations to include (e.g., "tags,authors").'),
+  },
+  async (input) => {
+    console.error(`Executing tool: ghost_get_post`);
+    try {
+      // Validate that at least one of id or slug is provided
+      if (!input.id && !input.slug) {
+        throw new Error('Either id or slug is required to retrieve a post');
+      }
+
+      await loadServices();
+
+      // Build options object
+      const options = {};
+      if (input.include !== undefined) options.include = input.include;
+
+      // Determine identifier (prefer ID over slug)
+      const identifier = input.id || `slug/${input.slug}`;
+
+      const post = await ghostService.getPost(identifier, options);
+      console.error(`Retrieved post: ${post.title} (ID: ${post.id})`);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(post, null, 2) }],
+      };
+    } catch (error) {
+      console.error(`Error in ghost_get_post:`, error);
+      return {
+        content: [{ type: 'text', text: `Error retrieving post: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
 // --- Main Entry Point ---
 
 async function main() {
@@ -282,7 +386,7 @@ async function main() {
 
   console.error('Ghost MCP Server running on stdio transport');
   console.error(
-    'Available tools: ghost_get_tags, ghost_create_tag, ghost_upload_image, ghost_create_post'
+    'Available tools: ghost_get_tags, ghost_create_tag, ghost_upload_image, ghost_create_post, ghost_get_posts, ghost_get_post'
   );
 }
 
