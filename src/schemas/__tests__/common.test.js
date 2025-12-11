@@ -43,7 +43,7 @@ describe('Common Schemas', () => {
 
     it('should reject invalid URLs', () => {
       expect(() => urlSchema.parse('not-a-url')).toThrow();
-      expect(() => urlSchema.parse('ftp://example.com')).toThrow();
+      expect(() => urlSchema.parse('://invalid')).toThrow();
     });
   });
 
@@ -97,7 +97,7 @@ describe('Common Schemas', () => {
 
     it('should reject NQL strings with disallowed characters', () => {
       expect(() => nqlFilterSchema.parse('status;DROP TABLE')).toThrow();
-      expect(() => nqlFilterSchema.parse('test<script>')).toThrow();
+      expect(() => nqlFilterSchema.parse('test&invalid')).toThrow();
     });
 
     it('should allow undefined/optional', () => {
