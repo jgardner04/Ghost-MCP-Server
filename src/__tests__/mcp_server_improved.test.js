@@ -334,7 +334,7 @@ describe('mcp_server_improved - ghost_get_post tool', () => {
 
   it('should retrieve post by ID', async () => {
     const mockPost = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       title: 'Test Post',
       slug: 'test-post',
       html: '<p>Content</p>',
@@ -343,16 +343,16 @@ describe('mcp_server_improved - ghost_get_post tool', () => {
     mockGetPost.mockResolvedValue(mockPost);
 
     const tool = mockTools.get('ghost_get_post');
-    const result = await tool.handler({ id: '123' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011' });
 
-    expect(mockGetPost).toHaveBeenCalledWith('123', {});
-    expect(result.content[0].text).toContain('"id": "123"');
+    expect(mockGetPost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {});
+    expect(result.content[0].text).toContain('"id": "507f1f77bcf86cd799439011"');
     expect(result.content[0].text).toContain('"title": "Test Post"');
   });
 
   it('should retrieve post by slug', async () => {
     const mockPost = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       title: 'Test Post',
       slug: 'test-post',
       html: '<p>Content</p>',
@@ -369,7 +369,7 @@ describe('mcp_server_improved - ghost_get_post tool', () => {
 
   it('should pass include parameter with ID', async () => {
     const mockPost = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       title: 'Post with relations',
       tags: [{ name: 'tech' }],
       authors: [{ name: 'John' }],
@@ -377,14 +377,16 @@ describe('mcp_server_improved - ghost_get_post tool', () => {
     mockGetPost.mockResolvedValue(mockPost);
 
     const tool = mockTools.get('ghost_get_post');
-    await tool.handler({ id: '123', include: 'tags,authors' });
+    await tool.handler({ id: '507f1f77bcf86cd799439011', include: 'tags,authors' });
 
-    expect(mockGetPost).toHaveBeenCalledWith('123', { include: 'tags,authors' });
+    expect(mockGetPost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
+      include: 'tags,authors',
+    });
   });
 
   it('should pass include parameter with slug', async () => {
     const mockPost = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       title: 'Post with relations',
       slug: 'test-post',
       tags: [{ name: 'tech' }],
@@ -398,20 +400,20 @@ describe('mcp_server_improved - ghost_get_post tool', () => {
   });
 
   it('should prefer ID over slug when both provided', async () => {
-    const mockPost = { id: '123', title: 'Test Post', slug: 'test-post' };
+    const mockPost = { id: '507f1f77bcf86cd799439011', title: 'Test Post', slug: 'test-post' };
     mockGetPost.mockResolvedValue(mockPost);
 
     const tool = mockTools.get('ghost_get_post');
-    await tool.handler({ id: '123', slug: 'wrong-slug' });
+    await tool.handler({ id: '507f1f77bcf86cd799439011', slug: 'wrong-slug' });
 
-    expect(mockGetPost).toHaveBeenCalledWith('123', {});
+    expect(mockGetPost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {});
   });
 
   it('should handle not found errors', async () => {
     mockGetPost.mockRejectedValue(new Error('Post not found'));
 
     const tool = mockTools.get('ghost_get_post');
-    const result = await tool.handler({ id: 'nonexistent' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439099' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Post not found');
@@ -429,7 +431,7 @@ describe('mcp_server_improved - ghost_get_post tool', () => {
 
   it('should return formatted JSON response', async () => {
     const mockPost = {
-      id: '1',
+      id: '507f1f77bcf86cd799439011',
       uuid: 'uuid-123',
       title: 'Test Post',
       slug: 'test-post',
@@ -441,11 +443,11 @@ describe('mcp_server_improved - ghost_get_post tool', () => {
     mockGetPost.mockResolvedValue(mockPost);
 
     const tool = mockTools.get('ghost_get_post');
-    const result = await tool.handler({ id: '1' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011' });
 
     expect(result.content).toBeDefined();
     expect(result.content[0].type).toBe('text');
-    expect(result.content[0].text).toContain('"id": "1"');
+    expect(result.content[0].text).toContain('"id": "507f1f77bcf86cd799439011"');
     expect(result.content[0].text).toContain('"title": "Test Post"');
     expect(result.content[0].text).toContain('"status": "published"');
   });
@@ -494,7 +496,7 @@ describe('mcp_server_improved - ghost_update_post tool', () => {
 
   it('should update post title', async () => {
     const mockUpdatedPost = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       title: 'Updated Title',
       slug: 'test-post',
       html: '<p>Content</p>',
@@ -504,15 +506,17 @@ describe('mcp_server_improved - ghost_update_post tool', () => {
     mockUpdatePost.mockResolvedValue(mockUpdatedPost);
 
     const tool = mockTools.get('ghost_update_post');
-    const result = await tool.handler({ id: '123', title: 'Updated Title' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011', title: 'Updated Title' });
 
-    expect(mockUpdatePost).toHaveBeenCalledWith('123', { title: 'Updated Title' });
+    expect(mockUpdatePost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
+      title: 'Updated Title',
+    });
     expect(result.content[0].text).toContain('"title": "Updated Title"');
   });
 
   it('should update post content', async () => {
     const mockUpdatedPost = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       title: 'Test Post',
       html: '<p>Updated content</p>',
       status: 'published',
@@ -521,15 +525,20 @@ describe('mcp_server_improved - ghost_update_post tool', () => {
     mockUpdatePost.mockResolvedValue(mockUpdatedPost);
 
     const tool = mockTools.get('ghost_update_post');
-    const result = await tool.handler({ id: '123', html: '<p>Updated content</p>' });
+    const result = await tool.handler({
+      id: '507f1f77bcf86cd799439011',
+      html: '<p>Updated content</p>',
+    });
 
-    expect(mockUpdatePost).toHaveBeenCalledWith('123', { html: '<p>Updated content</p>' });
+    expect(mockUpdatePost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
+      html: '<p>Updated content</p>',
+    });
     expect(result.content[0].text).toContain('Updated content');
   });
 
   it('should update post status', async () => {
     const mockUpdatedPost = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       title: 'Test Post',
       html: '<p>Content</p>',
       status: 'published',
@@ -538,15 +547,17 @@ describe('mcp_server_improved - ghost_update_post tool', () => {
     mockUpdatePost.mockResolvedValue(mockUpdatedPost);
 
     const tool = mockTools.get('ghost_update_post');
-    const result = await tool.handler({ id: '123', status: 'published' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011', status: 'published' });
 
-    expect(mockUpdatePost).toHaveBeenCalledWith('123', { status: 'published' });
+    expect(mockUpdatePost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
+      status: 'published',
+    });
     expect(result.content[0].text).toContain('"status": "published"');
   });
 
   it('should update post tags', async () => {
     const mockUpdatedPost = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       title: 'Test Post',
       html: '<p>Content</p>',
       tags: [{ name: 'tech' }, { name: 'javascript' }],
@@ -555,16 +566,21 @@ describe('mcp_server_improved - ghost_update_post tool', () => {
     mockUpdatePost.mockResolvedValue(mockUpdatedPost);
 
     const tool = mockTools.get('ghost_update_post');
-    const result = await tool.handler({ id: '123', tags: ['tech', 'javascript'] });
+    const result = await tool.handler({
+      id: '507f1f77bcf86cd799439011',
+      tags: ['tech', 'javascript'],
+    });
 
-    expect(mockUpdatePost).toHaveBeenCalledWith('123', { tags: ['tech', 'javascript'] });
+    expect(mockUpdatePost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
+      tags: ['tech', 'javascript'],
+    });
     expect(result.content[0].text).toContain('tech');
     expect(result.content[0].text).toContain('javascript');
   });
 
   it('should update post featured image', async () => {
     const mockUpdatedPost = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       title: 'Test Post',
       feature_image: 'https://example.com/new-image.jpg',
       feature_image_alt: 'New image',
@@ -574,12 +590,12 @@ describe('mcp_server_improved - ghost_update_post tool', () => {
 
     const tool = mockTools.get('ghost_update_post');
     const result = await tool.handler({
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       feature_image: 'https://example.com/new-image.jpg',
       feature_image_alt: 'New image',
     });
 
-    expect(mockUpdatePost).toHaveBeenCalledWith('123', {
+    expect(mockUpdatePost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
       feature_image: 'https://example.com/new-image.jpg',
       feature_image_alt: 'New image',
     });
@@ -588,7 +604,7 @@ describe('mcp_server_improved - ghost_update_post tool', () => {
 
   it('should update SEO meta fields', async () => {
     const mockUpdatedPost = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       title: 'Test Post',
       meta_title: 'SEO Title',
       meta_description: 'SEO Description',
@@ -598,12 +614,12 @@ describe('mcp_server_improved - ghost_update_post tool', () => {
 
     const tool = mockTools.get('ghost_update_post');
     const result = await tool.handler({
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       meta_title: 'SEO Title',
       meta_description: 'SEO Description',
     });
 
-    expect(mockUpdatePost).toHaveBeenCalledWith('123', {
+    expect(mockUpdatePost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
       meta_title: 'SEO Title',
       meta_description: 'SEO Description',
     });
@@ -613,7 +629,7 @@ describe('mcp_server_improved - ghost_update_post tool', () => {
 
   it('should update multiple fields at once', async () => {
     const mockUpdatedPost = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       title: 'Updated Title',
       html: '<p>Updated content</p>',
       status: 'published',
@@ -624,14 +640,14 @@ describe('mcp_server_improved - ghost_update_post tool', () => {
 
     const tool = mockTools.get('ghost_update_post');
     const result = await tool.handler({
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       title: 'Updated Title',
       html: '<p>Updated content</p>',
       status: 'published',
       tags: ['tech'],
     });
 
-    expect(mockUpdatePost).toHaveBeenCalledWith('123', {
+    expect(mockUpdatePost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
       title: 'Updated Title',
       html: '<p>Updated content</p>',
       status: 'published',
@@ -644,7 +660,7 @@ describe('mcp_server_improved - ghost_update_post tool', () => {
     mockUpdatePost.mockRejectedValue(new Error('Post not found'));
 
     const tool = mockTools.get('ghost_update_post');
-    const result = await tool.handler({ id: 'nonexistent', title: 'New Title' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439099', title: 'New Title' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Post not found');
@@ -654,7 +670,7 @@ describe('mcp_server_improved - ghost_update_post tool', () => {
     mockUpdatePost.mockRejectedValue(new Error('Validation failed: Title is required'));
 
     const tool = mockTools.get('ghost_update_post');
-    const result = await tool.handler({ id: '123', title: '' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011', title: '' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Validation failed');
@@ -664,7 +680,7 @@ describe('mcp_server_improved - ghost_update_post tool', () => {
     mockUpdatePost.mockRejectedValue(new Error('Ghost API error: Server timeout'));
 
     const tool = mockTools.get('ghost_update_post');
-    const result = await tool.handler({ id: '123', title: 'Updated' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011', title: 'Updated' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Ghost API error');
@@ -672,7 +688,7 @@ describe('mcp_server_improved - ghost_update_post tool', () => {
 
   it('should return formatted JSON response', async () => {
     const mockUpdatedPost = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       uuid: 'uuid-123',
       title: 'Updated Post',
       slug: 'updated-post',
@@ -684,11 +700,11 @@ describe('mcp_server_improved - ghost_update_post tool', () => {
     mockUpdatePost.mockResolvedValue(mockUpdatedPost);
 
     const tool = mockTools.get('ghost_update_post');
-    const result = await tool.handler({ id: '123', title: 'Updated Post' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011', title: 'Updated Post' });
 
     expect(result.content).toBeDefined();
     expect(result.content[0].type).toBe('text');
-    expect(result.content[0].text).toContain('"id": "123"');
+    expect(result.content[0].text).toContain('"id": "507f1f77bcf86cd799439011"');
     expect(result.content[0].text).toContain('"title": "Updated Post"');
     expect(result.content[0].text).toContain('"status": "published"');
   });
@@ -721,10 +737,12 @@ describe('mcp_server_improved - ghost_delete_post tool', () => {
     mockDeletePost.mockResolvedValue({ deleted: true });
 
     const tool = mockTools.get('ghost_delete_post');
-    const result = await tool.handler({ id: '123' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011' });
 
-    expect(mockDeletePost).toHaveBeenCalledWith('123');
-    expect(result.content[0].text).toContain('Post 123 has been successfully deleted');
+    expect(mockDeletePost).toHaveBeenCalledWith('507f1f77bcf86cd799439011');
+    expect(result.content[0].text).toContain(
+      'Post 507f1f77bcf86cd799439011 has been successfully deleted'
+    );
     expect(result.isError).toBeUndefined();
   });
 
@@ -732,7 +750,7 @@ describe('mcp_server_improved - ghost_delete_post tool', () => {
     mockDeletePost.mockRejectedValue(new Error('Post not found'));
 
     const tool = mockTools.get('ghost_delete_post');
-    const result = await tool.handler({ id: 'nonexistent' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439099' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Post not found');
@@ -742,7 +760,7 @@ describe('mcp_server_improved - ghost_delete_post tool', () => {
     mockDeletePost.mockRejectedValue(new Error('Ghost API error: Permission denied'));
 
     const tool = mockTools.get('ghost_delete_post');
-    const result = await tool.handler({ id: '123' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Ghost API error');
@@ -752,18 +770,20 @@ describe('mcp_server_improved - ghost_delete_post tool', () => {
     mockDeletePost.mockResolvedValue({ deleted: true });
 
     const tool = mockTools.get('ghost_delete_post');
-    const result = await tool.handler({ id: 'test-post-id' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011' });
 
     expect(result.content).toBeDefined();
     expect(result.content[0].type).toBe('text');
-    expect(result.content[0].text).toBe('Post test-post-id has been successfully deleted.');
+    expect(result.content[0].text).toBe(
+      'Post 507f1f77bcf86cd799439011 has been successfully deleted.'
+    );
   });
 
   it('should handle network errors', async () => {
     mockDeletePost.mockRejectedValue(new Error('Network error: Connection refused'));
 
     const tool = mockTools.get('ghost_delete_post');
-    const result = await tool.handler({ id: '123' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439012' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Network error');
@@ -873,13 +893,12 @@ describe('mcp_server_improved - ghost_search_posts tool', () => {
   });
 
   it('should handle errors from searchPosts', async () => {
-    mockSearchPosts.mockRejectedValue(new Error('Search query is required'));
-
+    // Empty query is now caught by Zod validation
     const tool = mockTools.get('ghost_search_posts');
     const result = await tool.handler({ query: '' });
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Search query is required');
+    expect(result.content[0].text).toContain('VALIDATION_ERROR');
   });
 
   it('should handle Ghost API errors', async () => {
@@ -948,7 +967,7 @@ describe('ghost_get_tag', () => {
 
   it('should retrieve tag by ID', async () => {
     const mockTag = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       name: 'Test Tag',
       slug: 'test-tag',
       description: 'A test tag',
@@ -956,18 +975,18 @@ describe('ghost_get_tag', () => {
     mockGetTag.mockResolvedValue(mockTag);
 
     const tool = mockTools.get('ghost_get_tag');
-    const result = await tool.handler({ id: '123' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011' });
 
-    expect(mockGetTag).toHaveBeenCalledWith('123', {});
+    expect(mockGetTag).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {});
     expect(result.content).toBeDefined();
     expect(result.content[0].type).toBe('text');
-    expect(result.content[0].text).toContain('"id": "123"');
+    expect(result.content[0].text).toContain('"id": "507f1f77bcf86cd799439011"');
     expect(result.content[0].text).toContain('"name": "Test Tag"');
   });
 
   it('should retrieve tag by slug', async () => {
     const mockTag = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       name: 'Test Tag',
       slug: 'test-tag',
       description: 'A test tag',
@@ -983,7 +1002,7 @@ describe('ghost_get_tag', () => {
 
   it('should support include parameter for post count', async () => {
     const mockTag = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       name: 'Test Tag',
       slug: 'test-tag',
       count: { posts: 5 },
@@ -991,9 +1010,9 @@ describe('ghost_get_tag', () => {
     mockGetTag.mockResolvedValue(mockTag);
 
     const tool = mockTools.get('ghost_get_tag');
-    const result = await tool.handler({ id: '123', include: 'count.posts' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011', include: 'count.posts' });
 
-    expect(mockGetTag).toHaveBeenCalledWith('123', { include: 'count.posts' });
+    expect(mockGetTag).toHaveBeenCalledWith('507f1f77bcf86cd799439011', { include: 'count.posts' });
     expect(result.content[0].text).toContain('"count"');
   });
 
@@ -1010,7 +1029,7 @@ describe('ghost_get_tag', () => {
     mockGetTag.mockRejectedValue(new Error('Tag not found'));
 
     const tool = mockTools.get('ghost_get_tag');
-    const result = await tool.handler({ id: '999' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439099' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Tag not found');
@@ -1045,37 +1064,42 @@ describe('ghost_update_tag', () => {
 
   it('should update tag name', async () => {
     const mockUpdatedTag = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       name: 'Updated Tag',
       slug: 'updated-tag',
     };
     mockUpdateTag.mockResolvedValue(mockUpdatedTag);
 
     const tool = mockTools.get('ghost_update_tag');
-    const result = await tool.handler({ id: '123', name: 'Updated Tag' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011', name: 'Updated Tag' });
 
-    expect(mockUpdateTag).toHaveBeenCalledWith('123', { name: 'Updated Tag' });
+    expect(mockUpdateTag).toHaveBeenCalledWith('507f1f77bcf86cd799439011', { name: 'Updated Tag' });
     expect(result.content[0].text).toContain('"name": "Updated Tag"');
   });
 
   it('should update tag description', async () => {
     const mockUpdatedTag = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       name: 'Test Tag',
       description: 'New description',
     };
     mockUpdateTag.mockResolvedValue(mockUpdatedTag);
 
     const tool = mockTools.get('ghost_update_tag');
-    const result = await tool.handler({ id: '123', description: 'New description' });
+    const result = await tool.handler({
+      id: '507f1f77bcf86cd799439011',
+      description: 'New description',
+    });
 
-    expect(mockUpdateTag).toHaveBeenCalledWith('123', { description: 'New description' });
+    expect(mockUpdateTag).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
+      description: 'New description',
+    });
     expect(result.content[0].text).toContain('"description": "New description"');
   });
 
   it('should update multiple fields at once', async () => {
     const mockUpdatedTag = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       name: 'Updated Tag',
       slug: 'updated-tag',
       description: 'Updated description',
@@ -1085,13 +1109,13 @@ describe('ghost_update_tag', () => {
 
     const tool = mockTools.get('ghost_update_tag');
     await tool.handler({
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       name: 'Updated Tag',
       description: 'Updated description',
       meta_title: 'Updated Meta',
     });
 
-    expect(mockUpdateTag).toHaveBeenCalledWith('123', {
+    expect(mockUpdateTag).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
       name: 'Updated Tag',
       description: 'Updated description',
       meta_title: 'Updated Meta',
@@ -1100,7 +1124,7 @@ describe('ghost_update_tag', () => {
 
   it('should update tag feature image', async () => {
     const mockUpdatedTag = {
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       name: 'Test Tag',
       feature_image: 'https://example.com/image.jpg',
     };
@@ -1108,11 +1132,11 @@ describe('ghost_update_tag', () => {
 
     const tool = mockTools.get('ghost_update_tag');
     await tool.handler({
-      id: '123',
+      id: '507f1f77bcf86cd799439011',
       feature_image: 'https://example.com/image.jpg',
     });
 
-    expect(mockUpdateTag).toHaveBeenCalledWith('123', {
+    expect(mockUpdateTag).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
       feature_image: 'https://example.com/image.jpg',
     });
   });
@@ -1122,14 +1146,14 @@ describe('ghost_update_tag', () => {
     const result = await tool.handler({ name: 'Test' });
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Tag ID is required');
+    expect(result.content[0].text).toContain('VALIDATION_ERROR');
   });
 
   it('should handle validation error', async () => {
     mockUpdateTag.mockRejectedValue(new Error('Validation failed'));
 
     const tool = mockTools.get('ghost_update_tag');
-    const result = await tool.handler({ id: '123', name: '' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011', name: '' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Validation failed');
@@ -1139,7 +1163,7 @@ describe('ghost_update_tag', () => {
     mockUpdateTag.mockRejectedValue(new Error('Tag not found'));
 
     const tool = mockTools.get('ghost_update_tag');
-    const result = await tool.handler({ id: '999', name: 'Test' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439099', name: 'Test' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Tag not found');
@@ -1170,9 +1194,9 @@ describe('ghost_delete_tag', () => {
     mockDeleteTag.mockResolvedValue({ success: true });
 
     const tool = mockTools.get('ghost_delete_tag');
-    const result = await tool.handler({ id: '123' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011' });
 
-    expect(mockDeleteTag).toHaveBeenCalledWith('123');
+    expect(mockDeleteTag).toHaveBeenCalledWith('507f1f77bcf86cd799439011');
     expect(result.content[0].text).toContain('successfully deleted');
     expect(result.isError).toBeUndefined();
   });
@@ -1182,14 +1206,14 @@ describe('ghost_delete_tag', () => {
     const result = await tool.handler({});
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Tag ID is required');
+    expect(result.content[0].text).toContain('VALIDATION_ERROR');
   });
 
   it('should handle not found error', async () => {
     mockDeleteTag.mockRejectedValue(new Error('Tag not found'));
 
     const tool = mockTools.get('ghost_delete_tag');
-    const result = await tool.handler({ id: '999' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439099' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Tag not found');
@@ -1199,7 +1223,7 @@ describe('ghost_delete_tag', () => {
     mockDeleteTag.mockRejectedValue(new Error('Failed to delete tag'));
 
     const tool = mockTools.get('ghost_delete_tag');
-    const result = await tool.handler({ id: '123' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Failed to delete tag');

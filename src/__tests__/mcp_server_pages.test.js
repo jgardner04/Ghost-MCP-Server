@@ -229,18 +229,18 @@ describe('mcp_server_improved - ghost_get_page tool', () => {
   });
 
   it('should retrieve page by ID', async () => {
-    const mockPage = { id: 'page-123', title: 'About Us', slug: 'about-us' };
+    const mockPage = { id: '507f1f77bcf86cd799439011', title: 'About Us', slug: 'about-us' };
     mockGetPage.mockResolvedValue(mockPage);
 
     const tool = mockTools.get('ghost_get_page');
-    const result = await tool.handler({ id: 'page-123' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011' });
 
-    expect(mockGetPage).toHaveBeenCalledWith('page-123', {});
+    expect(mockGetPage).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {});
     expect(result.content[0].text).toContain('About Us');
   });
 
   it('should retrieve page by slug', async () => {
-    const mockPage = { id: 'page-123', title: 'About Us', slug: 'about-us' };
+    const mockPage = { id: '507f1f77bcf86cd799439011', title: 'About Us', slug: 'about-us' };
     mockGetPage.mockResolvedValue(mockPage);
 
     const tool = mockTools.get('ghost_get_page');
@@ -263,7 +263,7 @@ describe('mcp_server_improved - ghost_get_page tool', () => {
     mockGetPage.mockRejectedValue(new Error('Page not found'));
 
     const tool = mockTools.get('ghost_get_page');
-    const result = await tool.handler({ id: 'nonexistent' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439099' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Error retrieving page');
@@ -295,16 +295,19 @@ describe('mcp_server_improved - ghost_create_page tool', () => {
   });
 
   it('should create page with minimal input', async () => {
-    const createdPage = { id: 'page-123', title: 'New Page', status: 'draft' };
+    const createdPage = { id: '507f1f77bcf86cd799439011', title: 'New Page', status: 'draft' };
     mockCreatePageService.mockResolvedValue(createdPage);
 
     const tool = mockTools.get('ghost_create_page');
     const result = await tool.handler({ title: 'New Page', html: '<p>Content</p>' });
 
-    expect(mockCreatePageService).toHaveBeenCalledWith({
-      title: 'New Page',
-      html: '<p>Content</p>',
-    });
+    // Schema adds default values, so use objectContaining for the key fields
+    expect(mockCreatePageService).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'New Page',
+        html: '<p>Content</p>',
+      })
+    );
     expect(result.content[0].text).toContain('New Page');
   });
 
@@ -320,13 +323,14 @@ describe('mcp_server_improved - ghost_create_page tool', () => {
       meta_title: 'SEO Title',
       meta_description: 'SEO Description',
     };
-    const createdPage = { id: 'page-123', ...fullInput };
+    const createdPage = { id: '507f1f77bcf86cd799439011', ...fullInput };
     mockCreatePageService.mockResolvedValue(createdPage);
 
     const tool = mockTools.get('ghost_create_page');
     const result = await tool.handler(fullInput);
 
-    expect(mockCreatePageService).toHaveBeenCalledWith(fullInput);
+    // Schema adds default values, so use objectContaining for the key fields
+    expect(mockCreatePageService).toHaveBeenCalledWith(expect.objectContaining(fullInput));
     expect(result.content[0].text).toContain('Complete Page');
   });
 
@@ -364,29 +368,31 @@ describe('mcp_server_improved - ghost_update_page tool', () => {
   });
 
   it('should update page with new title', async () => {
-    const updatedPage = { id: 'page-123', title: 'Updated Title' };
+    const updatedPage = { id: '507f1f77bcf86cd799439011', title: 'Updated Title' };
     mockUpdatePage.mockResolvedValue(updatedPage);
 
     const tool = mockTools.get('ghost_update_page');
-    const result = await tool.handler({ id: 'page-123', title: 'Updated Title' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011', title: 'Updated Title' });
 
-    expect(mockUpdatePage).toHaveBeenCalledWith('page-123', { title: 'Updated Title' });
+    expect(mockUpdatePage).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
+      title: 'Updated Title',
+    });
     expect(result.content[0].text).toContain('Updated Title');
   });
 
   it('should update page with multiple fields', async () => {
-    const updatedPage = { id: 'page-123', title: 'New Title', status: 'published' };
+    const updatedPage = { id: '507f1f77bcf86cd799439011', title: 'New Title', status: 'published' };
     mockUpdatePage.mockResolvedValue(updatedPage);
 
     const tool = mockTools.get('ghost_update_page');
     const result = await tool.handler({
-      id: 'page-123',
+      id: '507f1f77bcf86cd799439011',
       title: 'New Title',
       status: 'published',
       html: '<p>Updated content</p>',
     });
 
-    expect(mockUpdatePage).toHaveBeenCalledWith('page-123', {
+    expect(mockUpdatePage).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
       title: 'New Title',
       status: 'published',
       html: '<p>Updated content</p>',
@@ -398,7 +404,7 @@ describe('mcp_server_improved - ghost_update_page tool', () => {
     mockUpdatePage.mockRejectedValue(new Error('Page not found'));
 
     const tool = mockTools.get('ghost_update_page');
-    const result = await tool.handler({ id: 'nonexistent', title: 'Test' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439099', title: 'Test' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Error updating page');
@@ -425,12 +431,12 @@ describe('mcp_server_improved - ghost_delete_page tool', () => {
   });
 
   it('should delete page by ID', async () => {
-    mockDeletePage.mockResolvedValue({ id: 'page-123' });
+    mockDeletePage.mockResolvedValue({ id: '507f1f77bcf86cd799439011' });
 
     const tool = mockTools.get('ghost_delete_page');
-    const result = await tool.handler({ id: 'page-123' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439011' });
 
-    expect(mockDeletePage).toHaveBeenCalledWith('page-123');
+    expect(mockDeletePage).toHaveBeenCalledWith('507f1f77bcf86cd799439011');
     expect(result.content[0].text).toContain('successfully deleted');
   });
 
@@ -438,7 +444,7 @@ describe('mcp_server_improved - ghost_delete_page tool', () => {
     mockDeletePage.mockRejectedValue(new Error('Page not found'));
 
     const tool = mockTools.get('ghost_delete_page');
-    const result = await tool.handler({ id: 'nonexistent' });
+    const result = await tool.handler({ id: '507f1f77bcf86cd799439099' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Error deleting page');
