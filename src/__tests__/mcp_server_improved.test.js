@@ -54,25 +54,87 @@ const mockUpdatePost = vi.fn();
 const mockDeletePost = vi.fn();
 const mockSearchPosts = vi.fn();
 
-vi.mock('../services/ghostService.js', () => ({
-  getPosts: (...args) => mockGetPosts(...args),
-  getPost: (...args) => mockGetPost(...args),
-  getTags: (...args) => mockGetTags(...args),
-  createTag: (...args) => mockCreateTag(...args),
-  uploadImage: (...args) => mockUploadImage(...args),
-}));
+// Page mocks
+const mockGetPages = vi.fn();
+const mockGetPage = vi.fn();
+const mockCreatePageService = vi.fn();
+const mockUpdatePage = vi.fn();
+const mockDeletePage = vi.fn();
+const mockSearchPages = vi.fn();
+
+// Member mocks
+const mockCreateMember = vi.fn();
+const mockUpdateMember = vi.fn();
+const mockDeleteMember = vi.fn();
+const mockGetMembers = vi.fn();
+const mockGetMember = vi.fn();
+const mockSearchMembers = vi.fn();
+
+// Newsletter mocks
+const mockGetNewsletters = vi.fn();
+const mockGetNewsletter = vi.fn();
+const mockCreateNewsletterService = vi.fn();
+const mockUpdateNewsletter = vi.fn();
+const mockDeleteNewsletter = vi.fn();
+
+// Tier mocks
+const mockGetTiers = vi.fn();
+const mockGetTier = vi.fn();
+const mockCreateTier = vi.fn();
+const mockUpdateTier = vi.fn();
+const mockDeleteTier = vi.fn();
 
 vi.mock('../services/postService.js', () => ({
   createPostService: (...args) => mockCreatePostService(...args),
 }));
 
+vi.mock('../services/pageService.js', () => ({
+  createPageService: (...args) => mockCreatePageService(...args),
+}));
+
+vi.mock('../services/newsletterService.js', () => ({
+  createNewsletterService: (...args) => mockCreateNewsletterService(...args),
+}));
+
 vi.mock('../services/ghostServiceImproved.js', () => ({
+  // Posts
+  getPosts: (...args) => mockGetPosts(...args),
+  getPost: (...args) => mockGetPost(...args),
   updatePost: (...args) => mockUpdatePost(...args),
   deletePost: (...args) => mockDeletePost(...args),
   searchPosts: (...args) => mockSearchPosts(...args),
+  // Tags
+  getTags: (...args) => mockGetTags(...args),
   getTag: (...args) => mockGetTag(...args),
+  createTag: (...args) => mockCreateTag(...args),
   updateTag: (...args) => mockUpdateTag(...args),
   deleteTag: (...args) => mockDeleteTag(...args),
+  // Images
+  uploadImage: (...args) => mockUploadImage(...args),
+  // Pages
+  getPages: (...args) => mockGetPages(...args),
+  getPage: (...args) => mockGetPage(...args),
+  updatePage: (...args) => mockUpdatePage(...args),
+  deletePage: (...args) => mockDeletePage(...args),
+  searchPages: (...args) => mockSearchPages(...args),
+  // Members
+  createMember: (...args) => mockCreateMember(...args),
+  updateMember: (...args) => mockUpdateMember(...args),
+  deleteMember: (...args) => mockDeleteMember(...args),
+  getMembers: (...args) => mockGetMembers(...args),
+  getMember: (...args) => mockGetMember(...args),
+  searchMembers: (...args) => mockSearchMembers(...args),
+  // Newsletters
+  getNewsletters: (...args) => mockGetNewsletters(...args),
+  getNewsletter: (...args) => mockGetNewsletter(...args),
+  updateNewsletter: (...args) => mockUpdateNewsletter(...args),
+  deleteNewsletter: (...args) => mockDeleteNewsletter(...args),
+  // Tiers
+  getTiers: (...args) => mockGetTiers(...args),
+  getTier: (...args) => mockGetTier(...args),
+  createTier: (...args) => mockCreateTier(...args),
+  updateTier: (...args) => mockUpdateTier(...args),
+  deleteTier: (...args) => mockDeleteTier(...args),
 }));
 
 vi.mock('../services/imageProcessingService.js', () => ({

@@ -40,13 +40,17 @@ dotenv.config();
 // Lazy-loaded modules (to avoid Node.js v25 Buffer compatibility issues at startup)
 let ghostService = null;
 let postService = null;
+let pageService = null;
+let newsletterService = null;
 let imageProcessingService = null;
 let urlValidator = null;
 
 const loadServices = async () => {
   if (!ghostService) {
-    ghostService = await import('./services/ghostService.js');
+    ghostService = await import('./services/ghostServiceImproved.js');
     postService = await import('./services/postService.js');
+    pageService = await import('./services/pageService.js');
+    newsletterService = await import('./services/newsletterService.js');
     imageProcessingService = await import('./services/imageProcessingService.js');
     urlValidator = await import('./utils/urlValidator.js');
   }
@@ -193,8 +197,7 @@ server.tool(
       const identifier = slug ? `slug/${slug}` : id;
       const options = include ? { include } : {};
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const tag = await ghostServiceImproved.getTag(identifier, options);
+      const tag = await ghostService.getTag(identifier, options);
       console.error(`Tag retrieved successfully. Tag ID: ${tag.id}`);
 
       return {
@@ -240,8 +243,7 @@ server.tool(
       // Build update data object with only provided fields (exclude id from update data)
       const { id, ...updateData } = input;
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const updatedTag = await ghostServiceImproved.updateTag(id, updateData);
+      const updatedTag = await ghostService.updateTag(id, updateData);
       console.error(`Tag updated successfully. Tag ID: ${updatedTag.id}`);
 
       return {
@@ -284,8 +286,7 @@ server.tool(
 
       await loadServices();
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      await ghostServiceImproved.deleteTag(id);
+      await ghostService.deleteTag(id);
       console.error(`Tag deleted successfully. Tag ID: ${id}`);
 
       return {
@@ -591,9 +592,7 @@ server.tool(
       if (input.status !== undefined) options.status = input.status;
       if (input.limit !== undefined) options.limit = input.limit;
 
-      // Search posts using ghostServiceImproved
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const posts = await ghostServiceImproved.searchPosts(input.query, options);
+      const posts = await ghostService.searchPosts(input.query, options);
       console.error(`Found ${posts.length} posts matching "${input.query}".`);
 
       return {
@@ -635,9 +634,7 @@ server.tool(
       // Extract ID from input and build update data
       const { id, ...updateData } = input;
 
-      // Update the post using ghostServiceImproved
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const updatedPost = await ghostServiceImproved.updatePost(id, updateData);
+      const updatedPost = await ghostService.updatePost(id, updateData);
       console.error(`Post updated successfully. Post ID: ${updatedPost.id}`);
 
       return {
@@ -676,9 +673,7 @@ server.tool(
     try {
       await loadServices();
 
-      // Delete the post using ghostServiceImproved
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      await ghostServiceImproved.deletePost(id);
+      await ghostService.deletePost(id);
       console.error(`Post deleted successfully. Post ID: ${id}`);
 
       return {
@@ -767,8 +762,7 @@ server.tool(
       if (input.formats !== undefined) options.formats = input.formats;
       if (input.order !== undefined) options.order = input.order;
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const pages = await ghostServiceImproved.getPages(options);
+      const pages = await ghostService.getPages(options);
       console.error(`Retrieved ${pages.length} pages from Ghost.`);
 
       return {
@@ -812,8 +806,7 @@ server.tool(
 
       const identifier = input.id || `slug/${input.slug}`;
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const page = await ghostServiceImproved.getPage(identifier, options);
+      const page = await ghostService.getPage(identifier, options);
       console.error(`Retrieved page: ${page.title} (ID: ${page.id})`);
 
       return {
@@ -852,7 +845,6 @@ server.tool(
     try {
       await loadServices();
 
-      const pageService = await import('./services/pageService.js');
       const createdPage = await pageService.createPageService(input);
       console.error(`Page created successfully. Page ID: ${createdPage.id}`);
 
@@ -894,8 +886,7 @@ server.tool(
 
       const { id, ...updateData } = input;
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const updatedPage = await ghostServiceImproved.updatePage(id, updateData);
+      const updatedPage = await ghostService.updatePage(id, updateData);
       console.error(`Page updated successfully. Page ID: ${updatedPage.id}`);
 
       return {
@@ -934,8 +925,7 @@ server.tool(
     try {
       await loadServices();
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      await ghostServiceImproved.deletePage(id);
+      await ghostService.deletePage(id);
       console.error(`Page deleted successfully. Page ID: ${id}`);
 
       return {
@@ -978,8 +968,7 @@ server.tool(
       if (input.status !== undefined) options.status = input.status;
       if (input.limit !== undefined) options.limit = input.limit;
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const pages = await ghostServiceImproved.searchPages(input.query, options);
+      const pages = await ghostService.searchPages(input.query, options);
       console.error(`Found ${pages.length} pages matching "${input.query}".`);
 
       return {
@@ -1046,8 +1035,7 @@ server.tool(
     try {
       await loadServices();
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const createdMember = await ghostServiceImproved.createMember(input);
+      const createdMember = await ghostService.createMember(input);
       console.error(`Member created successfully. Member ID: ${createdMember.id}`);
 
       return {
@@ -1088,8 +1076,7 @@ server.tool(
 
       const { id, ...updateData } = input;
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const updatedMember = await ghostServiceImproved.updateMember(id, updateData);
+      const updatedMember = await ghostService.updateMember(id, updateData);
       console.error(`Member updated successfully. Member ID: ${updatedMember.id}`);
 
       return {
@@ -1128,8 +1115,7 @@ server.tool(
     try {
       await loadServices();
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      await ghostServiceImproved.deleteMember(id);
+      await ghostService.deleteMember(id);
       console.error(`Member deleted successfully. Member ID: ${id}`);
 
       return {
@@ -1175,8 +1161,7 @@ server.tool(
       if (input.order !== undefined) options.order = input.order;
       if (input.include !== undefined) options.include = input.include;
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const members = await ghostServiceImproved.getMembers(options);
+      const members = await ghostService.getMembers(options);
       console.error(`Retrieved ${members.length} members from Ghost.`);
 
       return {
@@ -1215,8 +1200,7 @@ server.tool(
     try {
       await loadServices();
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const member = await ghostServiceImproved.getMember({ id, email });
+      const member = await ghostService.getMember({ id, email });
       console.error(`Retrieved member: ${member.email} (ID: ${member.id})`);
 
       return {
@@ -1258,8 +1242,7 @@ server.tool(
       const options = {};
       if (limit !== undefined) options.limit = limit;
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const members = await ghostServiceImproved.searchMembers(query, options);
+      const members = await ghostService.searchMembers(query, options);
       console.error(`Found ${members.length} members matching "${query}".`);
 
       return {
@@ -1313,8 +1296,7 @@ server.tool(
       if (input.filter !== undefined) options.filter = input.filter;
       if (input.order !== undefined) options.order = input.order;
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const newsletters = await ghostServiceImproved.getNewsletters(options);
+      const newsletters = await ghostService.getNewsletters(options);
       console.error(`Retrieved ${newsletters.length} newsletters from Ghost.`);
 
       return {
@@ -1353,8 +1335,7 @@ server.tool(
     try {
       await loadServices();
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const newsletter = await ghostServiceImproved.getNewsletter(id);
+      const newsletter = await ghostService.getNewsletter(id);
       console.error(`Retrieved newsletter: ${newsletter.name} (ID: ${newsletter.id})`);
 
       return {
@@ -1397,7 +1378,6 @@ server.tool(
     try {
       await loadServices();
 
-      const newsletterService = await import('./services/newsletterService.js');
       const createdNewsletter = await newsletterService.createNewsletterService(input);
       console.error(`Newsletter created successfully. Newsletter ID: ${createdNewsletter.id}`);
 
@@ -1443,8 +1423,7 @@ server.tool(
 
       const { id, ...updateData } = input;
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const updatedNewsletter = await ghostServiceImproved.updateNewsletter(id, updateData);
+      const updatedNewsletter = await ghostService.updateNewsletter(id, updateData);
       console.error(`Newsletter updated successfully. Newsletter ID: ${updatedNewsletter.id}`);
 
       return {
@@ -1487,8 +1466,7 @@ server.tool(
     try {
       await loadServices();
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      await ghostServiceImproved.deleteNewsletter(id);
+      await ghostService.deleteNewsletter(id);
       console.error(`Newsletter deleted successfully. Newsletter ID: ${id}`);
 
       return {
@@ -1534,8 +1512,7 @@ server.tool(
     try {
       await loadServices();
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const tiers = await ghostServiceImproved.getTiers(input);
+      const tiers = await ghostService.getTiers(input);
       console.error(`Retrieved ${tiers.length} tiers`);
 
       return {
@@ -1574,8 +1551,7 @@ server.tool(
     try {
       await loadServices();
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const tier = await ghostServiceImproved.getTier(id);
+      const tier = await ghostService.getTier(id);
       console.error(`Tier retrieved successfully. Tier ID: ${tier.id}`);
 
       return {
@@ -1614,8 +1590,7 @@ server.tool(
     try {
       await loadServices();
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const tier = await ghostServiceImproved.createTier(input);
+      const tier = await ghostService.createTier(input);
       console.error(`Tier created successfully. Tier ID: ${tier.id}`);
 
       return {
@@ -1656,8 +1631,7 @@ server.tool(
 
       const { id, ...updateData } = input;
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      const updatedTier = await ghostServiceImproved.updateTier(id, updateData);
+      const updatedTier = await ghostService.updateTier(id, updateData);
       console.error(`Tier updated successfully. Tier ID: ${updatedTier.id}`);
 
       return {
@@ -1696,8 +1670,7 @@ server.tool(
     try {
       await loadServices();
 
-      const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
-      await ghostServiceImproved.deleteTier(id);
+      await ghostService.deleteTier(id);
       console.error(`Tier deleted successfully. Tier ID: ${id}`);
 
       return {
