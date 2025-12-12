@@ -1,6 +1,46 @@
 # Testing Environment Setup
 
-This document outlines how to set up a testing environment for the Ghost MCP Server, including running a local Ghost CMS instance using Podman and testing with the MCP Inspector tool.
+This document outlines how to set up a testing environment for the Ghost MCP Server, including running automated tests with Vitest, running a local Ghost CMS instance for manual testing, and testing with the MCP Inspector tool.
+
+## Running Automated Tests
+
+The project uses **Vitest** as the test framework. Tests are located alongside source files in `__tests__/` directories.
+
+### Test Commands
+
+```bash
+# Run tests once
+npm test
+
+# Run tests in watch mode (recommended for development)
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+```
+
+### Coverage Requirements
+
+- **Minimum**: 80% for lines, branches, functions, and statements
+- Coverage is enforced in CI pipeline
+
+### Test File Structure
+
+```
+src/
+├── services/
+│   ├── ghostService.js
+│   └── __tests__/
+│       └── ghostService.test.js
+├── schemas/
+│   ├── postSchemas.js
+│   └── __tests__/
+│       └── postSchemas.test.js
+└── utils/
+    ├── validation.js
+    └── __tests__/
+        └── validation.test.js
+```
 
 ## Setting Up Ghost CMS with Podman
 
@@ -94,10 +134,14 @@ The [MCP Inspector](https://github.com/modelcontextprotocol/inspector) is a visu
 
 ### Installing and Running MCP Inspector
 
-The simplest way to use MCP Inspector is with `npx`. Once your MCP server is built, you can test it with:
+The simplest way to use MCP Inspector is with `npx`. You can test your MCP server with:
 
 ```shell
-npx @modelcontextprotocol/inspector node build/index.js
+# Test the improved MCP server (recommended)
+npx @modelcontextprotocol/inspector node src/mcp_server_improved.js
+
+# Or use the ghost-mcp CLI entry point
+npx @modelcontextprotocol/inspector ghost-mcp
 ```
 
 This will:
@@ -111,13 +155,13 @@ This will:
 If you need to pass environment variables to your MCP server:
 
 ```shell
-npx @modelcontextprotocol/inspector -e GHOST_ADMIN_API_URL=http://localhost:2368/ghost/api/admin -e GHOST_ADMIN_API_KEY=<your_key> node build/index.js
+npx @modelcontextprotocol/inspector -e GHOST_ADMIN_API_URL=http://localhost:2368/ghost/api/admin -e GHOST_ADMIN_API_KEY=<your_key> node src/mcp_server_improved.js
 ```
 
 You can also combine environment variables with your server's arguments:
 
 ```shell
-npx @modelcontextprotocol/inspector -e GHOST_ADMIN_API_URL=http://localhost:2368/ghost/api/admin -- node build/index.js --debug
+npx @modelcontextprotocol/inspector -e GHOST_ADMIN_API_URL=http://localhost:2368/ghost/api/admin -- node src/mcp_server_improved.js
 ```
 
 ### Custom Ports
@@ -125,7 +169,7 @@ npx @modelcontextprotocol/inspector -e GHOST_ADMIN_API_URL=http://localhost:2368
 If you need to use different ports for the Inspector:
 
 ```shell
-CLIENT_PORT=8080 SERVER_PORT=9000 npx @modelcontextprotocol/inspector node build/index.js
+CLIENT_PORT=8080 SERVER_PORT=9000 npx @modelcontextprotocol/inspector node src/mcp_server_improved.js
 ```
 
 ### Using the Inspector UI

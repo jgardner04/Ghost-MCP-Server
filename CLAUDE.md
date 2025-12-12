@@ -9,8 +9,8 @@ All code written for this project MUST follow OWASP security best practices to p
 ### Required Security Measures:
 
 1. **Input Validation & Sanitization**
-   - Validate ALL user inputs using Joi schemas or express-validator
-   - Sanitize HTML content using sanitize-html library
+   - Validate ALL user inputs using Zod schemas from `src/schemas/`
+   - HTML sanitization is integrated into the schema layer (`src/schemas/common.js`)
    - Reject inputs that don't match expected patterns
    - Use allowlists for acceptable values, not denylists
 
@@ -47,11 +47,12 @@ All code written for this project MUST follow OWASP security best practices to p
 
 ### Security Libraries in Use:
 
-- `joi` - Input validation schemas
-- `sanitize-html` - HTML sanitization
+- `zod` - Runtime type validation and schema definition (primary validation)
+- `sanitize-html` - HTML sanitization (integrated into Zod schemas)
 - `express-rate-limit` - Rate limiting
 - `crypto` - Secure random generation and comparisons
-- `helmet` - Security headers (to be added if not present)
+- `helmet` - HTTP security headers
+- `joi` - Legacy validation (used in some REST endpoints)
 
 ## Project Overview
 
@@ -61,7 +62,11 @@ Ghost MCP Server - A Model Context Protocol (MCP) server that enables AI clients
 
 ### Core Development Commands
 
-- **Start MCP Server**: `npm start` or `node src/index.js` - Starts both Express and MCP servers
+- **Start Express + MCP**: `npm start` or `node src/index.js` - Starts both Express REST API and MCP servers
+- **Start MCP Only**: `npm run start:mcp` - Starts improved MCP server with default transport
+- **MCP with stdio**: `npm run start:mcp:stdio` - Stdio transport (for CLI tools like Claude Desktop)
+- **MCP with HTTP/SSE**: `npm run start:mcp:http` - HTTP transport with Server-Sent Events
+- **MCP with WebSocket**: `npm run start:mcp:websocket` - WebSocket transport for real-time apps
 - **Build**: `npm run build` - Copies source files to build directory
 
 ## Testing (Test-Driven Development)
@@ -133,11 +138,18 @@ Follow these principles when writing code:
 
 ### Core Components
 
-1. **MCP Server** (`src/mcp_server.js`):
-   - Implements Model Context Protocol specification
-   - Exposes Ghost CMS functionality as MCP tools
-   - Resources: `ghost/tag`, `ghost/post`
-   - Tools: `ghost_create_tag`, `ghost_get_tags`, `ghost_upload_image`, `ghost_create_post`
+1. **MCP Server** (`src/mcp_server_improved.js`):
+   - Implements Model Context Protocol specification with Zod validation
+   - Exposes Ghost CMS functionality as 34 MCP tools across 7 resource types
+   - Resources: `ghost/post`, `ghost/page`, `ghost/tag`, `ghost/member`, `ghost/newsletter`, `ghost/tier`
+   - Tools by resource:
+     - **Posts** (6): `ghost_create_post`, `ghost_get_posts`, `ghost_get_post`, `ghost_search_posts`, `ghost_update_post`, `ghost_delete_post`
+     - **Pages** (6): `ghost_create_page`, `ghost_get_pages`, `ghost_get_page`, `ghost_search_pages`, `ghost_update_page`, `ghost_delete_page`
+     - **Tags** (5): `ghost_create_tag`, `ghost_get_tags`, `ghost_get_tag`, `ghost_update_tag`, `ghost_delete_tag`
+     - **Members** (6): `ghost_create_member`, `ghost_get_members`, `ghost_get_member`, `ghost_search_members`, `ghost_update_member`, `ghost_delete_member`
+     - **Newsletters** (5): `ghost_create_newsletter`, `ghost_get_newsletters`, `ghost_get_newsletter`, `ghost_update_newsletter`, `ghost_delete_newsletter`
+     - **Tiers** (5): `ghost_create_tier`, `ghost_get_tiers`, `ghost_get_tier`, `ghost_update_tier`, `ghost_delete_tier`
+     - **Images** (1): `ghost_upload_image`
 
 2. **Express Server** (`src/index.js`):
    - REST API endpoints for Ghost operations
@@ -145,13 +157,34 @@ Follow these principles when writing code:
    - Health check endpoint: `/health`
 
 3. **Services Layer** (`src/services/`):
-   - `ghostService.js`: Ghost Admin API wrapper with retry logic
+   - `ghostService.js`: Basic Ghost Admin API wrapper
+   - `ghostServiceImproved.js`: Enhanced Ghost Admin API wrapper with circuit breaker, retry logic, and validation
    - `postService.js`: Post creation and management
+   - `pageService.js`: Page creation and management
+   - `memberService.js`: Member/subscriber management
+   - `tierService.js`: Membership tier management
+   - `newsletterService.js`: Newsletter management
    - `imageProcessingService.js`: Image optimization and processing
 
 4. **Controllers** (`src/controllers/`):
    - Handle HTTP requests for posts, images, and tags
    - Validate inputs and coordinate with services
+
+5. **Schemas Layer** (`src/schemas/`):
+   - `common.js`: Shared Zod validators (IDs, emails, URLs) with HTML sanitization
+   - `postSchemas.js`: Post creation, update, and query schemas
+   - `pageSchemas.js`: Page schemas
+   - `tagSchemas.js`: Tag schemas with name/slug validation
+   - `memberSchemas.js`: Member creation, update, and query schemas
+   - `newsletterSchemas.js`: Newsletter schemas
+   - `tierSchemas.js`: Tier/membership schemas
+   - `index.js`: Centralized schema exports
+
+6. **Utilities** (`src/utils/`):
+   - `validation.js`: MCP tool input validation helper (`validateToolInput`)
+   - `tempFileManager.js`: Temp file tracking and cleanup with process exit handlers
+   - `urlValidator.js`: SSRF-safe URL validation for image downloads
+   - `logger.js`: Context-aware logging with request correlation
 
 ### Environment Configuration
 
@@ -179,6 +212,8 @@ This project maintains detailed documentation in the `docs/` directory:
 | [docs/MCP_TRANSPORT.md](docs/MCP_TRANSPORT.md)         | Transport configuration (stdio, HTTP/SSE, WebSocket), use cases, security considerations       |
 | [docs/RESOURCE_FETCHING.md](docs/RESOURCE_FETCHING.md) | Resource URI patterns, caching strategies (LRU/TTL), real-time subscriptions, batch operations |
 | [docs/TESTING.md](docs/TESTING.md)                     | Manual testing setup with Ghost CMS, MCP Inspector usage, debugging tips                       |
+| [docs/TOOLS_REFERENCE.md](docs/TOOLS_REFERENCE.md)     | Comprehensive reference for all 34 MCP tools with schemas and examples                         |
+| [docs/SCHEMA_VALIDATION.md](docs/SCHEMA_VALIDATION.md) | Zod schema architecture, validators, HTML sanitization, and usage patterns                     |
 
 ### When to Update Documentation
 
@@ -263,21 +298,49 @@ When implementing Ghost CMS operations via MCP:
 
 1. **Image Upload Flow**:
    - First call `ghost_upload_image` with imageUrl
-   - Use returned URL for `feature_image` in post creation
+   - Use returned URL for `feature_image` in post/page creation
 
 2. **Tag Management**:
-   - Use `ghost_get_tags` to check existing tags
+   - Use `ghost_get_tags` to list existing tags
+   - Use `ghost_get_tag` to get a specific tag by ID or slug
    - Create new tags with `ghost_create_tag` if needed
-   - Reference tags by name when creating posts
+   - Update tags with `ghost_update_tag`
+   - Reference tags by name when creating posts (auto-created if missing)
 
 3. **Post Creation**:
    - Tags are auto-created if they don't exist
    - Status options: 'draft', 'published', 'scheduled'
    - HTML content is required for post body
+   - Use `ghost_search_posts` to find posts by title/content
+
+4. **Page Management**:
+   - Similar to posts but without tag support
+   - Use `ghost_create_page`, `ghost_get_page`, `ghost_update_page`, `ghost_delete_page`
+   - Use `ghost_search_pages` to find pages by title/content
+
+5. **Member Management**:
+   - Use `ghost_create_member` to add subscribers
+   - Use `ghost_get_member` to lookup by ID or email
+   - Use `ghost_search_members` to find members by name/email
+   - Update member data with `ghost_update_member`
+
+6. **Newsletter Management**:
+   - Use `ghost_get_newsletters` to list all newsletters
+   - Create newsletters with `ghost_create_newsletter`
+   - Configure sender details, subscription settings
+
+7. **Tier Management**:
+   - Use `ghost_get_tiers` to list membership levels
+   - Create tiers with `ghost_create_tier`
+   - Configure pricing (monthly/yearly), currency, descriptions
 
 ## Key Dependencies
 
 - `@modelcontextprotocol/sdk`: MCP protocol implementation
 - `@tryghost/admin-api`: Official Ghost Admin API client
+- `zod`: Runtime type validation and schema definition
+- `sanitize-html`: HTML sanitization for XSS prevention
 - `express`: REST API framework
 - `sharp`: Image processing
+- `helmet`: HTTP security headers
+- `express-rate-limit`: Rate limiting middleware

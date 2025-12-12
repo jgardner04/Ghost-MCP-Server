@@ -21,51 +21,189 @@ An MCP client can discover these resources and tools by querying the running MCP
 ### Resources Defined
 
 - **`ghost/tag`**: Represents a tag in Ghost CMS. Contains `id`, `name`, `slug`, `description`.
-- **`ghost/post`**: Represents a post in Ghost CMS. Contains `id`, `title`, `slug`, `html`, `status`, `feature_image`, `published_at`, `tags` (array of `ghost/tag`), metadata fields, etc.
+- **`ghost/post`**: Represents a post in Ghost CMS. Contains `id`, `title`, `slug`, `html`, `status`, `feature_image`, `published_at`, `tags`, metadata fields.
+- **`ghost/page`**: Represents a page in Ghost CMS. Similar to posts but without tag support.
+- **`ghost/member`**: Represents a member/subscriber in Ghost CMS. Contains `id`, `email`, `name`, `status`, `labels`, subscriptions.
+- **`ghost/newsletter`**: Represents a newsletter in Ghost CMS. Contains `id`, `name`, `description`, sender settings.
+- **`ghost/tier`**: Represents a membership tier in Ghost CMS. Contains `id`, `name`, `description`, pricing, benefits.
 
-_(Refer to `src/mcp_server.js` for full resource schemas.)_
+_(Refer to `src/mcp_server_improved.js` for full resource schemas.)_
 
 ### Tools Defined
 
-Below is a guide for using the available MCP tools:
+The Ghost MCP Server provides **34 tools** across 7 resource types. Below is a comprehensive guide:
 
-1.  **`ghost_create_tag`**
-    - **Purpose**: Creates a new tag.
-    - **Inputs**:
-      - `name` (string, required): The name for the new tag.
-      - `description` (string, optional): A description for the tag.
-      - `slug` (string, optional): A URL-friendly slug (auto-generated if omitted).
-    - **Output**: The created `ghost/tag` resource.
+---
 
-2.  **`ghost_get_tags`**
-    - **Purpose**: Retrieves existing tags. Can be used to find a tag ID or check if a tag exists before creation.
-    - **Inputs**:
-      - `name` (string, optional): Filter tags by exact name.
-    - **Output**: An array of `ghost/tag` resources matching the filter (or all tags if no name is provided).
+#### Tag Tools (5 tools)
 
-3.  **`ghost_upload_image`**
-    - **Purpose**: Uploads an image to Ghost for use, typically as a post's featured image.
-    - **Inputs**:
-      - `imageUrl` (string URL, required): A publicly accessible URL of the image to upload.
-      - `alt` (string, optional): Alt text for the image (a default is generated if omitted).
-    - **Output**: An object containing the final `url` (the Ghost URL for the uploaded image) and the determined `alt` text.
-    - **Usage Note**: Call this tool first to get a Ghost image URL before creating a post that needs a featured image.
+1.  **`ghost_create_tag`** - Creates a new tag.
+    - `name` (string, required): The name for the new tag.
+    - `description` (string, optional): A description for the tag.
+    - `slug` (string, optional): A URL-friendly slug (auto-generated if omitted).
 
-4.  **`ghost_create_post`**
-    - **Purpose**: Creates a new post.
-    - **Inputs**:
-      - `title` (string, required): The title of the post.
-      - `html` (string, required): The main content of the post in HTML format.
-      - `status` (string, optional, default: 'draft'): Set status to 'draft', 'published', or 'scheduled'.
-      - `tags` (array of strings, optional): List of tag _names_ to associate. Tags will be looked up or created automatically.
-      - `published_at` (string ISO date, optional): Date/time to publish or schedule. Required if status is 'scheduled'.
-      - `custom_excerpt` (string, optional): A short summary.
-      - `feature_image` (string URL, optional): The URL of the featured image (use the `url` output from `ghost_upload_image`).
-      - `feature_image_alt` (string, optional): Alt text for the feature image.
-      - `feature_image_caption` (string, optional): Caption for the feature image.
-      - `meta_title` (string, optional): Custom SEO title.
-      - `meta_description` (string, optional): Custom SEO description.
-    - **Output**: The created `ghost/post` resource.
+2.  **`ghost_get_tags`** - Retrieves a list of tags with optional filtering.
+    - `name` (string, optional): Filter tags by exact name.
+    - `limit`, `page`, `order` (optional): Pagination and sorting options.
+
+3.  **`ghost_get_tag`** - Retrieves a single tag by ID or slug.
+    - `id` (string, optional): The ID of the tag.
+    - `slug` (string, optional): The slug of the tag.
+    - `include` (string, optional): Additional resources to include (e.g., "count.posts").
+
+4.  **`ghost_update_tag`** - Updates an existing tag.
+    - `id` (string, required): The ID of the tag to update.
+    - `name`, `description`, `slug` (optional): Fields to update.
+
+5.  **`ghost_delete_tag`** - Deletes a tag permanently.
+    - `id` (string, required): The ID of the tag to delete.
+
+---
+
+#### Image Tools (1 tool)
+
+6.  **`ghost_upload_image`** - Downloads, processes, and uploads an image to Ghost.
+    - `imageUrl` (string, required): A publicly accessible URL of the image.
+    - `alt` (string, optional): Alt text (auto-generated if omitted).
+    - **Returns**: `{ url, alt }` - the Ghost URL and alt text.
+    - **Usage Note**: Call this first to get a Ghost image URL before creating posts/pages.
+
+---
+
+#### Post Tools (6 tools)
+
+7.  **`ghost_create_post`** - Creates a new post.
+    - `title` (string, required): The title of the post.
+    - `html` (string, required): The main content in HTML format.
+    - `status` (string, optional): 'draft', 'published', or 'scheduled'.
+    - `tags` (array, optional): Tag names (auto-created if missing).
+    - `published_at` (ISO date, optional): Required if status is 'scheduled'.
+    - `feature_image`, `feature_image_alt`, `feature_image_caption` (optional): Featured image settings.
+    - `custom_excerpt`, `meta_title`, `meta_description` (optional): SEO fields.
+
+8.  **`ghost_get_posts`** - Retrieves posts with pagination and filtering.
+    - `status` (optional): Filter by 'published', 'draft', 'scheduled', or 'all'.
+    - `limit`, `page`, `filter`, `order`, `include` (optional): Query options.
+
+9.  **`ghost_get_post`** - Retrieves a single post by ID or slug.
+    - `id` (string, optional): The ID of the post.
+    - `slug` (string, optional): The slug of the post.
+    - `include` (string, optional): Relations to include (e.g., "tags,authors").
+
+10. **`ghost_search_posts`** - Searches posts by title/content.
+    - `query` (string, required): Search query.
+    - `status` (optional): Filter by status.
+    - `limit` (optional): Max results (1-50).
+
+11. **`ghost_update_post`** - Updates an existing post.
+    - `id` (string, required): The ID of the post to update.
+    - All other post fields are optional.
+
+12. **`ghost_delete_post`** - Deletes a post permanently.
+    - `id` (string, required): The ID of the post to delete.
+
+---
+
+#### Page Tools (6 tools)
+
+13. **`ghost_create_page`** - Creates a new page (pages do NOT support tags).
+    - `title` (string, required): The title of the page.
+    - `html` (string, required): The main content in HTML format.
+    - `status`, `published_at`, `feature_image`, SEO fields (optional).
+
+14. **`ghost_get_pages`** - Retrieves pages with pagination and filtering.
+    - `limit`, `page`, `filter`, `order`, `include` (optional): Query options.
+
+15. **`ghost_get_page`** - Retrieves a single page by ID or slug.
+    - `id` (string, optional): The ID of the page.
+    - `slug` (string, optional): The slug of the page.
+
+16. **`ghost_search_pages`** - Searches pages by title/content.
+    - `query` (string, required): Search query.
+    - `status`, `limit` (optional): Filtering options.
+
+17. **`ghost_update_page`** - Updates an existing page.
+    - `id` (string, required): The ID of the page to update.
+
+18. **`ghost_delete_page`** - Deletes a page permanently.
+    - `id` (string, required): The ID of the page to delete.
+
+---
+
+#### Member Tools (6 tools)
+
+19. **`ghost_create_member`** - Creates a new member/subscriber.
+    - `email` (string, required): The member's email address.
+    - `name` (string, optional): The member's name.
+    - `note` (string, optional): Internal notes about the member.
+    - `labels` (array, optional): Labels to assign.
+    - `newsletters` (array, optional): Newsletter IDs to subscribe to.
+
+20. **`ghost_get_members`** - Retrieves members with pagination and filtering.
+    - `limit`, `page`, `filter`, `order`, `include` (optional): Query options.
+
+21. **`ghost_get_member`** - Retrieves a single member by ID or email.
+    - `id` (string, optional): The ID of the member.
+    - `email` (string, optional): The email of the member.
+
+22. **`ghost_search_members`** - Searches members by name or email.
+    - `query` (string, required): Search query.
+    - `limit` (optional): Max results (1-50).
+
+23. **`ghost_update_member`** - Updates an existing member.
+    - `id` (string, required): The ID of the member to update.
+    - `email`, `name`, `note`, `labels`, `newsletters` (optional).
+
+24. **`ghost_delete_member`** - Deletes a member permanently.
+    - `id` (string, required): The ID of the member to delete.
+
+---
+
+#### Newsletter Tools (5 tools)
+
+25. **`ghost_create_newsletter`** - Creates a new newsletter.
+    - `name` (string, required): The newsletter name.
+    - `description` (string, optional): Newsletter description.
+    - `sender_name`, `sender_email` (optional): Sender configuration.
+    - `subscribe_on_signup` (boolean, optional): Auto-subscribe new members.
+
+26. **`ghost_get_newsletters`** - Retrieves all newsletters with filtering.
+    - `limit`, `page`, `filter`, `order` (optional): Query options.
+
+27. **`ghost_get_newsletter`** - Retrieves a single newsletter by ID.
+    - `id` (string, required): The ID of the newsletter.
+
+28. **`ghost_update_newsletter`** - Updates an existing newsletter.
+    - `id` (string, required): The ID of the newsletter to update.
+    - `name`, `description`, sender settings (optional).
+
+29. **`ghost_delete_newsletter`** - Deletes a newsletter permanently.
+    - `id` (string, required): The ID of the newsletter to delete.
+
+---
+
+#### Tier Tools (5 tools)
+
+30. **`ghost_create_tier`** - Creates a new membership tier.
+    - `name` (string, required): The tier name.
+    - `description` (string, optional): Tier description.
+    - `monthly_price`, `yearly_price` (number, optional): Pricing in cents.
+    - `currency` (string, optional): 3-letter currency code (e.g., "USD").
+    - `benefits` (array, optional): List of tier benefits.
+
+31. **`ghost_get_tiers`** - Retrieves all tiers with filtering.
+    - `type` (optional): Filter by 'free' or 'paid'.
+    - `limit`, `page`, `filter` (optional): Query options.
+
+32. **`ghost_get_tier`** - Retrieves a single tier by ID.
+    - `id` (string, required): The ID of the tier.
+
+33. **`ghost_update_tier`** - Updates an existing tier.
+    - `id` (string, required): The ID of the tier to update.
+    - Pricing, benefits, and other tier fields (optional).
+
+34. **`ghost_delete_tier`** - Deletes a tier permanently.
+    - `id` (string, required): The ID of the tier to delete.
 
 ## Installation
 
@@ -115,12 +253,30 @@ ghost-mcp-server
 # Or using npx
 npx @jgardner04/ghost-mcp-server
 
-# Run the MCP server with transport options
+# Run the improved MCP server (recommended for MCP clients)
 ghost-mcp
 
 # Or with specific transport
 MCP_TRANSPORT=stdio ghost-mcp
+MCP_TRANSPORT=http ghost-mcp
+MCP_TRANSPORT=websocket ghost-mcp
 ```
+
+### Available npm Scripts
+
+For development, the following scripts are available:
+
+| Script                        | Description                          |
+| ----------------------------- | ------------------------------------ |
+| `npm start`                   | Start Express REST API + MCP servers |
+| `npm run start:mcp`           | Start improved MCP server only       |
+| `npm run start:mcp:stdio`     | MCP server with stdio transport      |
+| `npm run start:mcp:http`      | MCP server with HTTP/SSE transport   |
+| `npm run start:mcp:websocket` | MCP server with WebSocket transport  |
+| `npm test`                    | Run tests                            |
+| `npm run test:coverage`       | Run tests with coverage report       |
+| `npm run lint`                | Check code for linting errors        |
+| `npm run lint:fix`            | Auto-fix linting errors              |
 
 ## Development Setup
 
@@ -160,6 +316,6 @@ For contributors or advanced users who want to modify the source code:
 
 - **401 Unauthorized Error from Ghost:** Check that your `GHOST_ADMIN_API_URL` and `GHOST_ADMIN_API_KEY` in the `.env` file are correct and that the Custom Integration in Ghost is enabled.
 - **MCP Server Connection Issues:** Ensure the MCP server is running (check console logs). Verify the port (`MCP_PORT`, default 3001) is not blocked by a firewall. Check that the client is connecting to the correct address and port.
-- **Tool Execution Errors:** Check the server console logs for detailed error messages from the specific tool implementation (e.g., `ghost_create_post`, `ghost_upload_image`). Common issues include invalid input (check against tool schemas in `src/mcp_server.js` and the README guide), problems downloading from `imageUrl`, image processing failures, or upstream errors from the Ghost API.
+- **Tool Execution Errors:** Check the server console logs for detailed error messages from the specific tool implementation. Common issues include invalid input (check against tool schemas in `src/mcp_server_improved.js` and the README guide), problems downloading from `imageUrl`, image processing failures, or upstream errors from the Ghost API.
 - **Command Not Found:** If `ghost-mcp-server` or `ghost-mcp` commands are not found after global installation, ensure npm's global bin directory is in your PATH. You can find it with `npm bin -g`.
 - **Dependency Installation Issues:** Ensure you have a compatible Node.js version installed (Node.js 18.0.0 or higher - see Requirements section). For global installation issues, try `npm install -g @jgardner04/ghost-mcp-server --force`. For development setup, try removing `node_modules` and `package-lock.json` and running `npm install` again.

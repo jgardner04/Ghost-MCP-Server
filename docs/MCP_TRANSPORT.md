@@ -1,6 +1,19 @@
 # MCP Server Transport Configuration
 
-The improved MCP server implementation supports multiple transport layers to accommodate different client types and use cases.
+The improved MCP server (`src/mcp_server_improved.js`) supports multiple transport layers to accommodate different client types and use cases.
+
+## Quick Start
+
+```bash
+# Using CLI entry point (recommended)
+ghost-mcp                    # Default stdio transport
+
+# Using npm scripts
+npm run start:mcp            # Default transport
+npm run start:mcp:stdio      # Stdio transport
+npm run start:mcp:http       # HTTP/SSE transport
+npm run start:mcp:websocket  # WebSocket transport
+```
 
 ## Transport Options
 
