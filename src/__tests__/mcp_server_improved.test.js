@@ -394,10 +394,11 @@ describe('mcp_server_improved - ghost_get_post tool', () => {
     expect(tool).toBeDefined();
     expect(tool.description).toContain('post');
     expect(tool.schema).toBeDefined();
-    // Zod schemas store field definitions in schema.shape
-    expect(tool.schema.shape.id).toBeDefined();
-    expect(tool.schema.shape.slug).toBeDefined();
-    expect(tool.schema.shape.include).toBeDefined();
+    // ghost_get_post uses a refined schema, access via _def.schema.shape
+    const shape = tool.schema._def.schema.shape;
+    expect(shape.id).toBeDefined();
+    expect(shape.slug).toBeDefined();
+    expect(shape.include).toBeDefined();
   });
 
   it('should retrieve post by ID', async () => {
@@ -1027,10 +1028,11 @@ describe('ghost_get_tag', () => {
 
   it('should have correct schema with id and slug as optional', () => {
     const tool = mockTools.get('ghost_get_tag');
-    // Zod schemas store field definitions in schema.shape
-    expect(tool.schema.shape.id).toBeDefined();
-    expect(tool.schema.shape.slug).toBeDefined();
-    expect(tool.schema.shape.include).toBeDefined();
+    // ghost_get_tag uses a refined schema, access via _def.schema.shape
+    const shape = tool.schema._def.schema.shape;
+    expect(shape.id).toBeDefined();
+    expect(shape.slug).toBeDefined();
+    expect(shape.include).toBeDefined();
   });
 
   it('should retrieve tag by ID', async () => {
@@ -1089,7 +1091,7 @@ describe('ghost_get_tag', () => {
     const result = await tool.handler({});
 
     expect(result.content[0].type).toBe('text');
-    expect(result.content[0].text).toContain('Either id or slug must be provided');
+    expect(result.content[0].text).toContain('Either id or slug is required');
     expect(result.isError).toBe(true);
   });
 

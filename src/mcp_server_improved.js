@@ -82,11 +82,18 @@ const server = new McpServer({
 
 // --- Schema Definitions for Tools ---
 const getTagsSchema = tagQuerySchema.partial();
-const getTagSchema = z.object({
-  id: ghostIdSchema.optional().describe('The ID of the tag to retrieve.'),
-  slug: z.string().optional().describe('The slug of the tag to retrieve.'),
-  include: z.string().optional().describe('Additional resources to include (e.g., "count.posts").'),
-});
+const getTagSchema = z
+  .object({
+    id: ghostIdSchema.optional().describe('The ID of the tag to retrieve.'),
+    slug: z.string().optional().describe('The slug of the tag to retrieve.'),
+    include: z
+      .string()
+      .optional()
+      .describe('Additional resources to include (e.g., "count.posts").'),
+  })
+  .refine((data) => data.id || data.slug, {
+    message: 'Either id or slug is required to retrieve a tag',
+  });
 const updateTagInputSchema = updateTagSchema.extend({ id: ghostIdSchema });
 const deleteTagSchema = z.object({ id: ghostIdSchema });
 
@@ -187,10 +194,6 @@ server.tool(
 
     console.error(`Executing tool: ghost_get_tag`);
     try {
-      if (!id && !slug) {
-        throw new Error('Either id or slug must be provided');
-      }
-
       await loadServices();
 
       // If slug is provided, use the slug/slug-name format
@@ -409,14 +412,18 @@ const getPostsSchema = postQuerySchema.extend({
     .optional()
     .describe('Filter posts by status. Options: published, draft, scheduled, all.'),
 });
-const getPostSchema = z.object({
-  id: ghostIdSchema.optional().describe('The ID of the post to retrieve.'),
-  slug: z.string().optional().describe('The slug of the post to retrieve.'),
-  include: z
-    .string()
-    .optional()
-    .describe('Comma-separated list of relations to include (e.g., "tags,authors").'),
-});
+const getPostSchema = z
+  .object({
+    id: ghostIdSchema.optional().describe('The ID of the post to retrieve.'),
+    slug: z.string().optional().describe('The slug of the post to retrieve.'),
+    include: z
+      .string()
+      .optional()
+      .describe('Comma-separated list of relations to include (e.g., "tags,authors").'),
+  })
+  .refine((data) => data.id || data.slug, {
+    message: 'Either id or slug is required to retrieve a post',
+  });
 const searchPostsSchema = z.object({
   query: z.string().min(1).describe('Search query to find in post titles.'),
   status: z
@@ -534,11 +541,6 @@ server.tool(
 
     console.error(`Executing tool: ghost_get_post`);
     try {
-      // Validate that at least one of id or slug is provided
-      if (!input.id && !input.slug) {
-        throw new Error('Either id or slug is required to retrieve a post');
-      }
-
       await loadServices();
 
       // Build options object
