@@ -54,6 +54,32 @@ All code written for this project MUST follow OWASP security best practices to p
 - `helmet` - HTTP security headers
 - `joi` - Legacy validation (used in some REST endpoints)
 
+## Git Workflow (Required)
+
+**ALWAYS create a feature branch before making ANY code changes.**
+
+```bash
+git checkout main
+git pull origin main
+git checkout -b <type>/issue-<number>-<description>
+```
+
+### Branch Naming Convention
+
+- `feature/` - New features (e.g., `feature/issue-42-add-pagination`)
+- `fix/` - Bug fixes (e.g., `fix/issue-15-image-upload-error`)
+- `docs/` - Documentation changes (e.g., `docs/update-api-reference`)
+- `refactor/` - Code refactoring (e.g., `refactor/issue-30-simplify-auth`)
+- `test/` - Test additions or fixes (e.g., `test/add-member-service-tests`)
+
+### Workflow Steps
+
+1. **Create branch** before writing any code
+2. **Make changes** on the feature branch
+3. **Commit** with clear, descriptive messages
+4. **Push** to remote and create a pull request
+5. **Never commit directly to `main`** - all changes must go through PRs
+
 ## Project Overview
 
 Ghost MCP Server - A Model Context Protocol (MCP) server that enables AI clients to interact with Ghost CMS instances via the Ghost Admin API. The project provides both an Express REST API server (port 3000) and an MCP server (port 3001) for managing Ghost blog content.

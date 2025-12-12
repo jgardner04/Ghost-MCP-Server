@@ -14,6 +14,28 @@ When reporting a bug, please include:
 - What actually happened.
 - Your environment details (e.g., Node.js version, OS).
 
+## Development Workflow
+
+Before starting any work, always create a feature branch:
+
+```bash
+git checkout main
+git pull origin main
+git checkout -b <type>/issue-<number>-<description>
+```
+
+### Branch Naming Convention
+
+| Prefix      | Use Case                                      | Example                              |
+| ----------- | --------------------------------------------- | ------------------------------------ |
+| `feature/`  | New features                                  | `feature/issue-42-add-pagination`    |
+| `fix/`      | Bug fixes                                     | `fix/issue-15-image-upload-error`    |
+| `docs/`     | Documentation changes                         | `docs/update-api-reference`          |
+| `refactor/` | Code refactoring                              | `refactor/issue-30-simplify-auth`    |
+| `test/`     | Test additions or fixes                       | `test/add-member-service-tests`      |
+
+**Important:** Never commit directly to `main`. All changes must go through pull requests.
+
 ## Submitting Pull Requests
 
 1.  **Fork the repository** and create your branch from `main`.
