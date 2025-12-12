@@ -40,6 +40,13 @@ export class ValidationError extends BaseError {
     this.errors = errors;
   }
 
+  toJSON() {
+    return {
+      ...super.toJSON(),
+      ...(this.errors.length > 0 && { errors: this.errors }),
+    };
+  }
+
   static fromJoi(joiError) {
     const errors = joiError.details.map((detail) => ({
       field: detail.path.join('.'),
