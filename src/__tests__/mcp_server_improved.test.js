@@ -91,13 +91,19 @@ vi.mock('axios', () => ({
 }));
 
 // Mock fs
-const mockUnlink = vi.fn((path, cb) => cb(null));
 const mockCreateWriteStream = vi.fn();
 vi.mock('fs', () => ({
   default: {
-    unlink: (...args) => mockUnlink(...args),
     createWriteStream: (...args) => mockCreateWriteStream(...args),
   },
+}));
+
+// Mock tempFileManager
+const mockTrackTempFile = vi.fn();
+const mockCleanupTempFiles = vi.fn().mockResolvedValue(undefined);
+vi.mock('../utils/tempFileManager.js', () => ({
+  trackTempFile: (...args) => mockTrackTempFile(...args),
+  cleanupTempFiles: (...args) => mockCleanupTempFiles(...args),
 }));
 
 // Mock os

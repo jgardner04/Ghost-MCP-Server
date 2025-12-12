@@ -10,6 +10,7 @@ import os from 'os';
 import crypto from 'crypto';
 import { ValidationError } from './errors/index.js';
 import { validateToolInput } from './utils/validation.js';
+import { trackTempFile, cleanupTempFiles } from './utils/tempFileManager.js';
 import {
   createTagSchema,
   updateTagSchema,
@@ -357,10 +358,16 @@ server.tool(
         writer.on('finish', resolve);
         writer.on('error', reject);
       });
+      // Track temp file for cleanup on process exit
+      trackTempFile(downloadedPath);
       console.error(`Downloaded image to temporary path: ${downloadedPath}`);
 
       // 3. Process the image
       processedPath = await imageProcessingService.processImage(downloadedPath, tempDir);
+      // Track processed file for cleanup on process exit
+      if (processedPath !== downloadedPath) {
+        trackTempFile(processedPath);
+      }
       console.error(`Processed image path: ${processedPath}`);
 
       // 4. Determine Alt Text
@@ -388,17 +395,8 @@ server.tool(
         isError: true,
       };
     } finally {
-      // Cleanup temporary files
-      if (downloadedPath) {
-        fs.unlink(downloadedPath, (err) => {
-          if (err) console.error('Error deleting temporary downloaded file:', downloadedPath, err);
-        });
-      }
-      if (processedPath && processedPath !== downloadedPath) {
-        fs.unlink(processedPath, (err) => {
-          if (err) console.error('Error deleting temporary processed file:', processedPath, err);
-        });
-      }
+      // Cleanup temporary files with proper async/await
+      await cleanupTempFiles([downloadedPath, processedPath], console);
     }
   }
 );

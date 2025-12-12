@@ -83,13 +83,19 @@ vi.mock('axios', () => ({
 }));
 
 // Mock fs
-const mockUnlink = vi.fn((path, cb) => cb(null));
 const mockCreateWriteStream = vi.fn();
 vi.mock('fs', () => ({
   default: {
-    unlink: (...args) => mockUnlink(...args),
     createWriteStream: (...args) => mockCreateWriteStream(...args),
   },
+}));
+
+// Mock tempFileManager
+const mockTrackTempFile = vi.fn();
+const mockCleanupTempFiles = vi.fn().mockResolvedValue(undefined);
+vi.mock('../utils/tempFileManager.js', () => ({
+  trackTempFile: (...args) => mockTrackTempFile(...args),
+  cleanupTempFiles: (...args) => mockCleanupTempFiles(...args),
 }));
 
 // Mock os
@@ -251,7 +257,7 @@ describe('mcp_server', () => {
       const input = { imageUrl: 'https://example.com/image.jpg' };
       await toolImplementations.ghost_upload_image(input);
 
-      expect(mockUnlink).toHaveBeenCalled();
+      expect(mockCleanupTempFiles).toHaveBeenCalled();
     });
 
     it('should cleanup temporary files on error', async () => {
@@ -260,7 +266,7 @@ describe('mcp_server', () => {
       const input = { imageUrl: 'https://example.com/image.jpg' };
       await expect(toolImplementations.ghost_upload_image(input)).rejects.toThrow();
 
-      expect(mockUnlink).toHaveBeenCalled();
+      expect(mockCleanupTempFiles).toHaveBeenCalled();
     });
 
     it('should handle download errors', async () => {
