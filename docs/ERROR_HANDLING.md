@@ -270,14 +270,68 @@ validators.validateTagData(data); // Throws ValidationError
 validators.validateImagePath(path); // Throws ValidationError or NotFoundError
 ```
 
-### 3. XSS Prevention
+### Zod Validation Integration
 
-Basic HTML sanitization for post content:
+The MCP tools use Zod schemas for input validation. Zod errors are automatically converted to `ValidationError` instances:
 
 ```javascript
-// Removes script tags and event handlers
-dataWithDefaults.html = sanitizeHTML(dataWithDefaults.html);
+import { ValidationError } from './errors/index.js';
+import { createPostSchema } from './schemas/index.js';
+
+try {
+  const data = createPostSchema.parse(input);
+} catch (error) {
+  if (error.name === 'ZodError') {
+    // Convert Zod error to ValidationError
+    const validationError = ValidationError.fromZod(error, 'Post creation');
+    // Returns structured error with field-level details
+  }
+}
 ```
+
+The `validateToolInput` utility handles this automatically:
+
+```javascript
+import { validateToolInput } from './utils/validation.js';
+
+const validation = validateToolInput(createPostSchema, rawInput, 'ghost_create_post');
+
+if (!validation.success) {
+  // Returns formatted MCP error response
+  return validation.errorResponse;
+}
+
+// Use validated data
+const data = validation.data;
+```
+
+**Zod Error Response Format:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"error\":\"ValidationError\",\"message\":\"Invalid input for ghost_create_post\",\"details\":[{\"field\":\"title\",\"message\":\"Title cannot be empty\"},{\"field\":\"html\",\"message\":\"HTML content cannot be empty\"}]}"
+    }
+  ],
+  "isError": true
+}
+```
+
+### 3. XSS Prevention
+
+HTML sanitization is integrated into the Zod schema layer for defense-in-depth:
+
+```javascript
+import { htmlContentSchema } from './schemas/common.js';
+
+// Sanitization happens automatically during validation
+const sanitizedHtml = htmlContentSchema.parse(userProvidedHtml);
+// Script tags, event handlers, and dangerous attributes are removed
+```
+
+The `htmlContentSchema` uses `sanitize-html` with a strict allowlist of safe tags and attributes. See [Schema Validation](./SCHEMA_VALIDATION.md) for details.
 
 ### 4. Rate Limiting
 
