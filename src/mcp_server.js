@@ -14,6 +14,7 @@ import os from 'os';
 import { v4 as uuidv4 } from 'uuid';
 import { validateImageUrl, createSecureAxiosConfig } from './utils/urlValidator.js';
 import { createContextLogger } from './utils/logger.js';
+import { trackTempFile, cleanupTempFiles } from './utils/tempFileManager.js';
 
 // Load environment variables (might be redundant if loaded elsewhere, but safe)
 dotenv.config();
@@ -300,11 +301,17 @@ const uploadImageTool = new Tool({
         writer.on('finish', resolve);
         writer.on('error', reject);
       });
+      // Track temp file for cleanup on process exit
+      trackTempFile(downloadedPath);
       logger.fileOperation('download', downloadedPath);
 
       // --- 3. Process the image (Optional) ---
       // Using the service from subtask 4.2
       processedPath = await processImage(downloadedPath, tempDir);
+      // Track processed file for cleanup on process exit
+      if (processedPath !== downloadedPath) {
+        trackTempFile(processedPath);
+      }
       logger.fileOperation('process', processedPath);
 
       // --- 4. Determine Alt Text ---
@@ -327,25 +334,8 @@ const uploadImageTool = new Tool({
       // Add more specific error handling (download failed, processing failed, upload failed)
       throw new Error(`Failed to upload image from URL ${imageUrl}: ${error.message}`);
     } finally {
-      // --- 7. Cleanup temporary files ---
-      if (downloadedPath) {
-        fs.unlink(downloadedPath, (err) => {
-          if (err)
-            logger.warn('Failed to delete temporary downloaded file', {
-              file: path.basename(downloadedPath),
-              error: err.message,
-            });
-        });
-      }
-      if (processedPath && processedPath !== downloadedPath) {
-        fs.unlink(processedPath, (err) => {
-          if (err)
-            logger.warn('Failed to delete temporary processed file', {
-              file: path.basename(processedPath),
-              error: err.message,
-            });
-        });
-      }
+      // --- 7. Cleanup temporary files with proper async/await ---
+      await cleanupTempFiles([downloadedPath, processedPath], logger);
     }
   },
 });

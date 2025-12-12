@@ -122,6 +122,76 @@ describe('Error Handling System', () => {
         type: 'number.base',
       });
     });
+
+    it('should create validation error from Zod error', () => {
+      const zodError = {
+        errors: [
+          {
+            path: ['user', 'email'],
+            message: 'Invalid email',
+            code: 'invalid_string',
+          },
+          {
+            path: ['age'],
+            message: 'Expected number, received string',
+            code: 'invalid_type',
+          },
+        ],
+      };
+
+      const error = ValidationError.fromZod(zodError);
+
+      expect(error.message).toBe('Validation failed');
+      expect(error.errors).toHaveLength(2);
+      expect(error.errors[0]).toEqual({
+        field: 'user.email',
+        message: 'Invalid email',
+        type: 'invalid_string',
+      });
+      expect(error.errors[1]).toEqual({
+        field: 'age',
+        message: 'Expected number, received string',
+        type: 'invalid_type',
+      });
+    });
+
+    it('should create validation error from Zod error with context', () => {
+      const zodError = {
+        errors: [
+          {
+            path: ['name'],
+            message: 'String must contain at least 1 character(s)',
+            code: 'too_small',
+          },
+        ],
+      };
+
+      const error = ValidationError.fromZod(zodError, 'Tag creation');
+
+      expect(error.message).toBe('Tag creation: Validation failed');
+      expect(error.errors).toHaveLength(1);
+      expect(error.errors[0]).toEqual({
+        field: 'name',
+        message: 'String must contain at least 1 character(s)',
+        type: 'too_small',
+      });
+    });
+
+    it('should create validation error from Zod error with empty path', () => {
+      const zodError = {
+        errors: [
+          {
+            path: [],
+            message: 'Invalid input',
+            code: 'custom',
+          },
+        ],
+      };
+
+      const error = ValidationError.fromZod(zodError);
+
+      expect(error.errors[0].field).toBe('');
+    });
   });
 
   describe('AuthenticationError', () => {

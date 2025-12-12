@@ -1,9 +1,53 @@
 import { z } from 'zod';
+import sanitizeHtml from 'sanitize-html';
 
 /**
  * Common Zod schemas for validation across all Ghost MCP resources.
  * These validators provide consistent validation and security controls.
  */
+
+/**
+ * HTML sanitization configuration
+ * Prevents XSS attacks by allowing only safe HTML tags and attributes
+ */
+const htmlSanitizeConfig = {
+  allowedTags: [
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'blockquote',
+    'p',
+    'a',
+    'ul',
+    'ol',
+    'nl',
+    'li',
+    'b',
+    'i',
+    'strong',
+    'em',
+    'strike',
+    'code',
+    'hr',
+    'br',
+    'div',
+    'span',
+    'img',
+    'pre',
+    'figure',
+    'figcaption',
+  ],
+  allowedAttributes: {
+    a: ['href', 'name', 'target', 'rel', 'title'],
+    img: ['src', 'alt', 'title', 'width', 'height'],
+    '*': ['class', 'id'],
+  },
+  allowedSchemes: ['http', 'https', 'mailto'],
+  allowedSchemesAppliedToAttributes: ['href', 'src'],
+};
 
 // ----- Basic Type Validators -----
 
@@ -106,10 +150,13 @@ export const visibilitySchema = z.enum(['public', 'members', 'paid', 'tiers'], {
 
 /**
  * HTML content validation schema
- * Validates that content is a non-empty string
- * Note: HTML sanitization should be performed separately
+ * Validates that content is a non-empty string and sanitizes HTML to prevent XSS
+ * Uses transform to sanitize HTML at schema level (defense-in-depth)
  */
-export const htmlContentSchema = z.string().min(1, 'HTML content cannot be empty');
+export const htmlContentSchema = z
+  .string()
+  .min(1, 'HTML content cannot be empty')
+  .transform((html) => sanitizeHtml(html, htmlSanitizeConfig));
 
 /**
  * Title validation schema

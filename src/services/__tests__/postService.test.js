@@ -26,7 +26,11 @@ describe('postService', () => {
     vi.clearAllMocks();
   });
 
-  describe('createPostService - validation', () => {
+  // NOTE: Input validation tests have been moved to MCP layer tests.
+  // The postService no longer performs Joi validation - input is validated
+  // by Zod schemas at the MCP tool layer (see mcp_server_improved.js).
+
+  describe('createPostService - basic functionality', () => {
     it('should accept valid input and create a post', async () => {
       const validInput = {
         title: 'Test Post',
@@ -47,41 +51,6 @@ describe('postService', () => {
       );
     });
 
-    it('should reject input with missing title', async () => {
-      const invalidInput = {
-        html: '<p>Test content</p>',
-      };
-
-      await expect(createPostService(invalidInput)).rejects.toThrow(
-        'Invalid post input: "title" is required'
-      );
-      expect(createPost).not.toHaveBeenCalled();
-    });
-
-    it('should reject input with missing html', async () => {
-      const invalidInput = {
-        title: 'Test Post',
-      };
-
-      await expect(createPostService(invalidInput)).rejects.toThrow(
-        'Invalid post input: "html" is required'
-      );
-      expect(createPost).not.toHaveBeenCalled();
-    });
-
-    it('should reject input with invalid status', async () => {
-      const invalidInput = {
-        title: 'Test Post',
-        html: '<p>Content</p>',
-        status: 'invalid-status',
-      };
-
-      await expect(createPostService(invalidInput)).rejects.toThrow(
-        'Invalid post input: "status" must be one of [draft, published, scheduled]'
-      );
-      expect(createPost).not.toHaveBeenCalled();
-    });
-
     it('should accept valid status values', async () => {
       const statuses = ['draft', 'published', 'scheduled'];
       createPost.mockResolvedValue({ id: '1', title: 'Test' });
@@ -98,39 +67,6 @@ describe('postService', () => {
         expect(createPost).toHaveBeenCalledWith(expect.objectContaining({ status }));
         vi.clearAllMocks();
       }
-    });
-
-    it('should validate tags array with maximum length', async () => {
-      const invalidInput = {
-        title: 'Test Post',
-        html: '<p>Content</p>',
-        tags: Array(11).fill('tag'), // 11 tags exceeds max of 10
-      };
-
-      await expect(createPostService(invalidInput)).rejects.toThrow('Invalid post input:');
-      expect(createPost).not.toHaveBeenCalled();
-    });
-
-    it('should validate tag string max length', async () => {
-      const invalidInput = {
-        title: 'Test Post',
-        html: '<p>Content</p>',
-        tags: ['a'.repeat(51)], // 51 chars exceeds max of 50
-      };
-
-      await expect(createPostService(invalidInput)).rejects.toThrow('Invalid post input:');
-      expect(createPost).not.toHaveBeenCalled();
-    });
-
-    it('should validate feature_image is a valid URI', async () => {
-      const invalidInput = {
-        title: 'Test Post',
-        html: '<p>Content</p>',
-        feature_image: 'not-a-valid-url',
-      };
-
-      await expect(createPostService(invalidInput)).rejects.toThrow('Invalid post input:');
-      expect(createPost).not.toHaveBeenCalled();
     });
 
     it('should accept valid feature_image URI', async () => {
@@ -217,27 +153,7 @@ describe('postService', () => {
       );
     });
 
-    it('should reject tags array with non-string values', async () => {
-      const input = {
-        title: 'Test Post',
-        html: '<p>Content</p>',
-        tags: [null, 'valid-tag'],
-      };
-
-      await expect(createPostService(input)).rejects.toThrow('Invalid post input:');
-      expect(createPost).not.toHaveBeenCalled();
-    });
-
-    it('should reject tags array with empty strings', async () => {
-      const input = {
-        title: 'Test Post',
-        html: '<p>Content</p>',
-        tags: ['', 'valid-tag'],
-      };
-
-      await expect(createPostService(input)).rejects.toThrow('Invalid post input:');
-      expect(createPost).not.toHaveBeenCalled();
-    });
+    // NOTE: Tag validation tests (non-string values, empty strings) moved to MCP layer
 
     it('should trim whitespace from tag names', async () => {
       const input = {
@@ -383,15 +299,7 @@ describe('postService', () => {
       expect(calledDescription).toBe('a'.repeat(497) + '...');
     });
 
-    it('should reject empty HTML content', async () => {
-      const input = {
-        title: 'Test Post',
-        html: '',
-      };
-
-      await expect(createPostService(input)).rejects.toThrow('Invalid post input:');
-      expect(createPost).not.toHaveBeenCalled();
-    });
+    // NOTE: Empty HTML validation test moved to MCP layer
 
     it('should strip HTML tags and truncate when generating meta_description', async () => {
       const longHtml = '<p>' + 'word '.repeat(200) + '</p>';

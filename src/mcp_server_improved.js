@@ -8,6 +8,31 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
+import { ValidationError } from './errors/index.js';
+import { validateToolInput } from './utils/validation.js';
+import { trackTempFile, cleanupTempFiles } from './utils/tempFileManager.js';
+import {
+  createTagSchema,
+  updateTagSchema,
+  tagQuerySchema,
+  ghostIdSchema,
+  emailSchema,
+  createPostSchema,
+  updatePostSchema,
+  postQuerySchema,
+  createMemberSchema,
+  updateMemberSchema,
+  memberQuerySchema,
+  createTierSchema,
+  updateTierSchema,
+  tierQuerySchema,
+  createNewsletterSchema,
+  updateNewsletterSchema,
+  newsletterQuerySchema,
+  createPageSchema,
+  updatePageSchema,
+  pageQuerySchema,
+} from './schemas/index.js';
 
 // Load environment variables
 dotenv.config();
@@ -51,26 +76,37 @@ const server = new McpServer({
 
 // --- Register Tools ---
 
+// --- Schema Definitions for Tools ---
+const getTagsSchema = tagQuerySchema.partial();
+const getTagSchema = z.object({
+  id: ghostIdSchema.optional().describe('The ID of the tag to retrieve.'),
+  slug: z.string().optional().describe('The slug of the tag to retrieve.'),
+  include: z.string().optional().describe('Additional resources to include (e.g., "count.posts").'),
+});
+const updateTagInputSchema = updateTagSchema.extend({ id: ghostIdSchema });
+const deleteTagSchema = z.object({ id: ghostIdSchema });
+
 // Get Tags Tool
 server.tool(
   'ghost_get_tags',
   'Retrieves a list of tags from Ghost CMS. Can optionally filter by tag name.',
-  {
-    name: z
-      .string()
-      .optional()
-      .describe('Filter tags by exact name. If omitted, all tags are returned.'),
-  },
-  async ({ name }) => {
+  getTagsSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(getTagsSchema, rawInput, 'ghost_get_tags');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_get_tags`);
     try {
       await loadServices();
       const tags = await ghostService.getTags();
       let result = tags;
 
-      if (name) {
-        result = tags.filter((tag) => tag.name.toLowerCase() === name.toLowerCase());
-        console.error(`Filtered tags by name "${name}". Found ${result.length} match(es).`);
+      if (input.name) {
+        result = tags.filter((tag) => tag.name.toLowerCase() === input.name.toLowerCase());
+        console.error(`Filtered tags by name "${input.name}". Found ${result.length} match(es).`);
       } else {
         console.error(`Retrieved ${tags.length} tags from Ghost.`);
       }
@@ -80,6 +116,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_get_tags:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Tags retrieval');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error: ${error.message}` }],
         isError: true,
@@ -92,21 +135,18 @@ server.tool(
 server.tool(
   'ghost_create_tag',
   'Creates a new tag in Ghost CMS.',
-  {
-    name: z.string().describe('The name of the tag.'),
-    description: z.string().optional().describe('A description for the tag.'),
-    slug: z
-      .string()
-      .optional()
-      .describe(
-        'A URL-friendly slug for the tag. Will be auto-generated from the name if omitted.'
-      ),
-  },
-  async ({ name, description, slug }) => {
-    console.error(`Executing tool: ghost_create_tag with name: ${name}`);
+  createTagSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(createTagSchema, rawInput, 'ghost_create_tag');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
+    console.error(`Executing tool: ghost_create_tag with name: ${input.name}`);
     try {
       await loadServices();
-      const createdTag = await ghostService.createTag({ name, description, slug });
+      const createdTag = await ghostService.createTag(input);
       console.error(`Tag created successfully. Tag ID: ${createdTag.id}`);
 
       return {
@@ -114,6 +154,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_create_tag:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Tag creation');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error: ${error.message}` }],
         isError: true,
@@ -126,15 +173,14 @@ server.tool(
 server.tool(
   'ghost_get_tag',
   'Retrieves a single tag from Ghost CMS by ID or slug.',
-  {
-    id: z.string().optional().describe('The ID of the tag to retrieve.'),
-    slug: z.string().optional().describe('The slug of the tag to retrieve.'),
-    include: z
-      .string()
-      .optional()
-      .describe('Additional resources to include (e.g., "count.posts").'),
-  },
-  async ({ id, slug, include }) => {
+  getTagSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(getTagSchema, rawInput, 'ghost_get_tag');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const { id, slug, include } = validation.data;
+
     console.error(`Executing tool: ghost_get_tag`);
     try {
       if (!id && !slug) {
@@ -156,6 +202,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_get_tag:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Tag retrieval');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error: ${error.message}` }],
         isError: true,
@@ -168,32 +221,24 @@ server.tool(
 server.tool(
   'ghost_update_tag',
   'Updates an existing tag in Ghost CMS.',
-  {
-    id: z.string().describe('The ID of the tag to update.'),
-    name: z.string().optional().describe('The new name for the tag.'),
-    slug: z.string().optional().describe('The new slug for the tag.'),
-    description: z.string().optional().describe('The new description for the tag.'),
-    feature_image: z.string().url().optional().describe('URL of the feature image for the tag.'),
-    meta_title: z.string().optional().describe('SEO meta title for the tag.'),
-    meta_description: z.string().optional().describe('SEO meta description for the tag.'),
-  },
-  async ({ id, name, slug, description, feature_image, meta_title, meta_description }) => {
-    console.error(`Executing tool: ghost_update_tag for ID: ${id}`);
+  updateTagInputSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(updateTagInputSchema, rawInput, 'ghost_update_tag');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
+    console.error(`Executing tool: ghost_update_tag for ID: ${input.id}`);
     try {
-      if (!id) {
+      if (!input.id) {
         throw new Error('Tag ID is required');
       }
 
       await loadServices();
 
-      // Build update data object with only provided fields
-      const updateData = {};
-      if (name !== undefined) updateData.name = name;
-      if (slug !== undefined) updateData.slug = slug;
-      if (description !== undefined) updateData.description = description;
-      if (feature_image !== undefined) updateData.feature_image = feature_image;
-      if (meta_title !== undefined) updateData.meta_title = meta_title;
-      if (meta_description !== undefined) updateData.meta_description = meta_description;
+      // Build update data object with only provided fields (exclude id from update data)
+      const { id, ...updateData } = input;
 
       const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
       const updatedTag = await ghostServiceImproved.updateTag(id, updateData);
@@ -204,6 +249,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_update_tag:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Tag update');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error: ${error.message}` }],
         isError: true,
@@ -216,10 +268,14 @@ server.tool(
 server.tool(
   'ghost_delete_tag',
   'Deletes a tag from Ghost CMS by ID. This operation is permanent.',
-  {
-    id: z.string().describe('The ID of the tag to delete.'),
-  },
-  async ({ id }) => {
+  deleteTagSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(deleteTagSchema, rawInput, 'ghost_delete_tag');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const { id } = validation.data;
+
     console.error(`Executing tool: ghost_delete_tag for ID: ${id}`);
     try {
       if (!id) {
@@ -237,6 +293,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_delete_tag:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Tag deletion');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error: ${error.message}` }],
         isError: true,
@@ -245,20 +308,27 @@ server.tool(
   }
 );
 
+// --- Image Schema ---
+const uploadImageSchema = z.object({
+  imageUrl: z.string().describe('The publicly accessible URL of the image to upload.'),
+  alt: z
+    .string()
+    .optional()
+    .describe('Alt text for the image. If omitted, a default will be generated from the filename.'),
+});
+
 // Upload Image Tool
 server.tool(
   'ghost_upload_image',
   'Downloads an image from a URL, processes it, uploads it to Ghost CMS, and returns the final Ghost image URL and alt text.',
-  {
-    imageUrl: z.string().describe('The publicly accessible URL of the image to upload.'),
-    alt: z
-      .string()
-      .optional()
-      .describe(
-        'Alt text for the image. If omitted, a default will be generated from the filename.'
-      ),
-  },
-  async ({ imageUrl, alt }) => {
+  uploadImageSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(uploadImageSchema, rawInput, 'ghost_upload_image');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const { imageUrl, alt } = validation.data;
+
     console.error(`Executing tool: ghost_upload_image for URL: ${imageUrl}`);
     let downloadedPath = null;
     let processedPath = null;
@@ -288,10 +358,16 @@ server.tool(
         writer.on('finish', resolve);
         writer.on('error', reject);
       });
+      // Track temp file for cleanup on process exit
+      trackTempFile(downloadedPath);
       console.error(`Downloaded image to temporary path: ${downloadedPath}`);
 
       // 3. Process the image
       processedPath = await imageProcessingService.processImage(downloadedPath, tempDir);
+      // Track processed file for cleanup on process exit
+      if (processedPath !== downloadedPath) {
+        trackTempFile(processedPath);
+      }
       console.error(`Processed image path: ${processedPath}`);
 
       // 4. Determine Alt Text
@@ -319,63 +395,56 @@ server.tool(
         isError: true,
       };
     } finally {
-      // Cleanup temporary files
-      if (downloadedPath) {
-        fs.unlink(downloadedPath, (err) => {
-          if (err) console.error('Error deleting temporary downloaded file:', downloadedPath, err);
-        });
-      }
-      if (processedPath && processedPath !== downloadedPath) {
-        fs.unlink(processedPath, (err) => {
-          if (err) console.error('Error deleting temporary processed file:', processedPath, err);
-        });
-      }
+      // Cleanup temporary files with proper async/await
+      await cleanupTempFiles([downloadedPath, processedPath], console);
     }
   }
 );
+
+// --- Post Schema Definitions ---
+const getPostsSchema = postQuerySchema.extend({
+  status: z
+    .enum(['published', 'draft', 'scheduled', 'all'])
+    .optional()
+    .describe('Filter posts by status. Options: published, draft, scheduled, all.'),
+});
+const getPostSchema = z.object({
+  id: ghostIdSchema.optional().describe('The ID of the post to retrieve.'),
+  slug: z.string().optional().describe('The slug of the post to retrieve.'),
+  include: z
+    .string()
+    .optional()
+    .describe('Comma-separated list of relations to include (e.g., "tags,authors").'),
+});
+const searchPostsSchema = z.object({
+  query: z.string().min(1).describe('Search query to find in post titles.'),
+  status: z
+    .enum(['published', 'draft', 'scheduled', 'all'])
+    .optional()
+    .describe('Filter by post status. Default searches all statuses.'),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .optional()
+    .describe('Maximum number of results (1-50). Default is 15.'),
+});
+const updatePostInputSchema = updatePostSchema.extend({ id: ghostIdSchema });
+const deletePostSchema = z.object({ id: ghostIdSchema });
 
 // Create Post Tool
 server.tool(
   'ghost_create_post',
   'Creates a new post in Ghost CMS.',
-  {
-    title: z.string().describe('The title of the post.'),
-    html: z.string().describe('The HTML content of the post.'),
-    status: z
-      .enum(['draft', 'published', 'scheduled'])
-      .optional()
-      .describe("The status of the post. Defaults to 'draft'."),
-    tags: z
-      .array(z.string())
-      .optional()
-      .describe(
-        "List of tag names to associate with the post. Tags will be created if they don't exist."
-      ),
-    published_at: z
-      .string()
-      .optional()
-      .describe("ISO 8601 date/time to publish the post. Required if status is 'scheduled'."),
-    custom_excerpt: z.string().optional().describe('A custom short summary for the post.'),
-    feature_image: z
-      .string()
-      .optional()
-      .describe(
-        'URL of the image (e.g., from ghost_upload_image tool) to use as the featured image.'
-      ),
-    feature_image_alt: z.string().optional().describe('Alt text for the featured image.'),
-    feature_image_caption: z.string().optional().describe('Caption for the featured image.'),
-    meta_title: z
-      .string()
-      .optional()
-      .describe('Custom title for SEO (max 300 chars). Defaults to post title if omitted.'),
-    meta_description: z
-      .string()
-      .optional()
-      .describe(
-        'Custom description for SEO (max 500 chars). Defaults to excerpt or generated summary if omitted.'
-      ),
-  },
-  async (input) => {
+  createPostSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(createPostSchema, rawInput, 'ghost_create_post');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_create_post with title: ${input.title}`);
     try {
       await loadServices();
@@ -387,6 +456,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_create_post:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Post creation');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error creating post: ${error.message}` }],
         isError: true,
@@ -399,32 +475,14 @@ server.tool(
 server.tool(
   'ghost_get_posts',
   'Retrieves a list of posts from Ghost CMS with pagination, filtering, and sorting options.',
-  {
-    limit: z
-      .number()
-      .min(1)
-      .max(100)
-      .optional()
-      .describe('Number of posts to retrieve (1-100). Default is 15.'),
-    page: z.number().min(1).optional().describe('Page number for pagination. Default is 1.'),
-    status: z
-      .enum(['published', 'draft', 'scheduled', 'all'])
-      .optional()
-      .describe('Filter posts by status. Options: published, draft, scheduled, all.'),
-    include: z
-      .string()
-      .optional()
-      .describe('Comma-separated list of relations to include (e.g., "tags,authors").'),
-    filter: z
-      .string()
-      .optional()
-      .describe('Ghost NQL filter string for advanced filtering (e.g., "featured:true").'),
-    order: z
-      .string()
-      .optional()
-      .describe('Sort order for results (e.g., "published_at DESC", "title ASC").'),
-  },
-  async (input) => {
+  getPostsSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(getPostsSchema, rawInput, 'ghost_get_posts');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_get_posts`);
     try {
       await loadServices();
@@ -446,6 +504,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_get_posts:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Posts retrieval');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error retrieving posts: ${error.message}` }],
         isError: true,
@@ -458,15 +523,14 @@ server.tool(
 server.tool(
   'ghost_get_post',
   'Retrieves a single post from Ghost CMS by ID or slug.',
-  {
-    id: z.string().optional().describe('The ID of the post to retrieve.'),
-    slug: z.string().optional().describe('The slug of the post to retrieve.'),
-    include: z
-      .string()
-      .optional()
-      .describe('Comma-separated list of relations to include (e.g., "tags,authors").'),
-  },
-  async (input) => {
+  getPostSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(getPostSchema, rawInput, 'ghost_get_post');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_get_post`);
     try {
       // Validate that at least one of id or slug is provided
@@ -491,6 +555,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_get_post:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Post retrieval');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error retrieving post: ${error.message}` }],
         isError: true,
@@ -503,20 +574,14 @@ server.tool(
 server.tool(
   'ghost_search_posts',
   'Search for posts in Ghost CMS by query string with optional status filtering.',
-  {
-    query: z.string().describe('Search query to find in post titles.'),
-    status: z
-      .enum(['published', 'draft', 'scheduled', 'all'])
-      .optional()
-      .describe('Filter by post status. Default searches all statuses.'),
-    limit: z
-      .number()
-      .min(1)
-      .max(50)
-      .optional()
-      .describe('Maximum number of results (1-50). Default is 15.'),
-  },
-  async (input) => {
+  searchPostsSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(searchPostsSchema, rawInput, 'ghost_search_posts');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_search_posts with query: ${input.query}`);
     try {
       await loadServices();
@@ -536,6 +601,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_search_posts:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Post search');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error searching posts: ${error.message}` }],
         isError: true,
@@ -548,35 +620,14 @@ server.tool(
 server.tool(
   'ghost_update_post',
   'Updates an existing post in Ghost CMS. Can update title, content, status, tags, images, and SEO fields.',
-  {
-    id: z.string().describe('The ID of the post to update.'),
-    title: z.string().optional().describe('New title for the post.'),
-    html: z.string().optional().describe('New HTML content for the post.'),
-    status: z
-      .enum(['draft', 'published', 'scheduled'])
-      .optional()
-      .describe('New status for the post.'),
-    tags: z
-      .array(z.string())
-      .optional()
-      .describe('New list of tag names to associate with the post.'),
-    feature_image: z.string().optional().describe('New featured image URL.'),
-    feature_image_alt: z.string().optional().describe('New alt text for the featured image.'),
-    feature_image_caption: z.string().optional().describe('New caption for the featured image.'),
-    meta_title: z.string().optional().describe('New custom title for SEO (max 300 chars).'),
-    meta_description: z
-      .string()
-      .optional()
-      .describe('New custom description for SEO (max 500 chars).'),
-    published_at: z
-      .string()
-      .optional()
-      .describe(
-        "New publication date/time in ISO 8601 format. Required if changing status to 'scheduled'."
-      ),
-    custom_excerpt: z.string().optional().describe('New custom short summary for the post.'),
-  },
-  async (input) => {
+  updatePostInputSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(updatePostInputSchema, rawInput, 'ghost_update_post');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_update_post for post ID: ${input.id}`);
     try {
       await loadServices();
@@ -594,6 +645,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_update_post:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Post update');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error updating post: ${error.message}` }],
         isError: true,
@@ -606,10 +664,14 @@ server.tool(
 server.tool(
   'ghost_delete_post',
   'Deletes a post from Ghost CMS by ID. This operation is permanent and cannot be undone.',
-  {
-    id: z.string().describe('The ID of the post to delete.'),
-  },
-  async ({ id }) => {
+  deletePostSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(deletePostSchema, rawInput, 'ghost_delete_post');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const { id } = validation.data;
+
     console.error(`Executing tool: ghost_delete_post for post ID: ${id}`);
     try {
       await loadServices();
@@ -624,6 +686,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_delete_post:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Post deletion');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error deleting post: ${error.message}` }],
         isError: true,
@@ -637,30 +706,54 @@ server.tool(
 // Pages are similar to posts but do NOT support tags
 // =============================================================================
 
-// Get Pages Tool
-server.tool(
-  'ghost_get_pages',
-  'Retrieves a list of pages from Ghost CMS with pagination, filtering, and sorting options.',
-  {
-    limit: z
-      .number()
-      .min(1)
-      .max(100)
-      .optional()
-      .describe('Number of pages to retrieve (1-100). Default is 15.'),
-    page: z.number().min(1).optional().describe('Page number for pagination. Default is 1.'),
-    status: z
-      .enum(['published', 'draft', 'scheduled', 'all'])
-      .optional()
-      .describe('Filter pages by status.'),
+// --- Page Schema Definitions ---
+const getPageSchema = z
+  .object({
+    id: ghostIdSchema.optional().describe('The ID of the page to retrieve.'),
+    slug: z.string().optional().describe('The slug of the page to retrieve.'),
     include: z
       .string()
       .optional()
       .describe('Comma-separated list of relations to include (e.g., "authors").'),
-    filter: z.string().optional().describe('Ghost NQL filter string for advanced filtering.'),
-    order: z.string().optional().describe('Sort order for results (e.g., "published_at DESC").'),
-  },
-  async (input) => {
+  })
+  .refine((data) => data.id || data.slug, {
+    message: 'Either id or slug is required to retrieve a page',
+  });
+const updatePageInputSchema = z
+  .object({ id: ghostIdSchema.describe('The ID of the page to update.') })
+  .merge(updatePageSchema);
+const deletePageSchema = z.object({ id: ghostIdSchema.describe('The ID of the page to delete.') });
+const searchPagesSchema = z.object({
+  query: z
+    .string()
+    .min(1, 'Search query cannot be empty')
+    .describe('Search query to find in page titles.'),
+  status: z
+    .enum(['published', 'draft', 'scheduled', 'all'])
+    .optional()
+    .describe('Filter by page status. Default searches all statuses.'),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .default(15)
+    .optional()
+    .describe('Maximum number of results (1-50). Default is 15.'),
+});
+
+// Get Pages Tool
+server.tool(
+  'ghost_get_pages',
+  'Retrieves a list of pages from Ghost CMS with pagination, filtering, and sorting options.',
+  pageQuerySchema,
+  async (rawInput) => {
+    const validation = validateToolInput(pageQuerySchema, rawInput, 'ghost_get_pages');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_get_pages`);
     try {
       await loadServices();
@@ -668,9 +761,10 @@ server.tool(
       const options = {};
       if (input.limit !== undefined) options.limit = input.limit;
       if (input.page !== undefined) options.page = input.page;
-      if (input.status !== undefined) options.status = input.status;
-      if (input.include !== undefined) options.include = input.include;
       if (input.filter !== undefined) options.filter = input.filter;
+      if (input.include !== undefined) options.include = input.include;
+      if (input.fields !== undefined) options.fields = input.fields;
+      if (input.formats !== undefined) options.formats = input.formats;
       if (input.order !== undefined) options.order = input.order;
 
       const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
@@ -682,6 +776,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_get_pages:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Page query');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error retrieving pages: ${error.message}` }],
         isError: true,
@@ -694,21 +795,16 @@ server.tool(
 server.tool(
   'ghost_get_page',
   'Retrieves a single page from Ghost CMS by ID or slug.',
-  {
-    id: z.string().optional().describe('The ID of the page to retrieve.'),
-    slug: z.string().optional().describe('The slug of the page to retrieve.'),
-    include: z
-      .string()
-      .optional()
-      .describe('Comma-separated list of relations to include (e.g., "authors").'),
-  },
-  async (input) => {
+  getPageSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(getPageSchema, rawInput, 'ghost_get_page');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_get_page`);
     try {
-      if (!input.id && !input.slug) {
-        throw new Error('Either id or slug is required to retrieve a page');
-      }
-
       await loadServices();
 
       const options = {};
@@ -725,6 +821,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_get_page:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Get page');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error retrieving page: ${error.message}` }],
         isError: true,
@@ -736,35 +839,15 @@ server.tool(
 // Create Page Tool
 server.tool(
   'ghost_create_page',
-  'Creates a new page in Ghost CMS. Note: Pages do NOT support tags (unlike posts).',
-  {
-    title: z.string().describe('The title of the page.'),
-    html: z.string().describe('The HTML content of the page.'),
-    status: z
-      .enum(['draft', 'published', 'scheduled'])
-      .optional()
-      .describe("The status of the page. Defaults to 'draft'."),
-    // NO tags parameter - pages don't support tags
-    published_at: z
-      .string()
-      .optional()
-      .describe("ISO 8601 date/time to publish the page. Required if status is 'scheduled'."),
-    custom_excerpt: z.string().optional().describe('A custom short summary for the page.'),
-    feature_image: z.string().optional().describe('URL of the image to use as the featured image.'),
-    feature_image_alt: z.string().optional().describe('Alt text for the featured image.'),
-    feature_image_caption: z.string().optional().describe('Caption for the featured image.'),
-    meta_title: z
-      .string()
-      .optional()
-      .describe('Custom title for SEO (max 70 chars). Defaults to page title if omitted.'),
-    meta_description: z
-      .string()
-      .optional()
-      .describe(
-        'Custom description for SEO (max 160 chars). Defaults to excerpt or generated summary if omitted.'
-      ),
-  },
-  async (input) => {
+  'Creates a new page in Ghost CMS. Note: Pages do NOT typically use tags (unlike posts).',
+  createPageSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(createPageSchema, rawInput, 'ghost_create_page');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_create_page with title: ${input.title}`);
     try {
       await loadServices();
@@ -778,6 +861,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_create_page:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Page creation');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error creating page: ${error.message}` }],
         isError: true,
@@ -789,25 +879,15 @@ server.tool(
 // Update Page Tool
 server.tool(
   'ghost_update_page',
-  'Updates an existing page in Ghost CMS. Can update title, content, status, images, and SEO fields. Note: Pages do NOT support tags.',
-  {
-    id: z.string().describe('The ID of the page to update.'),
-    title: z.string().optional().describe('New title for the page.'),
-    html: z.string().optional().describe('New HTML content for the page.'),
-    status: z
-      .enum(['draft', 'published', 'scheduled'])
-      .optional()
-      .describe('New status for the page.'),
-    // NO tags parameter - pages don't support tags
-    feature_image: z.string().optional().describe('New featured image URL.'),
-    feature_image_alt: z.string().optional().describe('New alt text for the featured image.'),
-    feature_image_caption: z.string().optional().describe('New caption for the featured image.'),
-    meta_title: z.string().optional().describe('New custom title for SEO.'),
-    meta_description: z.string().optional().describe('New custom description for SEO.'),
-    published_at: z.string().optional().describe('New publication date/time in ISO 8601 format.'),
-    custom_excerpt: z.string().optional().describe('New custom short summary for the page.'),
-  },
-  async (input) => {
+  'Updates an existing page in Ghost CMS. Can update title, content, status, images, and SEO fields.',
+  updatePageInputSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(updatePageInputSchema, rawInput, 'ghost_update_page');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_update_page for page ID: ${input.id}`);
     try {
       await loadServices();
@@ -823,6 +903,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_update_page:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Page update');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error updating page: ${error.message}` }],
         isError: true,
@@ -835,10 +922,14 @@ server.tool(
 server.tool(
   'ghost_delete_page',
   'Deletes a page from Ghost CMS by ID. This operation is permanent and cannot be undone.',
-  {
-    id: z.string().describe('The ID of the page to delete.'),
-  },
-  async ({ id }) => {
+  deletePageSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(deletePageSchema, rawInput, 'ghost_delete_page');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const { id } = validation.data;
+
     console.error(`Executing tool: ghost_delete_page for page ID: ${id}`);
     try {
       await loadServices();
@@ -852,6 +943,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_delete_page:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Page deletion');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error deleting page: ${error.message}` }],
         isError: true,
@@ -864,20 +962,14 @@ server.tool(
 server.tool(
   'ghost_search_pages',
   'Search for pages in Ghost CMS by query string with optional status filtering.',
-  {
-    query: z.string().describe('Search query to find in page titles.'),
-    status: z
-      .enum(['published', 'draft', 'scheduled', 'all'])
-      .optional()
-      .describe('Filter by page status. Default searches all statuses.'),
-    limit: z
-      .number()
-      .min(1)
-      .max(50)
-      .optional()
-      .describe('Maximum number of results (1-50). Default is 15.'),
-  },
-  async (input) => {
+  searchPagesSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(searchPagesSchema, rawInput, 'ghost_search_pages');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_search_pages with query: ${input.query}`);
     try {
       await loadServices();
@@ -895,6 +987,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_search_pages:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Page search');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error searching pages: ${error.message}` }],
         isError: true,
@@ -908,25 +1007,41 @@ server.tool(
 // Member management for Ghost CMS subscribers
 // =============================================================================
 
+// --- Member Schema Definitions ---
+const updateMemberInputSchema = z.object({ id: ghostIdSchema }).merge(updateMemberSchema);
+const deleteMemberSchema = z.object({ id: ghostIdSchema });
+const getMembersSchema = memberQuerySchema.omit({ search: true });
+const getMemberSchema = z
+  .object({
+    id: ghostIdSchema.optional().describe('The ID of the member to retrieve.'),
+    email: emailSchema.optional().describe('The email of the member to retrieve.'),
+  })
+  .refine((data) => data.id || data.email, {
+    message: 'Either id or email must be provided',
+  });
+const searchMembersSchema = z.object({
+  query: z.string().min(1).describe('Search query to match against member name or email.'),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .optional()
+    .describe('Maximum number of results to return (1-50). Default is 15.'),
+});
+
 // Create Member Tool
 server.tool(
   'ghost_create_member',
   'Creates a new member (subscriber) in Ghost CMS.',
-  {
-    email: z.string().email().describe('The email address of the member (required).'),
-    name: z.string().optional().describe('The name of the member.'),
-    note: z.string().optional().describe('A note about the member.'),
-    labels: z.array(z.string()).optional().describe('List of label names to assign to the member.'),
-    newsletters: z
-      .array(z.object({ id: z.string() }))
-      .optional()
-      .describe('List of newsletter objects with id field to subscribe the member to.'),
-    subscribed: z
-      .boolean()
-      .optional()
-      .describe('Whether the member is subscribed to emails. Defaults to true.'),
-  },
-  async (input) => {
+  createMemberSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(createMemberSchema, rawInput, 'ghost_create_member');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_create_member with email: ${input.email}`);
     try {
       await loadServices();
@@ -940,6 +1055,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_create_member:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Member creation');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error creating member: ${error.message}` }],
         isError: true,
@@ -952,21 +1074,14 @@ server.tool(
 server.tool(
   'ghost_update_member',
   'Updates an existing member in Ghost CMS. All fields except id are optional.',
-  {
-    id: z.string().describe('The ID of the member to update.'),
-    email: z.string().email().optional().describe('New email address for the member.'),
-    name: z.string().optional().describe('New name for the member.'),
-    note: z.string().optional().describe('New note about the member.'),
-    labels: z
-      .array(z.string())
-      .optional()
-      .describe('New list of label names to assign to the member.'),
-    newsletters: z
-      .array(z.object({ id: z.string() }))
-      .optional()
-      .describe('New list of newsletter objects with id field to subscribe the member to.'),
-  },
-  async (input) => {
+  updateMemberInputSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(updateMemberInputSchema, rawInput, 'ghost_update_member');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_update_member for member ID: ${input.id}`);
     try {
       await loadServices();
@@ -982,6 +1097,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_update_member:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Member update');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error updating member: ${error.message}` }],
         isError: true,
@@ -994,10 +1116,14 @@ server.tool(
 server.tool(
   'ghost_delete_member',
   'Deletes a member from Ghost CMS by ID. This operation is permanent and cannot be undone.',
-  {
-    id: z.string().describe('The ID of the member to delete.'),
-  },
-  async ({ id }) => {
+  deleteMemberSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(deleteMemberSchema, rawInput, 'ghost_delete_member');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const { id } = validation.data;
+
     console.error(`Executing tool: ghost_delete_member for member ID: ${id}`);
     try {
       await loadServices();
@@ -1011,6 +1137,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_delete_member:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Member deletion');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error deleting member: ${error.message}` }],
         isError: true,
@@ -1023,25 +1156,14 @@ server.tool(
 server.tool(
   'ghost_get_members',
   'Retrieves a list of members (subscribers) from Ghost CMS with optional filtering, pagination, and includes.',
-  {
-    limit: z
-      .number()
-      .min(1)
-      .max(100)
-      .optional()
-      .describe('Number of members to retrieve (1-100). Default is 15.'),
-    page: z.number().min(1).optional().describe('Page number for pagination (starts at 1).'),
-    filter: z
-      .string()
-      .optional()
-      .describe('Ghost NQL filter string (e.g., "status:free", "status:paid", "subscribed:true").'),
-    order: z.string().optional().describe('Order string (e.g., "created_at desc", "email asc").'),
-    include: z
-      .string()
-      .optional()
-      .describe('Comma-separated list of related data to include (e.g., "labels,newsletters").'),
-  },
-  async (input) => {
+  getMembersSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(getMembersSchema, rawInput, 'ghost_get_members');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_get_members`);
     try {
       await loadServices();
@@ -1062,6 +1184,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_get_members:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Member query');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error retrieving members: ${error.message}` }],
         isError: true,
@@ -1074,11 +1203,14 @@ server.tool(
 server.tool(
   'ghost_get_member',
   'Retrieves a single member from Ghost CMS by ID or email. Provide either id OR email.',
-  {
-    id: z.string().optional().describe('The ID of the member to retrieve.'),
-    email: z.string().email().optional().describe('The email of the member to retrieve.'),
-  },
-  async ({ id, email }) => {
+  getMemberSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(getMemberSchema, rawInput, 'ghost_get_member');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const { id, email } = validation.data;
+
     console.error(`Executing tool: ghost_get_member for ${id ? `ID: ${id}` : `email: ${email}`}`);
     try {
       await loadServices();
@@ -1092,6 +1224,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_get_member:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Member lookup');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error retrieving member: ${error.message}` }],
         isError: true,
@@ -1104,16 +1243,14 @@ server.tool(
 server.tool(
   'ghost_search_members',
   'Searches for members by name or email in Ghost CMS.',
-  {
-    query: z.string().min(1).describe('Search query to match against member name or email.'),
-    limit: z
-      .number()
-      .min(1)
-      .max(50)
-      .optional()
-      .describe('Maximum number of results to return (1-50). Default is 15.'),
-  },
-  async ({ query, limit }) => {
+  searchMembersSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(searchMembersSchema, rawInput, 'ghost_search_members');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const { query, limit } = validation.data;
+
     console.error(`Executing tool: ghost_search_members with query: ${query}`);
     try {
       await loadServices();
@@ -1130,6 +1267,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_search_members:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Member search');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error searching members: ${error.message}` }],
         isError: true,
@@ -1142,27 +1286,32 @@ server.tool(
 // NEWSLETTER TOOLS
 // =============================================================================
 
+// --- Newsletter Schema Definitions ---
+const getNewsletterSchema = z.object({ id: ghostIdSchema });
+const updateNewsletterInputSchema = z.object({ id: ghostIdSchema }).merge(updateNewsletterSchema);
+const deleteNewsletterSchema = z.object({ id: ghostIdSchema });
+
 // Get Newsletters Tool
 server.tool(
   'ghost_get_newsletters',
   'Retrieves a list of newsletters from Ghost CMS with optional filtering.',
-  {
-    limit: z
-      .number()
-      .min(1)
-      .max(100)
-      .optional()
-      .describe('Number of newsletters to retrieve (1-100). Default is all.'),
-    filter: z.string().optional().describe('Ghost NQL filter string for advanced filtering.'),
-  },
-  async (input) => {
+  newsletterQuerySchema,
+  async (rawInput) => {
+    const validation = validateToolInput(newsletterQuerySchema, rawInput, 'ghost_get_newsletters');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_get_newsletters`);
     try {
       await loadServices();
 
       const options = {};
       if (input.limit !== undefined) options.limit = input.limit;
+      if (input.page !== undefined) options.page = input.page;
       if (input.filter !== undefined) options.filter = input.filter;
+      if (input.order !== undefined) options.order = input.order;
 
       const ghostServiceImproved = await import('./services/ghostServiceImproved.js');
       const newsletters = await ghostServiceImproved.getNewsletters(options);
@@ -1173,6 +1322,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_get_newsletters:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Newsletter query');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error retrieving newsletters: ${error.message}` }],
         isError: true,
@@ -1185,10 +1341,14 @@ server.tool(
 server.tool(
   'ghost_get_newsletter',
   'Retrieves a single newsletter from Ghost CMS by ID.',
-  {
-    id: z.string().describe('The ID of the newsletter to retrieve.'),
-  },
-  async ({ id }) => {
+  getNewsletterSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(getNewsletterSchema, rawInput, 'ghost_get_newsletter');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const { id } = validation.data;
+
     console.error(`Executing tool: ghost_get_newsletter for ID: ${id}`);
     try {
       await loadServices();
@@ -1202,6 +1362,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_get_newsletter:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Newsletter retrieval');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error retrieving newsletter: ${error.message}` }],
         isError: true,
@@ -1214,33 +1381,18 @@ server.tool(
 server.tool(
   'ghost_create_newsletter',
   'Creates a new newsletter in Ghost CMS with customizable sender settings and display options.',
-  {
-    name: z.string().describe('The name of the newsletter.'),
-    description: z.string().optional().describe('A description for the newsletter.'),
-    sender_name: z.string().optional().describe('The sender name for newsletter emails.'),
-    sender_email: z
-      .string()
-      .email()
-      .optional()
-      .describe('The sender email address for newsletter emails.'),
-    sender_reply_to: z
-      .enum(['newsletter', 'support'])
-      .optional()
-      .describe('Reply-to address setting. Options: newsletter, support.'),
-    subscribe_on_signup: z
-      .boolean()
-      .optional()
-      .describe('Whether new members are automatically subscribed to this newsletter on signup.'),
-    show_header_icon: z
-      .boolean()
-      .optional()
-      .describe('Whether to show the site icon in the newsletter header.'),
-    show_header_title: z
-      .boolean()
-      .optional()
-      .describe('Whether to show the site title in the newsletter header.'),
-  },
-  async (input) => {
+  createNewsletterSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(
+      createNewsletterSchema,
+      rawInput,
+      'ghost_create_newsletter'
+    );
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_create_newsletter with name: ${input.name}`);
     try {
       await loadServices();
@@ -1254,6 +1406,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_create_newsletter:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Newsletter creation');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error creating newsletter: ${error.message}` }],
         isError: true,
@@ -1266,18 +1425,18 @@ server.tool(
 server.tool(
   'ghost_update_newsletter',
   'Updates an existing newsletter in Ghost CMS. Can update name, description, sender settings, and display options.',
-  {
-    id: z.string().describe('The ID of the newsletter to update.'),
-    name: z.string().optional().describe('New name for the newsletter.'),
-    description: z.string().optional().describe('New description for the newsletter.'),
-    sender_name: z.string().optional().describe('New sender name for newsletter emails.'),
-    sender_email: z.string().email().optional().describe('New sender email address.'),
-    subscribe_on_signup: z
-      .boolean()
-      .optional()
-      .describe('Whether new members are automatically subscribed to this newsletter on signup.'),
-  },
-  async (input) => {
+  updateNewsletterInputSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(
+      updateNewsletterInputSchema,
+      rawInput,
+      'ghost_update_newsletter'
+    );
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_update_newsletter for newsletter ID: ${input.id}`);
     try {
       await loadServices();
@@ -1293,6 +1452,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_update_newsletter:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Newsletter update');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error updating newsletter: ${error.message}` }],
         isError: true,
@@ -1305,10 +1471,18 @@ server.tool(
 server.tool(
   'ghost_delete_newsletter',
   'Deletes a newsletter from Ghost CMS by ID. This operation is permanent and cannot be undone.',
-  {
-    id: z.string().describe('The ID of the newsletter to delete.'),
-  },
-  async ({ id }) => {
+  deleteNewsletterSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(
+      deleteNewsletterSchema,
+      rawInput,
+      'ghost_delete_newsletter'
+    );
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const { id } = validation.data;
+
     console.error(`Executing tool: ghost_delete_newsletter for newsletter ID: ${id}`);
     try {
       await loadServices();
@@ -1322,6 +1496,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_delete_newsletter:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Newsletter deletion');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error deleting newsletter: ${error.message}` }],
         isError: true,
@@ -1332,21 +1513,23 @@ server.tool(
 
 // --- Tier Tools ---
 
+// --- Tier Schema Definitions ---
+const getTierSchema = z.object({ id: ghostIdSchema });
+const updateTierInputSchema = z.object({ id: ghostIdSchema }).merge(updateTierSchema);
+const deleteTierSchema = z.object({ id: ghostIdSchema });
+
 // Get Tiers Tool
 server.tool(
   'ghost_get_tiers',
   'Retrieves a list of tiers (membership levels) from Ghost CMS with optional filtering by type (free/paid).',
-  {
-    limit: z
-      .number()
-      .int()
-      .min(1)
-      .max(100)
-      .optional()
-      .describe('Number of tiers to return (1-100, default 15)'),
-    filter: z.string().optional().describe('NQL filter string (e.g., "type:paid" or "type:free")'),
-  },
-  async (input) => {
+  tierQuerySchema,
+  async (rawInput) => {
+    const validation = validateToolInput(tierQuerySchema, rawInput, 'ghost_get_tiers');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_get_tiers`);
     try {
       await loadServices();
@@ -1360,6 +1543,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_get_tiers:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Tier query');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error getting tiers: ${error.message}` }],
         isError: true,
@@ -1372,10 +1562,14 @@ server.tool(
 server.tool(
   'ghost_get_tier',
   'Retrieves a single tier (membership level) from Ghost CMS by ID.',
-  {
-    id: z.string().describe('The ID of the tier to retrieve.'),
-  },
-  async ({ id }) => {
+  getTierSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(getTierSchema, rawInput, 'ghost_get_tier');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const { id } = validation.data;
+
     console.error(`Executing tool: ghost_get_tier for tier ID: ${id}`);
     try {
       await loadServices();
@@ -1389,6 +1583,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_get_tier:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Tier retrieval');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error getting tier: ${error.message}` }],
         isError: true,
@@ -1401,26 +1602,14 @@ server.tool(
 server.tool(
   'ghost_create_tier',
   'Creates a new tier (membership level) in Ghost CMS with pricing and benefits.',
-  {
-    name: z.string().describe('Tier name (required)'),
-    description: z.string().optional().describe('Tier description'),
-    monthly_price: z
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe('Monthly price in cents (e.g., 500 = $5.00)'),
-    yearly_price: z
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe('Yearly price in cents (e.g., 5000 = $50.00)'),
-    currency: z.string().length(3).optional().describe('Currency code (e.g., "USD", "EUR")'),
-    benefits: z.array(z.string()).optional().describe('Array of benefit descriptions'),
-    welcome_page_url: z.string().url().optional().describe('Welcome page URL for new subscribers'),
-  },
-  async (input) => {
+  createTierSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(createTierSchema, rawInput, 'ghost_create_tier');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_create_tier`);
     try {
       await loadServices();
@@ -1434,6 +1623,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_create_tier:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Tier creation');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error creating tier: ${error.message}` }],
         isError: true,
@@ -1446,16 +1642,14 @@ server.tool(
 server.tool(
   'ghost_update_tier',
   'Updates an existing tier (membership level) in Ghost CMS. Can update pricing, benefits, and other tier properties.',
-  {
-    id: z.string().describe('The ID of the tier to update (required)'),
-    name: z.string().optional().describe('Updated tier name'),
-    description: z.string().optional().describe('Updated description'),
-    monthly_price: z.number().int().min(0).optional().describe('Updated monthly price in cents'),
-    yearly_price: z.number().int().min(0).optional().describe('Updated yearly price in cents'),
-    currency: z.string().length(3).optional().describe('Updated currency code'),
-    benefits: z.array(z.string()).optional().describe('Updated array of benefit descriptions'),
-  },
-  async (input) => {
+  updateTierInputSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(updateTierInputSchema, rawInput, 'ghost_update_tier');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const input = validation.data;
+
     console.error(`Executing tool: ghost_update_tier for tier ID: ${input.id}`);
     try {
       await loadServices();
@@ -1471,6 +1665,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_update_tier:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Tier update');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error updating tier: ${error.message}` }],
         isError: true,
@@ -1483,10 +1684,14 @@ server.tool(
 server.tool(
   'ghost_delete_tier',
   'Deletes a tier (membership level) from Ghost CMS by ID. This operation is permanent and cannot be undone.',
-  {
-    id: z.string().describe('The ID of the tier to delete.'),
-  },
-  async ({ id }) => {
+  deleteTierSchema,
+  async (rawInput) => {
+    const validation = validateToolInput(deleteTierSchema, rawInput, 'ghost_delete_tier');
+    if (!validation.success) {
+      return validation.errorResponse;
+    }
+    const { id } = validation.data;
+
     console.error(`Executing tool: ghost_delete_tier for tier ID: ${id}`);
     try {
       await loadServices();
@@ -1500,6 +1705,13 @@ server.tool(
       };
     } catch (error) {
       console.error(`Error in ghost_delete_tier:`, error);
+      if (error.name === 'ZodError') {
+        const validationError = ValidationError.fromZod(error, 'Tier deletion');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
+          isError: true,
+        };
+      }
       return {
         content: [{ type: 'text', text: `Error deleting tier: ${error.message}` }],
         isError: true,

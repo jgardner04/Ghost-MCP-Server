@@ -128,24 +128,9 @@ describe('ghostServiceImproved - Members', () => {
       expect(result).toEqual(mockCreatedMember);
     });
 
-    it('should throw validation error for missing email', async () => {
-      await expect(createMember({})).rejects.toThrow('Member validation failed');
-    });
-
-    it('should throw validation error for invalid email', async () => {
-      await expect(createMember({ email: 'invalid-email' })).rejects.toThrow(
-        'Member validation failed'
-      );
-    });
-
-    it('should throw validation error for invalid labels type', async () => {
-      await expect(
-        createMember({
-          email: 'test@example.com',
-          labels: 'premium',
-        })
-      ).rejects.toThrow('Member validation failed');
-    });
+    // NOTE: Input validation tests (missing email, invalid email, invalid labels)
+    // have been moved to MCP layer tests. The service layer now relies on
+    // Zod schema validation at the MCP tool layer.
 
     it('should handle Ghost API errors', async () => {
       const memberData = {
@@ -225,11 +210,8 @@ describe('ghostServiceImproved - Members', () => {
       );
     });
 
-    it('should throw validation error for invalid email in update', async () => {
-      await expect(updateMember('member-1', { email: 'invalid-email' })).rejects.toThrow(
-        'Member validation failed'
-      );
-    });
+    // NOTE: Input validation tests (invalid email in update) have been moved to
+    // MCP layer tests. The service layer now relies on Zod schema validation.
 
     it('should throw not found error if member does not exist', async () => {
       api.members.read.mockRejectedValue({
@@ -345,14 +327,8 @@ describe('ghostServiceImproved - Members', () => {
       );
     });
 
-    it('should throw validation error for invalid limit', async () => {
-      await expect(getMembers({ limit: 0 })).rejects.toThrow('Member query validation failed');
-      await expect(getMembers({ limit: 101 })).rejects.toThrow('Member query validation failed');
-    });
-
-    it('should throw validation error for invalid page', async () => {
-      await expect(getMembers({ page: 0 })).rejects.toThrow('Member query validation failed');
-    });
+    // NOTE: Input validation tests (invalid limit, invalid page) have been moved to
+    // MCP layer tests. The service layer now relies on Zod schema validation.
 
     it('should return empty array when no members found', async () => {
       api.members.browse.mockResolvedValue([]);
@@ -407,15 +383,8 @@ describe('ghostServiceImproved - Members', () => {
       expect(result).toEqual(mockMember);
     });
 
-    it('should throw validation error when neither id nor email provided', async () => {
-      await expect(getMember({})).rejects.toThrow('Member lookup validation failed');
-    });
-
-    it('should throw validation error for invalid email format', async () => {
-      await expect(getMember({ email: 'invalid-email' })).rejects.toThrow(
-        'Member lookup validation failed'
-      );
-    });
+    // NOTE: Input validation tests (missing id/email, invalid email format) have been
+    // moved to MCP layer tests. The service layer now relies on Zod schema validation.
 
     it('should throw not found error when member not found by ID', async () => {
       api.members.read.mockRejectedValue({
@@ -493,27 +462,9 @@ describe('ghostServiceImproved - Members', () => {
       );
     });
 
-    it('should throw validation error for empty query', async () => {
-      await expect(searchMembers('')).rejects.toThrow('Search query validation failed');
-      await expect(searchMembers('   ')).rejects.toThrow('Search query validation failed');
-    });
-
-    it('should throw validation error for non-string query', async () => {
-      await expect(searchMembers(123)).rejects.toThrow('Search query validation failed');
-      await expect(searchMembers(null)).rejects.toThrow('Search query validation failed');
-    });
-
-    it('should throw validation error for invalid limit', async () => {
-      await expect(searchMembers('test', { limit: 0 })).rejects.toThrow(
-        'Search options validation failed'
-      );
-      await expect(searchMembers('test', { limit: 51 })).rejects.toThrow(
-        'Search options validation failed'
-      );
-      await expect(searchMembers('test', { limit: 100 })).rejects.toThrow(
-        'Search options validation failed'
-      );
-    });
+    // NOTE: Input validation tests (empty query, non-string query, invalid limit)
+    // have been moved to MCP layer tests. The service layer now relies on
+    // Zod schema validation at the MCP tool layer.
 
     it('should sanitize query to prevent NQL injection', async () => {
       const mockMembers = [];

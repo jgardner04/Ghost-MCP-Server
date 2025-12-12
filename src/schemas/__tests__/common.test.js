@@ -177,6 +177,90 @@ describe('Common Schemas', () => {
     it('should reject empty strings', () => {
       expect(() => htmlContentSchema.parse('')).toThrow();
     });
+
+    // XSS Prevention Tests
+    describe('XSS sanitization', () => {
+      it('should strip script tags', () => {
+        const result = htmlContentSchema.parse('<p>Safe</p><script>alert("xss")</script>');
+        expect(result).not.toContain('<script>');
+        expect(result).not.toContain('alert');
+        expect(result).toContain('<p>Safe</p>');
+      });
+
+      it('should strip onclick and other event handlers', () => {
+        const result = htmlContentSchema.parse('<p onclick="alert(1)">Click me</p>');
+        expect(result).not.toContain('onclick');
+        expect(result).toContain('<p>Click me</p>');
+      });
+
+      it('should strip javascript: URLs', () => {
+        const result = htmlContentSchema.parse('<a href="javascript:alert(1)">Link</a>');
+        expect(result).not.toContain('javascript:');
+      });
+
+      it('should strip onerror handlers on images', () => {
+        const result = htmlContentSchema.parse('<img src="x" onerror="alert(1)">');
+        expect(result).not.toContain('onerror');
+      });
+
+      it('should allow safe tags', () => {
+        const safeHtml =
+          '<h1>Title</h1><p>Paragraph</p><a href="https://example.com">Link</a><ul><li>Item</li></ul>';
+        const result = htmlContentSchema.parse(safeHtml);
+        expect(result).toContain('<h1>');
+        expect(result).toContain('<p>');
+        expect(result).toContain('<a ');
+        expect(result).toContain('<ul>');
+        expect(result).toContain('<li>');
+      });
+
+      it('should allow safe attributes on links', () => {
+        const result = htmlContentSchema.parse(
+          '<a href="https://example.com" title="Example">Link</a>'
+        );
+        expect(result).toContain('href="https://example.com"');
+        expect(result).toContain('title="Example"');
+      });
+
+      it('should allow safe attributes on images', () => {
+        const result = htmlContentSchema.parse(
+          '<img src="https://example.com/img.jpg" alt="Description" title="Title" width="100" height="100">'
+        );
+        expect(result).toContain('src="https://example.com/img.jpg"');
+        expect(result).toContain('alt="Description"');
+      });
+
+      it('should strip style attributes by default', () => {
+        const result = htmlContentSchema.parse('<p style="color: red">Styled</p>');
+        expect(result).not.toContain('style=');
+      });
+
+      it('should strip iframe tags', () => {
+        const result = htmlContentSchema.parse(
+          '<iframe src="https://evil.com"></iframe><p>Safe</p>'
+        );
+        expect(result).not.toContain('<iframe');
+        expect(result).toContain('<p>Safe</p>');
+      });
+
+      it('should strip data: URLs on images', () => {
+        // data: URLs can be used for XSS in some contexts
+        const result = htmlContentSchema.parse(
+          '<img src="data:text/html,<script>alert(1)</script>">'
+        );
+        // The src should either be removed or the tag stripped
+        expect(result).not.toContain('<script>');
+      });
+
+      it('should preserve text content while stripping dangerous elements', () => {
+        const result = htmlContentSchema.parse(
+          '<div>Safe text<script>evil()</script> more text</div>'
+        );
+        expect(result).toContain('Safe text');
+        expect(result).toContain('more text');
+        expect(result).not.toContain('evil');
+      });
+    });
   });
 
   describe('titleSchema', () => {
