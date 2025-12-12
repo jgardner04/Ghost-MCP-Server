@@ -54,6 +54,32 @@ All code written for this project MUST follow OWASP security best practices to p
 - `helmet` - HTTP security headers
 - `joi` - Legacy validation (used in some REST endpoints)
 
+## Git Workflow (Required)
+
+**ALWAYS create a feature branch before making ANY code changes.**
+
+```bash
+git checkout main
+git pull origin main
+git checkout -b <type>/issue-<number>-<description>
+```
+
+### Branch Naming Convention
+
+- `feature/` - New features (e.g., `feature/issue-42-add-pagination`)
+- `fix/` - Bug fixes (e.g., `fix/issue-15-image-upload-error`)
+- `docs/` - Documentation changes (e.g., `docs/update-api-reference`)
+- `refactor/` - Code refactoring (e.g., `refactor/issue-30-simplify-auth`)
+- `test/` - Test additions or fixes (e.g., `test/add-member-service-tests`)
+
+### Workflow Steps
+
+1. **Create branch** before writing any code
+2. **Make changes** on the feature branch
+3. **Commit** with clear, descriptive messages
+4. **Push** to remote and create a pull request
+5. **Never commit directly to `main`** - all changes must go through PRs
+
 ## Project Overview
 
 Ghost MCP Server - A Model Context Protocol (MCP) server that enables AI clients to interact with Ghost CMS instances via the Ghost Admin API. The project provides both an Express REST API server (port 3000) and an MCP server (port 3001) for managing Ghost blog content.
@@ -157,14 +183,16 @@ Follow these principles when writing code:
    - Health check endpoint: `/health`
 
 3. **Services Layer** (`src/services/`):
-   - `ghostService.js`: Basic Ghost Admin API wrapper
-   - `ghostServiceImproved.js`: Enhanced Ghost Admin API wrapper with circuit breaker, retry logic, and validation
+   - `ghostService.js`: Basic Ghost Admin API wrapper (used by REST API)
+   - `ghostServiceImproved.js`: Enhanced Ghost Admin API wrapper with circuit breaker, retry logic, and validation (used by MCP tools)
    - `postService.js`: Post creation and management
    - `pageService.js`: Page creation and management
    - `memberService.js`: Member/subscriber management
    - `tierService.js`: Membership tier management
    - `newsletterService.js`: Newsletter management
    - `imageProcessingService.js`: Image optimization and processing
+
+   **Service Import Pattern:** Services in the MCP server use lazy loading to avoid Node.js ESM compatibility issues. Always use the lazy-loaded service variables from `loadServices()`. Never add inline dynamic imports. See [docs/SERVICE_PATTERNS.md](docs/SERVICE_PATTERNS.md) for detailed guidelines.
 
 4. **Controllers** (`src/controllers/`):
    - Handle HTTP requests for posts, images, and tags
@@ -214,6 +242,7 @@ This project maintains detailed documentation in the `docs/` directory:
 | [docs/TESTING.md](docs/TESTING.md)                     | Manual testing setup with Ghost CMS, MCP Inspector usage, debugging tips                       |
 | [docs/TOOLS_REFERENCE.md](docs/TOOLS_REFERENCE.md)     | Comprehensive reference for all 34 MCP tools with schemas and examples                         |
 | [docs/SCHEMA_VALIDATION.md](docs/SCHEMA_VALIDATION.md) | Zod schema architecture, validators, HTML sanitization, and usage patterns                     |
+| [docs/SERVICE_PATTERNS.md](docs/SERVICE_PATTERNS.md)   | Service import patterns, lazy loading guidelines, and adding new services                      |
 
 ### When to Update Documentation
 
