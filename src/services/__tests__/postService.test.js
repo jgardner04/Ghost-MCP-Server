@@ -28,7 +28,7 @@ describe('postService', () => {
 
   // NOTE: Input validation tests have been moved to MCP layer tests.
   // The postService no longer performs Joi validation - input is validated
-  // by Zod schemas at the MCP tool layer (see mcp_server_improved.js).
+  // by Zod schemas at the MCP tool layer (see mcp_server.js).
 
   describe('createPostService - basic functionality', () => {
     it('should accept valid input and create a post', async () => {

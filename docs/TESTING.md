@@ -137,8 +137,8 @@ The [MCP Inspector](https://github.com/modelcontextprotocol/inspector) is a visu
 The simplest way to use MCP Inspector is with `npx`. You can test your MCP server with:
 
 ```shell
-# Test the improved MCP server (recommended)
-npx @modelcontextprotocol/inspector node src/mcp_server_improved.js
+# Test the MCP server (recommended)
+npx @modelcontextprotocol/inspector node src/mcp_server.js
 
 # Or use the ghost-mcp CLI entry point
 npx @modelcontextprotocol/inspector ghost-mcp
@@ -155,13 +155,13 @@ This will:
 If you need to pass environment variables to your MCP server:
 
 ```shell
-npx @modelcontextprotocol/inspector -e GHOST_ADMIN_API_URL=http://localhost:2368/ghost/api/admin -e GHOST_ADMIN_API_KEY=<your_key> node src/mcp_server_improved.js
+npx @modelcontextprotocol/inspector -e GHOST_ADMIN_API_URL=http://localhost:2368/ghost/api/admin -e GHOST_ADMIN_API_KEY=<your_key> node src/mcp_server.js
 ```
 
 You can also combine environment variables with your server's arguments:
 
 ```shell
-npx @modelcontextprotocol/inspector -e GHOST_ADMIN_API_URL=http://localhost:2368/ghost/api/admin -- node src/mcp_server_improved.js
+npx @modelcontextprotocol/inspector -e GHOST_ADMIN_API_URL=http://localhost:2368/ghost/api/admin -- node src/mcp_server.js
 ```
 
 ### Custom Ports
@@ -169,7 +169,7 @@ npx @modelcontextprotocol/inspector -e GHOST_ADMIN_API_URL=http://localhost:2368
 If you need to use different ports for the Inspector:
 
 ```shell
-CLIENT_PORT=8080 SERVER_PORT=9000 npx @modelcontextprotocol/inspector node src/mcp_server_improved.js
+CLIENT_PORT=8080 SERVER_PORT=9000 npx @modelcontextprotocol/inspector node src/mcp_server.js
 ```
 
 ### Using the Inspector UI

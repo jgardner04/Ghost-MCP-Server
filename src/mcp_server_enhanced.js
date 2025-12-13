@@ -462,7 +462,7 @@ const subscriptionTool = new Tool({
 mcpServer.addTool(subscriptionTool);
 
 // Keep existing tools (create_post, upload_image, etc.) from previous implementation
-// ... (include the tools from mcp_server_improved.js)
+// ... (include the tools from mcp_server.js)
 
 // --- Enhanced Transport with Middleware ---
 

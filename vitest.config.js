@@ -23,7 +23,7 @@ export default defineConfig({
         '**/*.test.js',
         '**/*.spec.js',
         // Exclude experimental/variant files from coverage
-        'src/mcp_server_improved.js',
+        'src/mcp_server.js',
         'src/mcp_server_enhanced.js',
         'src/services/ghostServiceImproved.js',
       ],

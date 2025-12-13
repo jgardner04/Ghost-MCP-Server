@@ -164,7 +164,7 @@ Follow these principles when writing code:
 
 ### Core Components
 
-1. **MCP Server** (`src/mcp_server_improved.js`):
+1. **MCP Server** (`src/mcp_server.js`):
    - Implements Model Context Protocol specification with Zod validation
    - Exposes Ghost CMS functionality as 34 MCP tools across 7 resource types
    - Resources: `ghost/post`, `ghost/page`, `ghost/tag`, `ghost/member`, `ghost/newsletter`, `ghost/tier`

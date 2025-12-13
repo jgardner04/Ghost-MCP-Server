@@ -125,12 +125,12 @@ vi.mock('path', async () => {
   };
 });
 
-describe('mcp_server_improved - ghost_get_pages tool', () => {
+describe('mcp_server - ghost_get_pages tool', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     // Import the module to register tools (only first time)
     if (mockTools.size === 0) {
-      await import('../mcp_server_improved.js');
+      await import('../mcp_server.js');
     }
   });
 
@@ -206,11 +206,11 @@ describe('mcp_server_improved - ghost_get_pages tool', () => {
   });
 });
 
-describe('mcp_server_improved - ghost_get_page tool', () => {
+describe('mcp_server - ghost_get_page tool', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     if (mockTools.size === 0) {
-      await import('../mcp_server_improved.js');
+      await import('../mcp_server.js');
     }
   });
 
@@ -270,11 +270,11 @@ describe('mcp_server_improved - ghost_get_page tool', () => {
   });
 });
 
-describe('mcp_server_improved - ghost_create_page tool', () => {
+describe('mcp_server - ghost_create_page tool', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     if (mockTools.size === 0) {
-      await import('../mcp_server_improved.js');
+      await import('../mcp_server.js');
     }
   });
 
@@ -345,11 +345,11 @@ describe('mcp_server_improved - ghost_create_page tool', () => {
   });
 });
 
-describe('mcp_server_improved - ghost_update_page tool', () => {
+describe('mcp_server - ghost_update_page tool', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     if (mockTools.size === 0) {
-      await import('../mcp_server_improved.js');
+      await import('../mcp_server.js');
     }
   });
 
@@ -411,11 +411,11 @@ describe('mcp_server_improved - ghost_update_page tool', () => {
   });
 });
 
-describe('mcp_server_improved - ghost_delete_page tool', () => {
+describe('mcp_server - ghost_delete_page tool', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     if (mockTools.size === 0) {
-      await import('../mcp_server_improved.js');
+      await import('../mcp_server.js');
     }
   });
 
@@ -451,11 +451,11 @@ describe('mcp_server_improved - ghost_delete_page tool', () => {
   });
 });
 
-describe('mcp_server_improved - ghost_search_pages tool', () => {
+describe('mcp_server - ghost_search_pages tool', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     if (mockTools.size === 0) {
-      await import('../mcp_server_improved.js');
+      await import('../mcp_server.js');
     }
   });
 
