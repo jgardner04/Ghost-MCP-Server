@@ -27,7 +27,7 @@ An MCP client can discover these resources and tools by querying the running MCP
 - **`ghost/newsletter`**: Represents a newsletter in Ghost CMS. Contains `id`, `name`, `description`, sender settings.
 - **`ghost/tier`**: Represents a membership tier in Ghost CMS. Contains `id`, `name`, `description`, pricing, benefits.
 
-_(Refer to `src/mcp_server_improved.js` for full resource schemas.)_
+_(Refer to `src/mcp_server.js` for full resource schemas.)_
 
 ### Tools Defined
 
@@ -316,6 +316,6 @@ For contributors or advanced users who want to modify the source code:
 
 - **401 Unauthorized Error from Ghost:** Check that your `GHOST_ADMIN_API_URL` and `GHOST_ADMIN_API_KEY` in the `.env` file are correct and that the Custom Integration in Ghost is enabled.
 - **MCP Server Connection Issues:** Ensure the MCP server is running (check console logs). Verify the port (`MCP_PORT`, default 3001) is not blocked by a firewall. Check that the client is connecting to the correct address and port.
-- **Tool Execution Errors:** Check the server console logs for detailed error messages from the specific tool implementation. Common issues include invalid input (check against tool schemas in `src/mcp_server_improved.js` and the README guide), problems downloading from `imageUrl`, image processing failures, or upstream errors from the Ghost API.
+- **Tool Execution Errors:** Check the server console logs for detailed error messages from the specific tool implementation. Common issues include invalid input (check against tool schemas in `src/mcp_server.js` and the README guide), problems downloading from `imageUrl`, image processing failures, or upstream errors from the Ghost API.
 - **Command Not Found:** If `ghost-mcp-server` or `ghost-mcp` commands are not found after global installation, ensure npm's global bin directory is in your PATH. You can find it with `npm bin -g`.
 - **Dependency Installation Issues:** Ensure you have a compatible Node.js version installed (Node.js 18.0.0 or higher - see Requirements section). For global installation issues, try `npm install -g @jgardner04/ghost-mcp-server --force`. For development setup, try removing `node_modules` and `package-lock.json` and running `npm install` again.

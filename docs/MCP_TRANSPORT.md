@@ -1,6 +1,6 @@
 # MCP Server Transport Configuration
 
-The improved MCP server (`src/mcp_server_improved.js`) supports multiple transport layers to accommodate different client types and use cases.
+The MCP server (`src/mcp_server.js`) supports multiple transport layers to accommodate different client types and use cases.
 
 ## Quick Start
 
@@ -208,7 +208,7 @@ MCP_ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com
 
 The improved implementation is backward compatible. To migrate:
 
-1. Replace `src/mcp_server.js` imports with `src/mcp_server_improved.js`
+1. Use `src/mcp_server.js` for the MCP server implementation
 2. Update startup code to use `startMCPServer(transport, options)`
 3. Configure transport via environment variables
 4. Update client code to handle standardized error responses
@@ -238,6 +238,6 @@ wscat -c ws://localhost:3001
 
 ```bash
 # Direct execution
-MCP_TRANSPORT=stdio node src/mcp_server_improved.js
+MCP_TRANSPORT=stdio node src/mcp_server.js
 # Then type JSON-RPC commands directly
 ```

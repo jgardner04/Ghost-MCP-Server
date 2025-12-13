@@ -7,11 +7,11 @@
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js",
-    "./mcp": "./src/mcp_server_improved.js"
+    "./mcp": "./src/mcp_server.js"
   },
   "bin": {
-    "ghost-mcp-server": "./src/index.js",
-    "ghost-mcp": "./src/mcp_server_improved.js"
+    "ghost-mcp-server": "./src/mcp_server.js",
+    "ghost-mcp": "./src/mcp_server.js"
   },
   "files": [
     "src",
@@ -36,10 +36,10 @@
     "parse-prd": "node scripts/dev.js parse-prd",
     "build": "mkdir -p build && cp -r src/* build/",
     "start": "node src/index.js",
-    "start:mcp": "node src/mcp_server_improved.js",
-    "start:mcp:stdio": "MCP_TRANSPORT=stdio node src/mcp_server_improved.js",
-    "start:mcp:http": "MCP_TRANSPORT=http node src/mcp_server_improved.js",
-    "start:mcp:websocket": "MCP_TRANSPORT=websocket node src/mcp_server_improved.js",
+    "start:mcp": "node src/mcp_server.js",
+    "start:mcp:stdio": "MCP_TRANSPORT=stdio node src/mcp_server.js",
+    "start:mcp:http": "MCP_TRANSPORT=http node src/mcp_server.js",
+    "start:mcp:websocket": "MCP_TRANSPORT=websocket node src/mcp_server.js",
     "test": "vitest run",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
