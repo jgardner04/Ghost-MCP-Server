@@ -5,6 +5,16 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     setupFiles: ['./vitest.setup.js'],
+    // Use forks pool for better module isolation between test files
+    // Each test file runs in its own child process with independent module cache
+    // This prevents race conditions when different test files mock the same module differently
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        // Ensure each test file is fully isolated
+        isolate: true,
+      },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
