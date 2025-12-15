@@ -111,7 +111,7 @@ export class ErrorLogger {
 
   async logInfo(message, meta = {}) {
     if (['info', 'debug'].includes(this.logLevel)) {
-      console.log(`[INFO] ${message}`);
+      console.error(`[INFO] ${message}`);
       const entry = this.formatLogEntry('info', message, meta);
       await this.writeToFile('app', entry);
     }
@@ -127,7 +127,7 @@ export class ErrorLogger {
 
   async logDebug(message, meta = {}) {
     if (this.logLevel === 'debug') {
-      console.log(`[DEBUG] ${message}`);
+      console.error(`[DEBUG] ${message}`);
       const entry = this.formatLogEntry('debug', message, meta);
       await this.writeToFile('debug', entry);
     }
@@ -446,11 +446,11 @@ export class GracefulShutdown {
     if (this.isShuttingDown) return;
 
     this.isShuttingDown = true;
-    console.log('Graceful shutdown initiated...');
+    console.error('Graceful shutdown initiated...');
 
     // Stop accepting new connections
     server.close(() => {
-      console.log('Server closed to new connections');
+      console.error('Server closed to new connections');
     });
 
     // Close existing connections

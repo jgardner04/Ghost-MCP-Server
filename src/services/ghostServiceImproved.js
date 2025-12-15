@@ -54,7 +54,7 @@ const handleApiRequest = async (resource, action, data = {}, options = {}, confi
   // Main execution function
   const executeRequest = async () => {
     try {
-      console.log(`Executing Ghost API request: ${operation}`);
+      console.error(`Executing Ghost API request: ${operation}`);
 
       let result;
 
@@ -78,7 +78,7 @@ const handleApiRequest = async (resource, action, data = {}, options = {}, confi
           result = await api[resource][action](data);
       }
 
-      console.log(`Successfully executed Ghost API request: ${operation}`);
+      console.error(`Successfully executed Ghost API request: ${operation}`);
       return result;
     } catch (error) {
       // Transform Ghost API errors into our error types
@@ -96,12 +96,12 @@ const handleApiRequest = async (resource, action, data = {}, options = {}, confi
     return await retryWithBackoff(wrappedExecute, {
       maxAttempts: maxRetries,
       onRetry: (attempt, _error) => {
-        console.log(`Retrying ${operation} (attempt ${attempt}/${maxRetries})`);
+        console.error(`Retrying ${operation} (attempt ${attempt}/${maxRetries})`);
 
         // Log circuit breaker state if relevant
         if (useCircuitBreaker) {
           const state = ghostCircuitBreaker.getState();
-          console.log(`Circuit breaker state:`, state);
+          console.error(`Circuit breaker state:`, state);
         }
       },
     });

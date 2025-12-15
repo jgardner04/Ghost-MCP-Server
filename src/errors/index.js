@@ -439,7 +439,7 @@ export async function retryWithBackoff(fn, options = {}) {
       }
 
       const delay = ErrorHandler.getRetryDelay(attempt, error);
-      console.log(`Retry attempt ${attempt}/${maxAttempts} after ${delay}ms`);
+      console.error(`Retry attempt ${attempt}/${maxAttempts} after ${delay}ms`);
 
       await new Promise((resolve) => setTimeout(resolve, delay));
       onRetry(attempt, error);

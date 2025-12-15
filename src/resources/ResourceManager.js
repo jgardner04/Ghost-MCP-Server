@@ -168,7 +168,7 @@ class ResourceFetcher {
     // Check cache
     const cached = this.cache.get(cacheKey);
     if (cached) {
-      console.log(`Cache hit for ${cacheKey}`);
+      console.error(`Cache hit for ${cacheKey}`);
       return cached;
     }
 
@@ -221,7 +221,7 @@ class ResourceFetcher {
     // Check cache
     const cached = this.cache.get(cacheKey);
     if (cached) {
-      console.log(`Cache hit for posts query`);
+      console.error(`Cache hit for posts query`);
       return cached;
     }
 
@@ -277,7 +277,7 @@ class ResourceFetcher {
     // Check cache
     const cached = this.cache.get(cacheKey);
     if (cached) {
-      console.log(`Cache hit for ${cacheKey}`);
+      console.error(`Cache hit for ${cacheKey}`);
       return cached;
     }
 
@@ -324,7 +324,7 @@ class ResourceFetcher {
     // Check cache
     const cached = this.cache.get(cacheKey);
     if (cached) {
-      console.log(`Cache hit for tags query`);
+      console.error(`Cache hit for tags query`);
       return cached;
     }
 
@@ -400,7 +400,7 @@ class ResourceSubscriptionManager extends EventEmitter {
       this.startPolling(subscriptionId, pollingInterval);
     }
 
-    console.log(`Created subscription ${subscriptionId} for ${uri}`);
+    console.error(`Created subscription ${subscriptionId} for ${uri}`);
 
     return subscriptionId;
   }
@@ -418,7 +418,7 @@ class ResourceSubscriptionManager extends EventEmitter {
     // Remove subscription
     this.subscriptions.delete(subscriptionId);
 
-    console.log(`Removed subscription ${subscriptionId}`);
+    console.error(`Removed subscription ${subscriptionId}`);
   }
 
   startPolling(subscriptionId, interval) {
@@ -539,7 +539,7 @@ export class ResourceManager {
     try {
       const parsed = ResourceURIParser.parse(uri);
 
-      console.log('Fetching resource:', { uri: uri.substring(0, 100), parsed });
+      console.error('Fetching resource:', { uri: uri.substring(0, 100), parsed });
 
       // Route to appropriate fetcher
       switch (parsed.resourceType) {
@@ -605,7 +605,7 @@ export class ResourceManager {
    */
   invalidateCache(pattern = null) {
     this.cache.invalidate(pattern);
-    console.log(`Cache invalidated${pattern ? ` for pattern: ${pattern}` : ''}`);
+    console.error(`Cache invalidated${pattern ? ` for pattern: ${pattern}` : ''}`);
   }
 
   /**
