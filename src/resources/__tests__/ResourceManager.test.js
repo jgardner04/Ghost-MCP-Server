@@ -836,7 +836,7 @@ describe('ResourceManager', () => {
       });
 
       it('should log invalidation', async () => {
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
         resourceManager.invalidateCache();
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Cache invalidated'));

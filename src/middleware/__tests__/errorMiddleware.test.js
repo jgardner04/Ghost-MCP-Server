@@ -299,7 +299,7 @@ describe('errorMiddleware', () => {
 
     describe('logInfo', () => {
       it('should log info message when level allows', async () => {
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
         const logger = new ErrorLogger({ logLevel: 'info', enableFileLogging: false });
         await logger.logInfo('Info message');
@@ -309,7 +309,7 @@ describe('errorMiddleware', () => {
       });
 
       it('should not log when level is higher', async () => {
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
         const logger = new ErrorLogger({ logLevel: 'error', enableFileLogging: false });
         await logger.logInfo('Info message');
@@ -333,7 +333,7 @@ describe('errorMiddleware', () => {
 
     describe('logDebug', () => {
       it('should log debug message when level is debug', async () => {
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
         const logger = new ErrorLogger({ logLevel: 'debug', enableFileLogging: false });
         await logger.logDebug('Debug message');
@@ -343,7 +343,7 @@ describe('errorMiddleware', () => {
       });
 
       it('should not log when level is not debug', async () => {
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
         const logger = new ErrorLogger({ logLevel: 'info', enableFileLogging: false });
         await logger.logDebug('Debug message');
