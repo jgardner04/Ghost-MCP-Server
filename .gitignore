@@ -28,5 +28,8 @@ node_modules/
 tasks.json
 tasks/
 
+# AI working directories
+thoughts/
+
 # Test coverage
 coverage/ 
