@@ -24,6 +24,7 @@ GHOST_ADMIN_API_KEY=your_admin_api_key
 - **Node.js 24 LTS** with all native dependencies for sharp image processing
 - **ZSH shell** with [Starship](https://starship.rs/) prompt
 - **Claude Code CLI** pre-installed and ready to use
+- **GitHub CLI (gh)** for PR creation, issue management, and GitHub workflows
 - **Git Delta** for improved diff visualization
 - **Persistent history** - command history persists between container restarts
 - **Pre-configured VS Code** with ESLint, Prettier, Vitest, and GitLens extensions
