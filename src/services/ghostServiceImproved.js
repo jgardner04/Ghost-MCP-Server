@@ -699,14 +699,17 @@ export async function createTag(tagData) {
   }
 }
 
-export async function getTags(name) {
-  const options = {
-    limit: 'all',
-    ...(name && { filter: `name:'${name}'` }),
-  };
-
+export async function getTags(options = {}) {
   try {
-    const tags = await handleApiRequest('tags', 'browse', {}, options);
+    const tags = await handleApiRequest(
+      'tags',
+      'browse',
+      {},
+      {
+        limit: 15,
+        ...options,
+      }
+    );
     return tags || [];
   } catch (error) {
     console.error('Failed to get tags:', error);

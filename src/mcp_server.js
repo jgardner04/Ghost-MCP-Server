@@ -72,6 +72,17 @@ const getDefaultAltText = (filePath) => {
   }
 };
 
+/**
+ * Escapes single quotes in NQL filter values by doubling them.
+ * This prevents filter injection attacks when building NQL query strings.
+ * Example: "O'Reilly" becomes "O''Reilly" for use in name:'O''Reilly'
+ * @param {string} value - The value to escape
+ * @returns {string} The escaped value safe for NQL filter strings
+ */
+const escapeNqlValue = (value) => {
+  return value.replace(/'/g, "''");
+};
+
 // Create server instance with new API
 const server = new McpServer({
   name: 'ghost-mcp-server',
@@ -100,7 +111,7 @@ const deleteTagSchema = z.object({ id: ghostIdSchema });
 // Get Tags Tool
 server.tool(
   'ghost_get_tags',
-  'Retrieves a list of tags from Ghost CMS. Can optionally filter by tag name.',
+  'Retrieves a list of tags from Ghost CMS with pagination, filtering, sorting, and relation inclusion. Supports filtering by name, slug, visibility, or custom NQL filter expressions.',
   getTagsSchema,
   async (rawInput) => {
     const validation = validateToolInput(getTagsSchema, rawInput, 'ghost_get_tags');
@@ -112,15 +123,29 @@ server.tool(
     console.error(`Executing tool: ghost_get_tags`);
     try {
       await loadServices();
-      const tags = await ghostService.getTags();
-      let result = tags;
 
-      if (input.name) {
-        result = tags.filter((tag) => tag.name.toLowerCase() === input.name.toLowerCase());
-        console.error(`Filtered tags by name "${input.name}". Found ${result.length} match(es).`);
-      } else {
-        console.error(`Retrieved ${tags.length} tags from Ghost.`);
+      // Build options object with provided parameters
+      const options = {};
+      if (input.limit !== undefined) options.limit = input.limit;
+      if (input.page !== undefined) options.page = input.page;
+      if (input.order !== undefined) options.order = input.order;
+      if (input.include !== undefined) options.include = input.include;
+
+      // Build filter string from individual filter parameters
+      const filters = [];
+      if (input.name) filters.push(`name:'${escapeNqlValue(input.name)}'`);
+      if (input.slug) filters.push(`slug:'${escapeNqlValue(input.slug)}'`);
+      if (input.visibility) filters.push(`visibility:'${input.visibility}'`); // visibility is enum-validated, no escaping needed
+      if (input.filter) filters.push(input.filter);
+
+      if (filters.length > 0) {
+        options.filter = filters.join('+');
       }
+
+      const tags = await ghostService.getTags(options);
+      console.error(`Retrieved ${tags.length} tags from Ghost.`);
+
+      const result = tags;
 
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
@@ -503,6 +528,8 @@ server.tool(
       if (input.include !== undefined) options.include = input.include;
       if (input.filter !== undefined) options.filter = input.filter;
       if (input.order !== undefined) options.order = input.order;
+      if (input.fields !== undefined) options.fields = input.fields;
+      if (input.formats !== undefined) options.formats = input.formats;
 
       const posts = await ghostService.getPosts(options);
       console.error(`Retrieved ${posts.length} posts from Ghost.`);
