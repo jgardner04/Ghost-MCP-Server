@@ -503,6 +503,8 @@ server.tool(
       if (input.include !== undefined) options.include = input.include;
       if (input.filter !== undefined) options.filter = input.filter;
       if (input.order !== undefined) options.order = input.order;
+      if (input.fields !== undefined) options.fields = input.fields;
+      if (input.formats !== undefined) options.formats = input.formats;
 
       const posts = await ghostService.getPosts(options);
       console.error(`Retrieved ${posts.length} posts from Ghost.`);
