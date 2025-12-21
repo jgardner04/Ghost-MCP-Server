@@ -700,13 +700,16 @@ export async function createTag(tagData) {
 }
 
 export async function getTags(options = {}) {
-  const defaultOptions = {
-    limit: options.limit || 15,
-    ...options,
-  };
-
   try {
-    const tags = await handleApiRequest('tags', 'browse', {}, defaultOptions);
+    const tags = await handleApiRequest(
+      'tags',
+      'browse',
+      {},
+      {
+        limit: 15,
+        ...options,
+      }
+    );
     return tags || [];
   } catch (error) {
     console.error('Failed to get tags:', error);

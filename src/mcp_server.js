@@ -72,6 +72,17 @@ const getDefaultAltText = (filePath) => {
   }
 };
 
+/**
+ * Escapes single quotes in NQL filter values by doubling them.
+ * This prevents filter injection attacks when building NQL query strings.
+ * Example: "O'Reilly" becomes "O''Reilly" for use in name:'O''Reilly'
+ * @param {string} value - The value to escape
+ * @returns {string} The escaped value safe for NQL filter strings
+ */
+const escapeNqlValue = (value) => {
+  return value.replace(/'/g, "''");
+};
+
 // Create server instance with new API
 const server = new McpServer({
   name: 'ghost-mcp-server',
@@ -100,7 +111,7 @@ const deleteTagSchema = z.object({ id: ghostIdSchema });
 // Get Tags Tool
 server.tool(
   'ghost_get_tags',
-  'Retrieves a list of tags from Ghost CMS. Can optionally filter by tag name.',
+  'Retrieves a list of tags from Ghost CMS with pagination, filtering, sorting, and relation inclusion. Supports filtering by name, slug, visibility, or custom NQL filter expressions.',
   getTagsSchema,
   async (rawInput) => {
     const validation = validateToolInput(getTagsSchema, rawInput, 'ghost_get_tags');
@@ -122,9 +133,9 @@ server.tool(
 
       // Build filter string from individual filter parameters
       const filters = [];
-      if (input.name) filters.push(`name:'${input.name}'`);
-      if (input.slug) filters.push(`slug:'${input.slug}'`);
-      if (input.visibility) filters.push(`visibility:'${input.visibility}'`);
+      if (input.name) filters.push(`name:'${escapeNqlValue(input.name)}'`);
+      if (input.slug) filters.push(`slug:'${escapeNqlValue(input.slug)}'`);
+      if (input.visibility) filters.push(`visibility:'${input.visibility}'`); // visibility is enum-validated, no escaping needed
       if (input.filter) filters.push(input.filter);
 
       if (filters.length > 0) {

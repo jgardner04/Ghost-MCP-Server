@@ -376,6 +376,218 @@ describe('mcp_server - ghost_get_posts tool', () => {
   });
 });
 
+describe('mcp_server - ghost_get_tags tool', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    // Don't clear mockTools - they're registered once on module load
+    if (mockTools.size === 0) {
+      await import('../mcp_server.js');
+    }
+  });
+
+  it('should register ghost_get_tags tool', () => {
+    expect(mockTools.has('ghost_get_tags')).toBe(true);
+  });
+
+  it('should have correct schema with all optional parameters', () => {
+    const tool = mockTools.get('ghost_get_tags');
+    expect(tool).toBeDefined();
+    expect(tool.description).toContain('tags');
+    expect(tool.schema).toBeDefined();
+    // Zod schemas store field definitions in schema.shape
+    expect(tool.schema.shape.limit).toBeDefined();
+    expect(tool.schema.shape.page).toBeDefined();
+    expect(tool.schema.shape.order).toBeDefined();
+    expect(tool.schema.shape.include).toBeDefined();
+    expect(tool.schema.shape.name).toBeDefined();
+    expect(tool.schema.shape.slug).toBeDefined();
+    expect(tool.schema.shape.visibility).toBeDefined();
+    expect(tool.schema.shape.filter).toBeDefined();
+  });
+
+  it('should retrieve tags with default options', async () => {
+    const mockTags = [
+      { id: '1', name: 'Tag 1', slug: 'tag-1' },
+      { id: '2', name: 'Tag 2', slug: 'tag-2' },
+    ];
+    mockGetTags.mockResolvedValue(mockTags);
+
+    const tool = mockTools.get('ghost_get_tags');
+    const result = await tool.handler({});
+
+    expect(mockGetTags).toHaveBeenCalledWith({});
+    expect(result.content[0].text).toContain('Tag 1');
+    expect(result.content[0].text).toContain('Tag 2');
+  });
+
+  it('should pass limit and page parameters', async () => {
+    const mockTags = [{ id: '1', name: 'Tag 1', slug: 'tag-1' }];
+    mockGetTags.mockResolvedValue(mockTags);
+
+    const tool = mockTools.get('ghost_get_tags');
+    await tool.handler({ limit: 10, page: 2 });
+
+    expect(mockGetTags).toHaveBeenCalledWith({
+      limit: 10,
+      page: 2,
+    });
+  });
+
+  it('should pass order parameter', async () => {
+    const mockTags = [{ id: '1', name: 'Tag 1', slug: 'tag-1' }];
+    mockGetTags.mockResolvedValue(mockTags);
+
+    const tool = mockTools.get('ghost_get_tags');
+    await tool.handler({ order: 'name ASC' });
+
+    expect(mockGetTags).toHaveBeenCalledWith({
+      order: 'name ASC',
+    });
+  });
+
+  it('should pass include parameter', async () => {
+    const mockTags = [{ id: '1', name: 'Tag 1', slug: 'tag-1' }];
+    mockGetTags.mockResolvedValue(mockTags);
+
+    const tool = mockTools.get('ghost_get_tags');
+    await tool.handler({ include: 'count.posts' });
+
+    expect(mockGetTags).toHaveBeenCalledWith({
+      include: 'count.posts',
+    });
+  });
+
+  it('should filter by name parameter', async () => {
+    const mockTags = [{ id: '1', name: 'Test Tag', slug: 'test-tag' }];
+    mockGetTags.mockResolvedValue(mockTags);
+
+    const tool = mockTools.get('ghost_get_tags');
+    await tool.handler({ name: 'Test Tag' });
+
+    expect(mockGetTags).toHaveBeenCalledWith({
+      filter: "name:'Test Tag'",
+    });
+  });
+
+  it('should filter by slug parameter', async () => {
+    const mockTags = [{ id: '1', name: 'Test Tag', slug: 'test-tag' }];
+    mockGetTags.mockResolvedValue(mockTags);
+
+    const tool = mockTools.get('ghost_get_tags');
+    await tool.handler({ slug: 'test-tag' });
+
+    expect(mockGetTags).toHaveBeenCalledWith({
+      filter: "slug:'test-tag'",
+    });
+  });
+
+  it('should filter by visibility parameter', async () => {
+    const mockTags = [{ id: '1', name: 'Test Tag', slug: 'test-tag' }];
+    mockGetTags.mockResolvedValue(mockTags);
+
+    const tool = mockTools.get('ghost_get_tags');
+    await tool.handler({ visibility: 'public' });
+
+    expect(mockGetTags).toHaveBeenCalledWith({
+      filter: "visibility:'public'",
+    });
+  });
+
+  it('should escape single quotes in name parameter', async () => {
+    const mockTags = [{ id: '1', name: "O'Reilly", slug: 'oreilly' }];
+    mockGetTags.mockResolvedValue(mockTags);
+
+    const tool = mockTools.get('ghost_get_tags');
+    await tool.handler({ name: "O'Reilly" });
+
+    expect(mockGetTags).toHaveBeenCalledWith({
+      filter: "name:'O''Reilly'",
+    });
+  });
+
+  it('should escape single quotes in slug parameter', async () => {
+    const mockTags = [{ id: '1', name: 'Test', slug: "test'slug" }];
+    mockGetTags.mockResolvedValue(mockTags);
+
+    const tool = mockTools.get('ghost_get_tags');
+    await tool.handler({ slug: "test'slug" });
+
+    expect(mockGetTags).toHaveBeenCalledWith({
+      filter: "slug:'test''slug'",
+    });
+  });
+
+  it('should combine multiple filter parameters', async () => {
+    const mockTags = [{ id: '1', name: 'News', slug: 'news' }];
+    mockGetTags.mockResolvedValue(mockTags);
+
+    const tool = mockTools.get('ghost_get_tags');
+    await tool.handler({ name: 'News', visibility: 'public' });
+
+    expect(mockGetTags).toHaveBeenCalledWith({
+      filter: "name:'News'+visibility:'public'",
+    });
+  });
+
+  it('should combine individual filters with custom filter parameter', async () => {
+    const mockTags = [{ id: '1', name: 'News', slug: 'news' }];
+    mockGetTags.mockResolvedValue(mockTags);
+
+    const tool = mockTools.get('ghost_get_tags');
+    await tool.handler({ name: 'News', filter: 'featured:true' });
+
+    expect(mockGetTags).toHaveBeenCalledWith({
+      filter: "name:'News'+featured:true",
+    });
+  });
+
+  it('should pass all parameters combined', async () => {
+    const mockTags = [{ id: '1', name: 'News', slug: 'news' }];
+    mockGetTags.mockResolvedValue(mockTags);
+
+    const tool = mockTools.get('ghost_get_tags');
+    await tool.handler({
+      limit: 20,
+      page: 1,
+      order: 'name ASC',
+      include: 'count.posts',
+      name: 'News',
+      visibility: 'public',
+    });
+
+    expect(mockGetTags).toHaveBeenCalledWith({
+      limit: 20,
+      page: 1,
+      order: 'name ASC',
+      include: 'count.posts',
+      filter: "name:'News'+visibility:'public'",
+    });
+  });
+
+  it('should handle service errors', async () => {
+    mockGetTags.mockRejectedValue(new Error('Service error'));
+
+    const tool = mockTools.get('ghost_get_tags');
+    const result = await tool.handler({});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Service error');
+  });
+
+  it('should return formatted JSON response', async () => {
+    const mockTags = [{ id: '1', name: 'Test Tag', slug: 'test-tag' }];
+    mockGetTags.mockResolvedValue(mockTags);
+
+    const tool = mockTools.get('ghost_get_tags');
+    const result = await tool.handler({});
+
+    expect(result.content).toBeDefined();
+    expect(result.content[0].type).toBe('text');
+    expect(result.content[0].text).toContain('"id": "1"');
+    expect(result.content[0].text).toContain('"name": "Test Tag"');
+  });
+});
+
 describe('mcp_server - ghost_get_post tool', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
