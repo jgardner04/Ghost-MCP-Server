@@ -9,24 +9,44 @@ const getTags = async (req, res, next) => {
   const logger = createContextLogger('tag-controller');
 
   try {
-    const { name } = req.query; // Get name from query params like /api/tags?name=some-tag
+    const { name, limit, filter, order, include } = req.query;
+
+    // Build options object
+    const options = {};
+
+    // Handle legacy name parameter by converting to filter
+    if (name) {
+      // Validate and sanitize name
+      if (!/^[a-zA-Z0-9\s\-_]+$/.test(name)) {
+        logger.warn('Tag name contains invalid characters', { name });
+        return res.status(400).json({ message: 'Tag name contains invalid characters' });
+      }
+      // Escape single quotes and backslashes to prevent injection
+      const safeName = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      options.filter = `name:'${safeName}'`;
+    }
+
+    // Add other query parameters
+    if (limit) options.limit = limit;
+    if (filter) options.filter = filter; // This will override name-based filter if both provided
+    if (order) options.order = order;
+    if (include) options.include = include;
+
     logger.info('Fetching tags', {
-      filtered: !!name,
-      filterName: name,
+      options,
     });
 
-    const tags = await getGhostTags(name);
+    const tags = await getGhostTags(options);
 
     logger.info('Tags retrieved successfully', {
       count: tags.length,
-      filtered: !!name,
     });
 
     res.status(200).json(tags);
   } catch (error) {
     logger.error('Get tags failed', {
       error: error.message,
-      filterName: req.query?.name,
+      query: req.query,
     });
     next(error);
   }

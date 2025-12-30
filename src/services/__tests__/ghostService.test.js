@@ -276,24 +276,7 @@ describe('ghostService', () => {
   });
 
   describe('getTags', () => {
-    it('should reject tag names with invalid characters', async () => {
-      await expect(getTags("'; DROP TABLE tags; --")).rejects.toThrow(
-        'Tag name contains invalid characters'
-      );
-    });
-
-    it('should accept valid tag names', async () => {
-      const validNames = ['Test Tag', 'test-tag', 'test_tag', 'Tag123'];
-      const expectedTags = [{ id: '1', name: 'Tag' }];
-      api.tags.browse.mockResolvedValue(expectedTags);
-
-      for (const name of validNames) {
-        const result = await getTags(name);
-        expect(result).toEqual(expectedTags);
-      }
-    });
-
-    it('should handle tags without filter when name is not provided', async () => {
+    it('should get all tags when no options provided', async () => {
       const expectedTags = [
         { id: '1', name: 'Tag1' },
         { id: '2', name: 'Tag2' },
@@ -303,17 +286,41 @@ describe('ghostService', () => {
       const result = await getTags();
 
       expect(result).toEqual(expectedTags);
-      expect(api.tags.browse).toHaveBeenCalledWith({ limit: 'all' }, {});
+      expect(api.tags.browse).toHaveBeenCalledWith({ limit: 15 }, {});
     });
 
-    it('should properly escape tag names in filter', async () => {
-      const expectedTags = [{ id: '1', name: "Tag's Name" }];
+    it('should pass options to browse endpoint', async () => {
+      const expectedTags = [{ id: '1', name: 'Tag' }];
       api.tags.browse.mockResolvedValue(expectedTags);
 
-      // This should work because we properly escape single quotes
-      const result = await getTags('Valid Tag');
+      const result = await getTags({ limit: 5, filter: "name:'Test'" });
 
       expect(result).toEqual(expectedTags);
+      expect(api.tags.browse).toHaveBeenCalledWith({ limit: 5, filter: "name:'Test'" }, {});
+    });
+
+    it('should return empty array on null response', async () => {
+      api.tags.browse.mockResolvedValue(null);
+
+      const result = await getTags();
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle errors and rethrow', async () => {
+      const error = new Error('API error');
+      api.tags.browse.mockRejectedValue(error);
+
+      await expect(getTags()).rejects.toThrow('API error');
+    });
+
+    it('should merge default limit with custom options', async () => {
+      const expectedTags = [{ id: '1', name: 'Tag' }];
+      api.tags.browse.mockResolvedValue(expectedTags);
+
+      await getTags({ filter: "name:'Custom'" });
+
+      expect(api.tags.browse).toHaveBeenCalledWith({ limit: 15, filter: "name:'Custom'" }, {});
     });
   });
 });
