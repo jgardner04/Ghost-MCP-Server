@@ -172,6 +172,48 @@ describe('Tag Schemas', () => {
       expect(result).toBeDefined();
       // Note: optional fields with defaults don't apply when field is omitted
     });
+
+    it('should accept limit as "all" string', () => {
+      const query = {
+        limit: 'all',
+      };
+
+      const result = tagQuerySchema.parse(query);
+      expect(result.limit).toBe('all');
+    });
+
+    it('should accept limit as number within range', () => {
+      const query = {
+        limit: 50,
+      };
+
+      const result = tagQuerySchema.parse(query);
+      expect(result.limit).toBe(50);
+    });
+
+    it('should reject limit as invalid string', () => {
+      const query = {
+        limit: 'invalid',
+      };
+
+      expect(() => tagQuerySchema.parse(query)).toThrow();
+    });
+
+    it('should reject limit greater than 100', () => {
+      const query = {
+        limit: 101,
+      };
+
+      expect(() => tagQuerySchema.parse(query)).toThrow();
+    });
+
+    it('should reject limit less than 1', () => {
+      const query = {
+        limit: 0,
+      };
+
+      expect(() => tagQuerySchema.parse(query)).toThrow();
+    });
   });
 
   describe('tagIdSchema', () => {

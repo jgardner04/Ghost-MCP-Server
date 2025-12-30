@@ -63,7 +63,11 @@ export const tagQuerySchema = z.object({
   name: z.string().optional().describe('Filter by exact tag name'),
   slug: z.string().optional().describe('Filter by tag slug'),
   visibility: visibilitySchema.optional().describe('Filter by visibility'),
-  limit: z.number().int().min(1).max(100).default(15).optional(),
+  limit: z
+    .union([z.number().int().min(1).max(100), z.literal('all')])
+    .default(15)
+    .optional()
+    .describe('Number of tags to return (1-100) or "all" for all tags'),
   page: z.number().int().min(1).default(1).optional(),
   filter: z
     .string()
