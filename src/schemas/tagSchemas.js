@@ -57,18 +57,33 @@ export const createTagSchema = z.object({
 export const updateTagSchema = createTagSchema.partial();
 
 /**
- * Schema for tag query/filter parameters
+ * Base schema for tag query/filter parameters (without refinement)
+ * Exported for use in MCP server where .partial() is needed
  */
-export const tagQuerySchema = z.object({
-  name: z.string().optional().describe('Filter by exact tag name'),
+export const tagQueryBaseSchema = z.object({
+  name: z
+    .string()
+    .regex(
+      /^[a-zA-Z0-9\s\-_']+$/,
+      'Tag name contains invalid characters. Only letters, numbers, spaces, hyphens, underscores, and apostrophes are allowed'
+    )
+    .optional()
+    .describe('Filter by exact tag name (legacy parameter, converted to filter internally)'),
   slug: z.string().optional().describe('Filter by tag slug'),
   visibility: visibilitySchema.optional().describe('Filter by visibility'),
   limit: z
-    .union([z.number().int().min(1).max(100), z.literal('all')])
+    .union([
+      z.number().int().min(1).max(100),
+      z.string().regex(/^\d+$/).transform(Number),
+      z.literal('all'),
+    ])
     .default(15)
     .optional()
     .describe('Number of tags to return (1-100) or "all" for all tags'),
-  page: z.number().int().min(1).default(1).optional(),
+  page: z
+    .union([z.number().int().min(1), z.string().regex(/^\d+$/).transform(Number)])
+    .default(1)
+    .optional(),
   filter: z
     .string()
     .regex(/^[a-zA-Z0-9_\-:.'"\s,[\]<>=!+]+$/, 'Invalid filter: contains disallowed characters')
@@ -79,6 +94,15 @@ export const tagQuerySchema = z.object({
     .optional()
     .describe('Comma-separated list of relations to include (e.g., "count.posts")'),
   order: z.string().optional().describe('Order results (e.g., "name ASC", "created_at DESC")'),
+});
+
+/**
+ * Schema for tag query/filter parameters with validation
+ * Note: Only one of 'name' or 'filter' should be provided, not both
+ */
+export const tagQuerySchema = tagQueryBaseSchema.refine((data) => !(data.name && data.filter), {
+  message: 'Cannot specify both "name" and "filter" parameters. Use "filter" for advanced queries.',
+  path: ['filter'],
 });
 
 /**
