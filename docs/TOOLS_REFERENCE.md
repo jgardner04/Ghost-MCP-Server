@@ -2,6 +2,44 @@
 
 This document provides a comprehensive reference for all 34 MCP tools available in the Ghost MCP Server.
 
+## Breaking Changes
+
+### v1.x - getTags Default Limit Changed (PR #87)
+
+**What Changed:**
+- The `ghost_get_tags` tool default `limit` parameter changed from `'all'` (unlimited) to `15`
+
+**Impact:**
+- Users with more than 15 tags will now see only the first 15 tags by default
+- This may affect existing integrations that expected all tags to be returned
+
+**Migration Guide:**
+
+To get the old behavior (fetch all tags), explicitly set `limit: 'all'`:
+
+```json
+{
+  "limit": "all"
+}
+```
+
+For better performance with large tag lists, use pagination instead:
+
+```json
+{
+  "limit": 50,
+  "page": 1
+}
+```
+
+**Rationale:**
+- Aligns with Ghost API best practices
+- Prevents performance issues with large tag lists
+- Matches the schema-defined default
+- Encourages explicit pagination for scalability
+
+---
+
 ## Overview
 
 | Resource    | Tools | Description                       |
@@ -31,26 +69,56 @@ All tools return responses in this format:
 
 ### ghost_get_tags
 
-Retrieves a list of tags from Ghost CMS.
+Retrieves a list of tags from Ghost CMS with pagination, filtering, and sorting.
 
 **Schema:**
 
 ```typescript
 {
   name?: string;       // Filter by exact tag name
-  limit?: number;      // Results per page (1-100, default: 15)
+  limit?: number | 'all';  // Results per page (1-100, default: 15, or 'all' for unlimited)
   page?: number;       // Page number (default: 1)
-  order?: string;      // Sort order (e.g., "name ASC")
-  include?: string;    // Relations to include
+  order?: string;      // Sort order (e.g., "name ASC", "created_at DESC")
+  include?: string;    // Relations to include (e.g., "count.posts")
   filter?: string;     // NQL filter string
 }
 ```
 
-**Example:**
+**Examples:**
 
+Basic usage (returns first 15 tags):
+```json
+{}
+```
+
+Filter by tag name:
 ```json
 { "name": "Technology" }
 ```
+
+Get all tags (for backward compatibility):
+```json
+{ "limit": "all" }
+```
+
+Pagination for large tag lists:
+```json
+{
+  "limit": 50,
+  "page": 2,
+  "order": "name ASC"
+}
+```
+
+Include post count:
+```json
+{
+  "limit": 20,
+  "include": "count.posts"
+}
+```
+
+**Note:** If you have more than 15 tags and need all of them, explicitly set `limit: 'all'` or use pagination. See [Breaking Changes](#breaking-changes) for migration details.
 
 ---
 

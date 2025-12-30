@@ -236,6 +236,7 @@ This project maintains detailed documentation in the `docs/` directory:
 
 | File                                                   | Description                                                                                    |
 | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| [CHANGELOG.md](CHANGELOG.md)                           | Version history, breaking changes, new features, and migration guides                          |
 | [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md)       | Error types, circuit breaker pattern, retry mechanisms, error logging strategies               |
 | [docs/MCP_TRANSPORT.md](docs/MCP_TRANSPORT.md)         | Transport configuration (stdio, HTTP/SSE, WebSocket), use cases, security considerations       |
 | [docs/RESOURCE_FETCHING.md](docs/RESOURCE_FETCHING.md) | Resource URI patterns, caching strategies (LRU/TTL), real-time subscriptions, batch operations |
@@ -252,6 +253,7 @@ Update documentation when you:
 - Modify transport configuration or add transport options → Update MCP_TRANSPORT.md
 - Change resource URI patterns or caching behavior → Update RESOURCE_FETCHING.md
 - Add new manual testing procedures → Update TESTING.md
+- Introduce breaking changes or new features → Update CHANGELOG.md and TOOLS_REFERENCE.md
 
 ### Post-Task Documentation Checklist
 
@@ -261,6 +263,7 @@ After completing a task, verify:
 - [ ] Added examples for new features in appropriate docs
 - [ ] Updated CLAUDE.md if development workflow changed
 - [ ] Documented any new environment variables in this file
+- [ ] Updated CHANGELOG.md for breaking changes or significant features
 
 ## Task Tracking for Multi-Session Work
 
