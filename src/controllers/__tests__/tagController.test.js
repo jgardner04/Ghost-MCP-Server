@@ -91,7 +91,17 @@ describe('tagController', () => {
 
       expect(ghostService.getTags).not.toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ message: 'Tag name contains invalid characters' });
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Invalid query parameters',
+          errors: expect.arrayContaining([
+            expect.objectContaining({
+              path: 'name',
+              message: expect.stringContaining('invalid characters'),
+            }),
+          ]),
+        })
+      );
       expect(next).not.toHaveBeenCalled();
     });
 
@@ -112,11 +122,79 @@ describe('tagController', () => {
       await getTags(req, res, next);
 
       expect(ghostService.getTags).toHaveBeenCalledWith({
-        limit: '10',
+        limit: 10,
         order: 'name asc',
         include: 'count.posts',
       });
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('should return 400 when both name and filter parameters are provided', async () => {
+      const req = createMockRequest({
+        query: {
+          name: 'Technology',
+          filter: 'slug:tech',
+        },
+      });
+      const res = createMockResponse();
+      const next = createMockNext();
+
+      await getTags(req, res, next);
+
+      expect(ghostService.getTags).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Invalid query parameters',
+          errors: expect.arrayContaining([
+            expect.objectContaining({
+              path: 'filter',
+              message: expect.stringContaining('Cannot specify both'),
+            }),
+          ]),
+        })
+      );
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 for NQL injection attempts in name', async () => {
+      const req = createMockRequest({ query: { name: 'test]+[slug:other' } });
+      const res = createMockResponse();
+      const next = createMockNext();
+
+      await getTags(req, res, next);
+
+      expect(ghostService.getTags).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Invalid query parameters',
+          errors: expect.arrayContaining([
+            expect.objectContaining({
+              path: 'name',
+              message: expect.stringContaining('invalid characters'),
+            }),
+          ]),
+        })
+      );
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 for NQL operator injection in name', async () => {
+      const req = createMockRequest({ query: { name: 'name+slug:test' } });
+      const res = createMockResponse();
+      const next = createMockNext();
+
+      await getTags(req, res, next);
+
+      expect(ghostService.getTags).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Invalid query parameters',
+        })
+      );
+      expect(next).not.toHaveBeenCalled();
     });
   });
 

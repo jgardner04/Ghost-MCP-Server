@@ -201,7 +201,7 @@ const getTags = async (options = {}) => {
     );
     return tags || [];
   } catch (error) {
-    console.error('Failed to get tags:', error);
+    logger.error('Failed to get tags', { error: error.message });
     throw error;
   }
 };
