@@ -14,7 +14,7 @@ import { trackTempFile, cleanupTempFiles } from './utils/tempFileManager.js';
 import {
   createTagSchema,
   updateTagSchema,
-  tagQuerySchema,
+  tagQueryBaseSchema,
   ghostIdSchema,
   emailSchema,
   createPostSchema,
@@ -92,7 +92,7 @@ const server = new McpServer({
 // --- Register Tools ---
 
 // --- Schema Definitions for Tools ---
-const getTagsSchema = tagQuerySchema.partial();
+const getTagsSchema = tagQueryBaseSchema.partial();
 const getTagSchema = z
   .object({
     id: ghostIdSchema.optional().describe('The ID of the tag to retrieve.'),

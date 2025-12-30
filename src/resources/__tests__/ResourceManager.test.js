@@ -459,7 +459,7 @@ describe('ResourceManager', () => {
         const result = await resourceManager.fetchResource('ghost/tag/name:Technology');
 
         expect(result).toEqual(tags[0]);
-        expect(mockGhostService.getTags).toHaveBeenCalledWith('Technology');
+        expect(mockGhostService.getTags).toHaveBeenCalledWith({ filter: "name:'Technology'" });
       });
 
       it('should use id by default when no identifier type specified', async () => {
@@ -511,7 +511,7 @@ describe('ResourceManager', () => {
 
         await resourceManager.fetchResource('ghost/tags?name=Tech');
 
-        expect(mockGhostService.getTags).toHaveBeenCalledWith('Tech');
+        expect(mockGhostService.getTags).toHaveBeenCalledWith({ filter: "name:'Tech'" });
       });
 
       it('should apply client-side filtering', async () => {
