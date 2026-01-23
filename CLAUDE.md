@@ -166,9 +166,10 @@ Follow these principles when writing code:
 
 1. **MCP Server** (`src/mcp_server.js`):
    - Implements Model Context Protocol specification with Zod validation
-   - Exposes Ghost CMS functionality as 34 MCP tools across 7 resource types
-   - Resources: `ghost/post`, `ghost/page`, `ghost/tag`, `ghost/member`, `ghost/newsletter`, `ghost/tier`
-   - Tools by resource:
+   - Exposes Ghost CMS functionality as 34 MCP tools across 7 domain types
+   - Domain types: Posts, Pages, Tags, Members, Newsletters, Tiers, Images
+   - **Note:** This server provides tools only, not MCP protocol resources
+   - Tools by domain:
      - **Posts** (6): `ghost_create_post`, `ghost_get_posts`, `ghost_get_post`, `ghost_search_posts`, `ghost_update_post`, `ghost_delete_post`
      - **Pages** (6): `ghost_create_page`, `ghost_get_pages`, `ghost_get_page`, `ghost_search_pages`, `ghost_update_page`, `ghost_delete_page`
      - **Tags** (5): `ghost_create_tag`, `ghost_get_tags`, `ghost_get_tag`, `ghost_update_tag`, `ghost_delete_tag`
@@ -177,12 +178,17 @@ Follow these principles when writing code:
      - **Tiers** (5): `ghost_create_tier`, `ghost_get_tiers`, `ghost_get_tier`, `ghost_update_tier`, `ghost_delete_tier`
      - **Images** (1): `ghost_upload_image`
 
-2. **Express Server** (`src/index.js`):
+2. **Enhanced MCP Server** (`src/mcp_server_enhanced.js`):
+   - Alternative server with MCP resource support (not tools-only)
+   - Includes LRU caching, real-time subscriptions, and batch operations
+   - Not used by default npm scripts; see [docs/RESOURCE_FETCHING.md](docs/RESOURCE_FETCHING.md) for details
+
+3. **Express Server** (`src/index.js`):
    - REST API endpoints for Ghost operations
    - Routes: `/api/posts`, `/api/images`, `/api/tags`
    - Health check endpoint: `/health`
 
-3. **Services Layer** (`src/services/`):
+4. **Services Layer** (`src/services/`):
    - `ghostService.js`: Basic Ghost Admin API wrapper (used by REST API)
    - `ghostServiceImproved.js`: Enhanced Ghost Admin API wrapper with circuit breaker, retry logic, and validation (used by MCP tools)
    - `postService.js`: Post creation and management
@@ -194,11 +200,11 @@ Follow these principles when writing code:
 
    **Service Import Pattern:** Services in the MCP server use lazy loading to avoid Node.js ESM compatibility issues. Always use the lazy-loaded service variables from `loadServices()`. Never add inline dynamic imports. See [docs/SERVICE_PATTERNS.md](docs/SERVICE_PATTERNS.md) for detailed guidelines.
 
-4. **Controllers** (`src/controllers/`):
+5. **Controllers** (`src/controllers/`):
    - Handle HTTP requests for posts, images, and tags
    - Validate inputs and coordinate with services
 
-5. **Schemas Layer** (`src/schemas/`):
+6. **Schemas Layer** (`src/schemas/`):
    - `common.js`: Shared Zod validators (IDs, emails, URLs) with HTML sanitization
    - `postSchemas.js`: Post creation, update, and query schemas
    - `pageSchemas.js`: Page schemas
@@ -208,7 +214,7 @@ Follow these principles when writing code:
    - `tierSchemas.js`: Tier/membership schemas
    - `index.js`: Centralized schema exports
 
-6. **Utilities** (`src/utils/`):
+7. **Utilities** (`src/utils/`):
    - `validation.js`: MCP tool input validation helper (`validateToolInput`)
    - `tempFileManager.js`: Temp file tracking and cleanup with process exit handlers
    - `urlValidator.js`: SSRF-safe URL validation for image downloads
