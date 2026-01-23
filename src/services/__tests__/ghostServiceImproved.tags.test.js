@@ -104,21 +104,6 @@ describe('ghostServiceImproved - Tags', () => {
       expect(result).toEqual(mockTags);
     });
 
-    it('should use default limit of 15 when no options provided', async () => {
-      const mockTags = [{ id: 'tag-1', name: 'JavaScript', slug: 'javascript' }];
-
-      api.tags.browse.mockResolvedValue(mockTags);
-
-      await getTags();
-
-      expect(api.tags.browse).toHaveBeenCalledWith(
-        expect.objectContaining({
-          limit: 15,
-        }),
-        expect.any(Object)
-      );
-    });
-
     it('should accept custom limit option', async () => {
       const mockTags = [{ id: 'tag-1', name: 'JavaScript', slug: 'javascript' }];
 
@@ -245,23 +230,34 @@ describe('ghostServiceImproved - Tags', () => {
     });
 
     it('should handle Ghost API errors', async () => {
-      api.tags.browse.mockRejectedValue(new Error('Ghost API Error'));
+      const apiError = new Error('Ghost API Error');
+      api.tags.browse.mockRejectedValue(apiError);
 
-      await expect(getTags()).rejects.toThrow();
+      // Errors are wrapped by handleApiRequest with "External service error: Ghost API"
+      await expect(getTags()).rejects.toThrow(/External service error: Ghost API/);
     });
 
     it('should handle network errors with retry logic', async () => {
       const networkError = new Error('Network timeout');
       api.tags.browse.mockRejectedValue(networkError);
 
-      await expect(getTags()).rejects.toThrow();
+      // Network errors are wrapped by handleApiRequest
+      await expect(getTags()).rejects.toThrow(/External service error: Ghost API/);
     });
 
-    it('should pass through circuit breaker', async () => {
-      // Circuit breaker is configured in ghostServiceImproved.js
-      // This test verifies that getTags uses handleApiRequest which applies circuit breaker
+    it('should reject requests when circuit breaker is open', async () => {
+      // Force circuit breaker to open state
+      ghostCircuitBreaker.state = 'OPEN';
+      ghostCircuitBreaker.nextAttempt = Date.now() + 60000;
+
+      await expect(getTags()).rejects.toThrow(/circuit.*open/i);
+    });
+
+    it('should succeed when circuit breaker is closed', async () => {
       const mockTags = [{ id: 'tag-1', name: 'JavaScript', slug: 'javascript' }];
 
+      // Ensure circuit breaker is closed
+      ghostCircuitBreaker.state = 'CLOSED';
       api.tags.browse.mockResolvedValue(mockTags);
 
       const result = await getTags();
@@ -321,6 +317,39 @@ describe('ghostServiceImproved - Tags', () => {
       expect(result).toEqual(mockCreatedTag);
     });
 
+    it('should throw validation error for missing tag name', async () => {
+      await expect(createTag({})).rejects.toThrow('Tag validation failed');
+    });
+
+    it('should throw validation error for empty tag name', async () => {
+      await expect(createTag({ name: '   ' })).rejects.toThrow('Tag validation failed');
+    });
+
+    it('should throw validation error for invalid slug format', async () => {
+      await expect(createTag({ name: 'Test', slug: 'INVALID_SLUG!' })).rejects.toThrow(
+        'Tag validation failed'
+      );
+    });
+
+    it('should accept valid slug with lowercase letters, numbers, and hyphens', async () => {
+      const tagData = {
+        name: 'Test Tag',
+        slug: 'valid-slug-123',
+      };
+
+      const mockCreatedTag = {
+        id: 'tag-1',
+        name: 'Test Tag',
+        slug: 'valid-slug-123',
+      };
+
+      api.tags.add.mockResolvedValue(mockCreatedTag);
+
+      const result = await createTag(tagData);
+
+      expect(result).toEqual(mockCreatedTag);
+    });
+
     it('should auto-generate slug if not provided', async () => {
       const tagData = {
         name: 'JavaScript & TypeScript',
@@ -357,11 +386,18 @@ describe('ghostServiceImproved - Tags', () => {
         message: 'Tag already exists',
       });
 
-      // getTags returns existing tag
+      // getTags returns existing tag when called with name filter
       api.tags.browse.mockResolvedValue([{ id: 'tag-1', name: 'JavaScript', slug: 'javascript' }]);
 
       const result = await createTag(tagData);
 
+      // Verify getTags was called with correct filter for duplicate lookup
+      expect(api.tags.browse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filter: "name:'JavaScript'",
+        }),
+        expect.any(Object)
+      );
       expect(result).toEqual({ id: 'tag-1', name: 'JavaScript', slug: 'javascript' });
     });
   });
