@@ -109,10 +109,13 @@ const updateTagInputSchema = updateTagSchema.extend({ id: ghostIdSchema });
 const deleteTagSchema = z.object({ id: ghostIdSchema });
 
 // Get Tags Tool
-server.tool(
+server.registerTool(
   'ghost_get_tags',
-  'Retrieves a list of tags from Ghost CMS with pagination, filtering, sorting, and relation inclusion. Supports filtering by name, slug, visibility, or custom NQL filter expressions.',
-  getTagsSchema,
+  {
+    description:
+      'Retrieves a list of tags from Ghost CMS with pagination, filtering, sorting, and relation inclusion. Supports filtering by name, slug, visibility, or custom NQL filter expressions.',
+    inputSchema: getTagsSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(getTagsSchema, rawInput, 'ghost_get_tags');
     if (!validation.success) {
@@ -168,10 +171,12 @@ server.tool(
 );
 
 // Create Tag Tool
-server.tool(
+server.registerTool(
   'ghost_create_tag',
-  'Creates a new tag in Ghost CMS.',
-  createTagSchema,
+  {
+    description: 'Creates a new tag in Ghost CMS.',
+    inputSchema: createTagSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(createTagSchema, rawInput, 'ghost_create_tag');
     if (!validation.success) {
@@ -206,10 +211,12 @@ server.tool(
 );
 
 // Get Tag Tool
-server.tool(
+server.registerTool(
   'ghost_get_tag',
-  'Retrieves a single tag from Ghost CMS by ID or slug.',
-  getTagSchema,
+  {
+    description: 'Retrieves a single tag from Ghost CMS by ID or slug.',
+    inputSchema: getTagSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(getTagSchema, rawInput, 'ghost_get_tag');
     if (!validation.success) {
@@ -249,10 +256,12 @@ server.tool(
 );
 
 // Update Tag Tool
-server.tool(
+server.registerTool(
   'ghost_update_tag',
-  'Updates an existing tag in Ghost CMS.',
-  updateTagInputSchema,
+  {
+    description: 'Updates an existing tag in Ghost CMS.',
+    inputSchema: updateTagInputSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(updateTagInputSchema, rawInput, 'ghost_update_tag');
     if (!validation.success) {
@@ -295,10 +304,12 @@ server.tool(
 );
 
 // Delete Tag Tool
-server.tool(
+server.registerTool(
   'ghost_delete_tag',
-  'Deletes a tag from Ghost CMS by ID. This operation is permanent.',
-  deleteTagSchema,
+  {
+    description: 'Deletes a tag from Ghost CMS by ID. This operation is permanent.',
+    inputSchema: deleteTagSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(deleteTagSchema, rawInput, 'ghost_delete_tag');
     if (!validation.success) {
@@ -347,10 +358,13 @@ const uploadImageSchema = z.object({
 });
 
 // Upload Image Tool
-server.tool(
+server.registerTool(
   'ghost_upload_image',
-  'Downloads an image from a URL, processes it, uploads it to Ghost CMS, and returns the final Ghost image URL and alt text.',
-  uploadImageSchema,
+  {
+    description:
+      'Downloads an image from a URL, processes it, uploads it to Ghost CMS, and returns the final Ghost image URL and alt text.',
+    inputSchema: uploadImageSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(uploadImageSchema, rawInput, 'ghost_upload_image');
     if (!validation.success) {
@@ -467,10 +481,12 @@ const updatePostInputSchema = updatePostSchema.extend({ id: ghostIdSchema });
 const deletePostSchema = z.object({ id: ghostIdSchema });
 
 // Create Post Tool
-server.tool(
+server.registerTool(
   'ghost_create_post',
-  'Creates a new post in Ghost CMS.',
-  createPostSchema,
+  {
+    description: 'Creates a new post in Ghost CMS.',
+    inputSchema: createPostSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(createPostSchema, rawInput, 'ghost_create_post');
     if (!validation.success) {
@@ -505,10 +521,13 @@ server.tool(
 );
 
 // Get Posts Tool
-server.tool(
+server.registerTool(
   'ghost_get_posts',
-  'Retrieves a list of posts from Ghost CMS with pagination, filtering, and sorting options.',
-  getPostsSchema,
+  {
+    description:
+      'Retrieves a list of posts from Ghost CMS with pagination, filtering, and sorting options.',
+    inputSchema: getPostsSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(getPostsSchema, rawInput, 'ghost_get_posts');
     if (!validation.success) {
@@ -555,10 +574,12 @@ server.tool(
 );
 
 // Get Post Tool
-server.tool(
+server.registerTool(
   'ghost_get_post',
-  'Retrieves a single post from Ghost CMS by ID or slug.',
-  getPostSchema,
+  {
+    description: 'Retrieves a single post from Ghost CMS by ID or slug.',
+    inputSchema: getPostSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(getPostSchema, rawInput, 'ghost_get_post');
     if (!validation.success) {
@@ -601,10 +622,12 @@ server.tool(
 );
 
 // Search Posts Tool
-server.tool(
+server.registerTool(
   'ghost_search_posts',
-  'Search for posts in Ghost CMS by query string with optional status filtering.',
-  searchPostsSchema,
+  {
+    description: 'Search for posts in Ghost CMS by query string with optional status filtering.',
+    inputSchema: searchPostsSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(searchPostsSchema, rawInput, 'ghost_search_posts');
     if (!validation.success) {
@@ -645,10 +668,13 @@ server.tool(
 );
 
 // Update Post Tool
-server.tool(
+server.registerTool(
   'ghost_update_post',
-  'Updates an existing post in Ghost CMS. Can update title, content, status, tags, images, and SEO fields.',
-  updatePostInputSchema,
+  {
+    description:
+      'Updates an existing post in Ghost CMS. Can update title, content, status, tags, images, and SEO fields.',
+    inputSchema: updatePostInputSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(updatePostInputSchema, rawInput, 'ghost_update_post');
     if (!validation.success) {
@@ -687,10 +713,13 @@ server.tool(
 );
 
 // Delete Post Tool
-server.tool(
+server.registerTool(
   'ghost_delete_post',
-  'Deletes a post from Ghost CMS by ID. This operation is permanent and cannot be undone.',
-  deletePostSchema,
+  {
+    description:
+      'Deletes a post from Ghost CMS by ID. This operation is permanent and cannot be undone.',
+    inputSchema: deletePostSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(deletePostSchema, rawInput, 'ghost_delete_post');
     if (!validation.success) {
@@ -767,10 +796,13 @@ const searchPagesSchema = z.object({
 });
 
 // Get Pages Tool
-server.tool(
+server.registerTool(
   'ghost_get_pages',
-  'Retrieves a list of pages from Ghost CMS with pagination, filtering, and sorting options.',
-  pageQuerySchema,
+  {
+    description:
+      'Retrieves a list of pages from Ghost CMS with pagination, filtering, and sorting options.',
+    inputSchema: pageQuerySchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(pageQuerySchema, rawInput, 'ghost_get_pages');
     if (!validation.success) {
@@ -815,10 +847,12 @@ server.tool(
 );
 
 // Get Page Tool
-server.tool(
+server.registerTool(
   'ghost_get_page',
-  'Retrieves a single page from Ghost CMS by ID or slug.',
-  getPageSchema,
+  {
+    description: 'Retrieves a single page from Ghost CMS by ID or slug.',
+    inputSchema: getPageSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(getPageSchema, rawInput, 'ghost_get_page');
     if (!validation.success) {
@@ -859,10 +893,13 @@ server.tool(
 );
 
 // Create Page Tool
-server.tool(
+server.registerTool(
   'ghost_create_page',
-  'Creates a new page in Ghost CMS. Note: Pages do NOT typically use tags (unlike posts).',
-  createPageSchema,
+  {
+    description:
+      'Creates a new page in Ghost CMS. Note: Pages do NOT typically use tags (unlike posts).',
+    inputSchema: createPageSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(createPageSchema, rawInput, 'ghost_create_page');
     if (!validation.success) {
@@ -898,10 +935,13 @@ server.tool(
 );
 
 // Update Page Tool
-server.tool(
+server.registerTool(
   'ghost_update_page',
-  'Updates an existing page in Ghost CMS. Can update title, content, status, images, and SEO fields.',
-  updatePageInputSchema,
+  {
+    description:
+      'Updates an existing page in Ghost CMS. Can update title, content, status, images, and SEO fields.',
+    inputSchema: updatePageInputSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(updatePageInputSchema, rawInput, 'ghost_update_page');
     if (!validation.success) {
@@ -939,10 +979,13 @@ server.tool(
 );
 
 // Delete Page Tool
-server.tool(
+server.registerTool(
   'ghost_delete_page',
-  'Deletes a page from Ghost CMS by ID. This operation is permanent and cannot be undone.',
-  deletePageSchema,
+  {
+    description:
+      'Deletes a page from Ghost CMS by ID. This operation is permanent and cannot be undone.',
+    inputSchema: deletePageSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(deletePageSchema, rawInput, 'ghost_delete_page');
     if (!validation.success) {
@@ -978,10 +1021,12 @@ server.tool(
 );
 
 // Search Pages Tool
-server.tool(
+server.registerTool(
   'ghost_search_pages',
-  'Search for pages in Ghost CMS by query string with optional status filtering.',
-  searchPagesSchema,
+  {
+    description: 'Search for pages in Ghost CMS by query string with optional status filtering.',
+    inputSchema: searchPagesSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(searchPagesSchema, rawInput, 'ghost_search_pages');
     if (!validation.success) {
@@ -1049,10 +1094,12 @@ const searchMembersSchema = z.object({
 });
 
 // Create Member Tool
-server.tool(
+server.registerTool(
   'ghost_create_member',
-  'Creates a new member (subscriber) in Ghost CMS.',
-  createMemberSchema,
+  {
+    description: 'Creates a new member (subscriber) in Ghost CMS.',
+    inputSchema: createMemberSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(createMemberSchema, rawInput, 'ghost_create_member');
     if (!validation.success) {
@@ -1088,10 +1135,12 @@ server.tool(
 );
 
 // Update Member Tool
-server.tool(
+server.registerTool(
   'ghost_update_member',
-  'Updates an existing member in Ghost CMS. All fields except id are optional.',
-  updateMemberInputSchema,
+  {
+    description: 'Updates an existing member in Ghost CMS. All fields except id are optional.',
+    inputSchema: updateMemberInputSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(updateMemberInputSchema, rawInput, 'ghost_update_member');
     if (!validation.success) {
@@ -1129,10 +1178,13 @@ server.tool(
 );
 
 // Delete Member Tool
-server.tool(
+server.registerTool(
   'ghost_delete_member',
-  'Deletes a member from Ghost CMS by ID. This operation is permanent and cannot be undone.',
-  deleteMemberSchema,
+  {
+    description:
+      'Deletes a member from Ghost CMS by ID. This operation is permanent and cannot be undone.',
+    inputSchema: deleteMemberSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(deleteMemberSchema, rawInput, 'ghost_delete_member');
     if (!validation.success) {
@@ -1168,10 +1220,13 @@ server.tool(
 );
 
 // Get Members Tool
-server.tool(
+server.registerTool(
   'ghost_get_members',
-  'Retrieves a list of members (subscribers) from Ghost CMS with optional filtering, pagination, and includes.',
-  getMembersSchema,
+  {
+    description:
+      'Retrieves a list of members (subscribers) from Ghost CMS with optional filtering, pagination, and includes.',
+    inputSchema: getMembersSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(getMembersSchema, rawInput, 'ghost_get_members');
     if (!validation.success) {
@@ -1214,10 +1269,13 @@ server.tool(
 );
 
 // Get Member Tool
-server.tool(
+server.registerTool(
   'ghost_get_member',
-  'Retrieves a single member from Ghost CMS by ID or email. Provide either id OR email.',
-  getMemberSchema,
+  {
+    description:
+      'Retrieves a single member from Ghost CMS by ID or email. Provide either id OR email.',
+    inputSchema: getMemberSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(getMemberSchema, rawInput, 'ghost_get_member');
     if (!validation.success) {
@@ -1253,10 +1311,12 @@ server.tool(
 );
 
 // Search Members Tool
-server.tool(
+server.registerTool(
   'ghost_search_members',
-  'Searches for members by name or email in Ghost CMS.',
-  searchMembersSchema,
+  {
+    description: 'Searches for members by name or email in Ghost CMS.',
+    inputSchema: searchMembersSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(searchMembersSchema, rawInput, 'ghost_search_members');
     if (!validation.success) {
@@ -1304,10 +1364,12 @@ const updateNewsletterInputSchema = z.object({ id: ghostIdSchema }).merge(update
 const deleteNewsletterSchema = z.object({ id: ghostIdSchema });
 
 // Get Newsletters Tool
-server.tool(
+server.registerTool(
   'ghost_get_newsletters',
-  'Retrieves a list of newsletters from Ghost CMS with optional filtering.',
-  newsletterQuerySchema,
+  {
+    description: 'Retrieves a list of newsletters from Ghost CMS with optional filtering.',
+    inputSchema: newsletterQuerySchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(newsletterQuerySchema, rawInput, 'ghost_get_newsletters');
     if (!validation.success) {
@@ -1349,10 +1411,12 @@ server.tool(
 );
 
 // Get Newsletter Tool
-server.tool(
+server.registerTool(
   'ghost_get_newsletter',
-  'Retrieves a single newsletter from Ghost CMS by ID.',
-  getNewsletterSchema,
+  {
+    description: 'Retrieves a single newsletter from Ghost CMS by ID.',
+    inputSchema: getNewsletterSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(getNewsletterSchema, rawInput, 'ghost_get_newsletter');
     if (!validation.success) {
@@ -1388,10 +1452,13 @@ server.tool(
 );
 
 // Create Newsletter Tool
-server.tool(
+server.registerTool(
   'ghost_create_newsletter',
-  'Creates a new newsletter in Ghost CMS with customizable sender settings and display options.',
-  createNewsletterSchema,
+  {
+    description:
+      'Creates a new newsletter in Ghost CMS with customizable sender settings and display options.',
+    inputSchema: createNewsletterSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(
       createNewsletterSchema,
@@ -1431,10 +1498,13 @@ server.tool(
 );
 
 // Update Newsletter Tool
-server.tool(
+server.registerTool(
   'ghost_update_newsletter',
-  'Updates an existing newsletter in Ghost CMS. Can update name, description, sender settings, and display options.',
-  updateNewsletterInputSchema,
+  {
+    description:
+      'Updates an existing newsletter in Ghost CMS. Can update name, description, sender settings, and display options.',
+    inputSchema: updateNewsletterInputSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(
       updateNewsletterInputSchema,
@@ -1476,10 +1546,13 @@ server.tool(
 );
 
 // Delete Newsletter Tool
-server.tool(
+server.registerTool(
   'ghost_delete_newsletter',
-  'Deletes a newsletter from Ghost CMS by ID. This operation is permanent and cannot be undone.',
-  deleteNewsletterSchema,
+  {
+    description:
+      'Deletes a newsletter from Ghost CMS by ID. This operation is permanent and cannot be undone.',
+    inputSchema: deleteNewsletterSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(
       deleteNewsletterSchema,
@@ -1526,10 +1599,13 @@ const updateTierInputSchema = z.object({ id: ghostIdSchema }).merge(updateTierSc
 const deleteTierSchema = z.object({ id: ghostIdSchema });
 
 // Get Tiers Tool
-server.tool(
+server.registerTool(
   'ghost_get_tiers',
-  'Retrieves a list of tiers (membership levels) from Ghost CMS with optional filtering by type (free/paid).',
-  tierQuerySchema,
+  {
+    description:
+      'Retrieves a list of tiers (membership levels) from Ghost CMS with optional filtering by type (free/paid).',
+    inputSchema: tierQuerySchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(tierQuerySchema, rawInput, 'ghost_get_tiers');
     if (!validation.success) {
@@ -1565,10 +1641,12 @@ server.tool(
 );
 
 // Get Tier Tool
-server.tool(
+server.registerTool(
   'ghost_get_tier',
-  'Retrieves a single tier (membership level) from Ghost CMS by ID.',
-  getTierSchema,
+  {
+    description: 'Retrieves a single tier (membership level) from Ghost CMS by ID.',
+    inputSchema: getTierSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(getTierSchema, rawInput, 'ghost_get_tier');
     if (!validation.success) {
@@ -1604,10 +1682,12 @@ server.tool(
 );
 
 // Create Tier Tool
-server.tool(
+server.registerTool(
   'ghost_create_tier',
-  'Creates a new tier (membership level) in Ghost CMS with pricing and benefits.',
-  createTierSchema,
+  {
+    description: 'Creates a new tier (membership level) in Ghost CMS with pricing and benefits.',
+    inputSchema: createTierSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(createTierSchema, rawInput, 'ghost_create_tier');
     if (!validation.success) {
@@ -1643,10 +1723,13 @@ server.tool(
 );
 
 // Update Tier Tool
-server.tool(
+server.registerTool(
   'ghost_update_tier',
-  'Updates an existing tier (membership level) in Ghost CMS. Can update pricing, benefits, and other tier properties.',
-  updateTierInputSchema,
+  {
+    description:
+      'Updates an existing tier (membership level) in Ghost CMS. Can update pricing, benefits, and other tier properties.',
+    inputSchema: updateTierInputSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(updateTierInputSchema, rawInput, 'ghost_update_tier');
     if (!validation.success) {
@@ -1684,10 +1767,13 @@ server.tool(
 );
 
 // Delete Tier Tool
-server.tool(
+server.registerTool(
   'ghost_delete_tier',
-  'Deletes a tier (membership level) from Ghost CMS by ID. This operation is permanent and cannot be undone.',
-  deleteTierSchema,
+  {
+    description:
+      'Deletes a tier (membership level) from Ghost CMS by ID. This operation is permanent and cannot be undone.',
+    inputSchema: deleteTierSchema,
+  },
   async (rawInput) => {
     const validation = validateToolInput(deleteTierSchema, rawInput, 'ghost_delete_tier');
     if (!validation.success) {

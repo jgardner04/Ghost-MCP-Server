@@ -14,6 +14,16 @@ vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => {
         mockTools.set(name, { name, description, schema, handler });
       }
 
+      registerTool(name, options, handler) {
+        // Store in the same format for backward compatibility with tests
+        mockTools.set(name, {
+          name,
+          description: options.description,
+          schema: options.inputSchema,
+          handler,
+        });
+      }
+
       connect(_transport) {
         return Promise.resolve();
       }

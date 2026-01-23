@@ -32,7 +32,10 @@
       "Bash(npm run format:check:*)",
       "Bash(gh pr checks:*)",
       "Bash(npm test:*)",
-      "WebFetch(domain:vitest.dev)"
+      "WebFetch(domain:vitest.dev)",
+      "WebFetch(domain:www.anthropic.com)",
+      "WebFetch(domain:modelcontextprotocol.info)",
+      "Skill(describe_pr)"
     ],
     "deny": [],
     "ask": []
