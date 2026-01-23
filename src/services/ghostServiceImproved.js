@@ -688,8 +688,8 @@ export async function createTag(tagData) {
     if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
       // Check if it's a duplicate tag error
       if (error.originalError.includes('already exists')) {
-        // Try to fetch the existing tag
-        const existingTags = await getTags(tagData.name);
+        // Try to fetch the existing tag by name filter
+        const existingTags = await getTags({ filter: `name:'${tagData.name}'` });
         if (existingTags.length > 0) {
           return existingTags[0]; // Return existing tag instead of failing
         }
