@@ -68,6 +68,15 @@ await ghost_get_tags({ limit: 50, page: 1 })
   - User-provided values in `name` and `slug` parameters are now properly escaped
   - Prevents malicious filter expressions from being injected
 
+### Removed
+
+- Broken npm scripts that referenced non-existent module (PR #104):
+  - `npm run dev`
+  - `npm run list`
+  - `npm run generate`
+  - `npm run parse-prd`
+  - Note: These scripts were non-functional and have been removed
+
 ## [Initial Release]
 
 ### Added
