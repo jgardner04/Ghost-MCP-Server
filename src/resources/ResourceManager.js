@@ -296,7 +296,7 @@ class ResourceFetcher {
       }
 
       case 'name': {
-        const tagsByName = await this.ghostService.getTags(identifier);
+        const tagsByName = await this.ghostService.getTags({ filter: `name:'${identifier}'` });
         tag = tagsByName[0];
         break;
       }
@@ -329,7 +329,11 @@ class ResourceFetcher {
     }
 
     // Fetch from Ghost
-    const tags = await this.ghostService.getTags(query.name);
+    const options = {};
+    if (query.name) {
+      options.filter = `name:'${query.name}'`;
+    }
+    const tags = await this.ghostService.getTags(options);
 
     // Apply client-side filtering if needed
     let filteredTags = tags;

@@ -11,8 +11,11 @@ import {
   CircuitBreaker,
   retryWithBackoff,
 } from '../errors/index.js';
+import { createContextLogger } from '../utils/logger.js';
 
 dotenv.config();
+
+const logger = createContextLogger('ghost-service-improved');
 
 const { GHOST_ADMIN_API_URL, GHOST_ADMIN_API_KEY } = process.env;
 
@@ -712,7 +715,7 @@ export async function getTags(options = {}) {
     );
     return tags || [];
   } catch (error) {
-    console.error('Failed to get tags:', error);
+    logger.error('Failed to get tags', { error: error.message });
     throw error;
   }
 }

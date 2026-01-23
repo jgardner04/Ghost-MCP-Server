@@ -1,5 +1,7 @@
 import { getTags as getGhostTags, createTag as createGhostTag } from '../services/ghostService.js';
 import { createContextLogger } from '../utils/logger.js';
+import { tagQuerySchema } from '../schemas/tagSchemas.js';
+import { ZodError } from 'zod';
 
 /**
  * Controller to handle fetching tags.
@@ -9,24 +11,48 @@ const getTags = async (req, res, next) => {
   const logger = createContextLogger('tag-controller');
 
   try {
-    const { name } = req.query; // Get name from query params like /api/tags?name=some-tag
+    // Validate query parameters using Zod schema
+    const validatedQuery = tagQuerySchema.parse(req.query);
+
+    // Build options object
+    const options = {};
+
+    // Handle legacy name parameter by converting to filter
+    if (validatedQuery.name) {
+      // Escape single quotes and backslashes to prevent injection
+      const safeName = validatedQuery.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      options.filter = `name:'${safeName}'`;
+    }
+
+    // Add other query parameters
+    if (validatedQuery.limit) options.limit = validatedQuery.limit;
+    if (validatedQuery.filter) options.filter = validatedQuery.filter;
+    if (validatedQuery.order) options.order = validatedQuery.order;
+    if (validatedQuery.include) options.include = validatedQuery.include;
+
     logger.info('Fetching tags', {
-      filtered: !!name,
-      filterName: name,
+      options,
     });
 
-    const tags = await getGhostTags(name);
+    const tags = await getGhostTags(options);
 
     logger.info('Tags retrieved successfully', {
       count: tags.length,
-      filtered: !!name,
     });
 
     res.status(200).json(tags);
   } catch (error) {
+    if (error instanceof ZodError) {
+      logger.warn('Invalid query parameters', { errors: error.errors });
+      return res.status(400).json({
+        message: 'Invalid query parameters',
+        errors: error.errors.map((e) => ({ path: e.path.join('.'), message: e.message })),
+      });
+    }
+
     logger.error('Get tags failed', {
       error: error.message,
-      filterName: req.query?.name,
+      query: req.query,
     });
     next(error);
   }

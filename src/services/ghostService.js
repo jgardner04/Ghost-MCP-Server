@@ -180,27 +180,30 @@ const createTag = async (tagData) => {
 };
 
 /**
- * Retrieves tags from Ghost, optionally filtering by name.
- * @param {string} [name] - Optional tag name to filter by.
+ * Retrieves tags from Ghost with optional filtering.
+ * @param {object} [options={}] - Query options for filtering and pagination.
+ * @param {number} [options.limit] - Maximum number of tags to return (default: 15).
+ * @param {string} [options.filter] - NQL filter string for advanced filtering.
+ * @param {string} [options.order] - Order string for sorting results.
+ * @param {string} [options.include] - Include string for related data.
  * @returns {Promise<Array<object>>} An array of tag objects.
  */
-const getTags = async (name) => {
-  const options = {
-    limit: 'all', // Get all tags
-  };
-
-  // Safely construct filter to prevent injection
-  if (name) {
-    // Additional validation: only allow alphanumeric, spaces, hyphens, underscores
-    if (!/^[a-zA-Z0-9\s\-_]+$/.test(name)) {
-      throw new Error('Tag name contains invalid characters');
-    }
-    // Escape single quotes and backslashes to prevent injection
-    const safeName = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    options.filter = `name:'${safeName}'`;
+const getTags = async (options = {}) => {
+  try {
+    const tags = await handleApiRequest(
+      'tags',
+      'browse',
+      {},
+      {
+        limit: 15,
+        ...options,
+      }
+    );
+    return tags || [];
+  } catch (error) {
+    logger.error('Failed to get tags', { error: error.message });
+    throw error;
   }
-
-  return handleApiRequest('tags', 'browse', {}, options);
 };
 
 // Add other content management functions here (createTag, etc.)

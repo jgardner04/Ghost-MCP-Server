@@ -172,6 +172,106 @@ describe('Tag Schemas', () => {
       expect(result).toBeDefined();
       // Note: optional fields with defaults don't apply when field is omitted
     });
+
+    it('should accept limit as "all" string', () => {
+      const query = {
+        limit: 'all',
+      };
+
+      const result = tagQuerySchema.parse(query);
+      expect(result.limit).toBe('all');
+    });
+
+    it('should accept limit as number within range', () => {
+      const query = {
+        limit: 50,
+      };
+
+      const result = tagQuerySchema.parse(query);
+      expect(result.limit).toBe(50);
+    });
+
+    it('should reject limit as invalid string', () => {
+      const query = {
+        limit: 'invalid',
+      };
+
+      expect(() => tagQuerySchema.parse(query)).toThrow();
+    });
+
+    it('should reject limit greater than 100', () => {
+      const query = {
+        limit: 101,
+      };
+
+      expect(() => tagQuerySchema.parse(query)).toThrow();
+    });
+
+    it('should reject limit less than 1', () => {
+      const query = {
+        limit: 0,
+      };
+
+      expect(() => tagQuerySchema.parse(query)).toThrow();
+    });
+
+    it('should accept limit as string number and transform to number', () => {
+      const query = {
+        limit: '50',
+      };
+
+      const result = tagQuerySchema.parse(query);
+      expect(result.limit).toBe(50);
+      expect(typeof result.limit).toBe('number');
+    });
+
+    it('should accept page as string number and transform to number', () => {
+      const query = {
+        page: '3',
+      };
+
+      const result = tagQuerySchema.parse(query);
+      expect(result.page).toBe(3);
+      expect(typeof result.page).toBe('number');
+    });
+
+    it('should reject query with both name and filter parameters', () => {
+      const query = {
+        name: 'Technology',
+        filter: 'visibility:public',
+      };
+
+      expect(() => tagQuerySchema.parse(query)).toThrow();
+      try {
+        tagQuerySchema.parse(query);
+      } catch (error) {
+        expect(error.errors[0].message).toContain('Cannot specify both "name" and "filter"');
+      }
+    });
+
+    it('should reject name with invalid characters', () => {
+      const query = {
+        name: 'test;DROP',
+      };
+
+      expect(() => tagQuerySchema.parse(query)).toThrow(/invalid characters/);
+    });
+
+    it('should accept name with apostrophe', () => {
+      const query = {
+        name: "O'Reilly",
+      };
+
+      expect(() => tagQuerySchema.parse(query)).not.toThrow();
+    });
+
+    it('should accept name with spaces, hyphens, and underscores', () => {
+      const query = {
+        name: 'Tech News 2024-Web_Dev',
+      };
+
+      expect(() => tagQuerySchema.parse(query)).not.toThrow();
+    });
   });
 
   describe('tagIdSchema', () => {

@@ -14,6 +14,16 @@ vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => {
         mockTools.set(name, { name, description, schema, handler });
       }
 
+      registerTool(name, options, handler) {
+        // Store in the same format for backward compatibility with tests
+        mockTools.set(name, {
+          name,
+          description: options.description,
+          schema: options.inputSchema,
+          handler,
+        });
+      }
+
       connect(_transport) {
         return Promise.resolve();
       }
@@ -208,6 +218,8 @@ describe('mcp_server - ghost_get_posts tool', () => {
     expect(tool.schema.shape.include).toBeDefined();
     expect(tool.schema.shape.filter).toBeDefined();
     expect(tool.schema.shape.order).toBeDefined();
+    expect(tool.schema.shape.fields).toBeDefined();
+    expect(tool.schema.shape.formats).toBeDefined();
   });
 
   it('should retrieve posts with default options', async () => {
@@ -320,6 +332,36 @@ describe('mcp_server - ghost_get_posts tool', () => {
     expect(mockGetPosts).toHaveBeenCalledWith({ order: 'published_at DESC' });
   });
 
+  it('should pass fields parameter', async () => {
+    const mockPosts = [{ id: '1', title: 'Test Post', slug: 'test-post' }];
+    mockGetPosts.mockResolvedValue(mockPosts);
+
+    const tool = mockTools.get('ghost_get_posts');
+    await tool.handler({ fields: 'id,title,slug' });
+
+    expect(mockGetPosts).toHaveBeenCalledWith({ fields: 'id,title,slug' });
+  });
+
+  it('should pass formats parameter', async () => {
+    const mockPosts = [{ id: '1', title: 'Test Post', html: '<p>Content</p>' }];
+    mockGetPosts.mockResolvedValue(mockPosts);
+
+    const tool = mockTools.get('ghost_get_posts');
+    await tool.handler({ formats: 'html,plaintext' });
+
+    expect(mockGetPosts).toHaveBeenCalledWith({ formats: 'html,plaintext' });
+  });
+
+  it('should pass both fields and formats parameters', async () => {
+    const mockPosts = [{ id: '1', title: 'Test Post' }];
+    mockGetPosts.mockResolvedValue(mockPosts);
+
+    const tool = mockTools.get('ghost_get_posts');
+    await tool.handler({ fields: 'id,title', formats: 'html' });
+
+    expect(mockGetPosts).toHaveBeenCalledWith({ fields: 'id,title', formats: 'html' });
+  });
+
   it('should pass all parameters combined', async () => {
     const mockPosts = [{ id: '1', title: 'Test Post' }];
     mockGetPosts.mockResolvedValue(mockPosts);
@@ -332,6 +374,8 @@ describe('mcp_server - ghost_get_posts tool', () => {
       include: 'tags,authors',
       filter: 'featured:true',
       order: 'published_at DESC',
+      fields: 'id,title,slug',
+      formats: 'html,plaintext',
     });
 
     expect(mockGetPosts).toHaveBeenCalledWith({
@@ -341,6 +385,8 @@ describe('mcp_server - ghost_get_posts tool', () => {
       include: 'tags,authors',
       filter: 'featured:true',
       order: 'published_at DESC',
+      fields: 'id,title,slug',
+      formats: 'html,plaintext',
     });
   });
 
