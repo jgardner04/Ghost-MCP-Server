@@ -30,10 +30,6 @@
     "url": "https://github.com/jgardner04/Ghost-MCP-Server/issues"
   },
   "scripts": {
-    "dev": "node scripts/dev.js",
-    "list": "node scripts/dev.js list",
-    "generate": "node scripts/dev.js generate",
-    "parse-prd": "node scripts/dev.js parse-prd",
     "build": "mkdir -p build && cp -r src/* build/",
     "start": "node src/index.js",
     "start:mcp": "node src/mcp_server.js",

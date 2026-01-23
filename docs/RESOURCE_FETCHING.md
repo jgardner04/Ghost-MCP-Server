@@ -1,5 +1,7 @@
 # Enhanced Resource Fetching System
 
+> **Note:** This document describes the enhanced MCP server (`src/mcp_server_enhanced.js`), which provides MCP resource support with caching, subscriptions, and batch operations. The main server (`src/mcp_server.js`) used by default npm scripts provides tools only.
+
 ## Overview
 
 The enhanced resource fetching system provides advanced capabilities for accessing Ghost CMS resources through the MCP protocol with intelligent caching, flexible URI patterns, and real-time subscriptions.
