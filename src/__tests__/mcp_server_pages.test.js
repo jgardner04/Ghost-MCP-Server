@@ -114,12 +114,17 @@ vi.mock('axios', () => ({
 // Mock fs
 const mockUnlink = vi.fn((path, cb) => cb(null));
 const mockCreateWriteStream = vi.fn();
-vi.mock('fs', () => ({
-  default: {
-    unlink: (...args) => mockUnlink(...args),
-    createWriteStream: (...args) => mockCreateWriteStream(...args),
-  },
-}));
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    default: {
+      ...actual.default,
+      unlink: (...args) => mockUnlink(...args),
+      createWriteStream: (...args) => mockCreateWriteStream(...args),
+    },
+  };
+});
 
 // Mock os
 vi.mock('os', () => ({
