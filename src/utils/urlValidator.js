@@ -147,7 +147,23 @@ const validateImageUrl = (url) => {
 };
 
 /**
+ * Creates a beforeRedirect callback that validates each redirect target against
+ * the same SSRF rules applied to the initial URL.
+ * @returns {function} Axios beforeRedirect callback
+ */
+const createBeforeRedirect = () => {
+  return (options) => {
+    const redirectUrl = `${options.protocol}//${options.hostname}${options.path}`;
+    const validation = validateImageUrl(redirectUrl);
+    if (!validation.isValid) {
+      throw new Error(`Redirect blocked: ${validation.error}`);
+    }
+  };
+};
+
+/**
  * Configures axios with security settings for external requests
+ * // Note: DNS rebinding (TOCTOU) attacks are not mitigated by hostname-based validation
  * @param {string} url - The validated URL to request
  * @returns {object} Axios configuration with security settings
  */
@@ -159,10 +175,17 @@ const createSecureAxiosConfig = (url) => {
     maxRedirects: 3, // Limit redirects
     maxContentLength: 50 * 1024 * 1024, // 50MB max response
     validateStatus: (status) => status >= 200 && status < 300, // Only accept 2xx
+    beforeRedirect: createBeforeRedirect(),
     headers: {
       'User-Agent': 'Ghost-MCP-Server/1.0',
     },
   };
 };
 
-export { validateImageUrl, createSecureAxiosConfig, ALLOWED_DOMAINS };
+export {
+  validateImageUrl,
+  createSecureAxiosConfig,
+  createBeforeRedirect,
+  isSafeHost,
+  ALLOWED_DOMAINS,
+};

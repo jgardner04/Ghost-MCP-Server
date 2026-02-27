@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { validateImageUrl, createSecureAxiosConfig, ALLOWED_DOMAINS } from '../urlValidator.js';
+import {
+  validateImageUrl,
+  createSecureAxiosConfig,
+  createBeforeRedirect,
+  isSafeHost,
+  ALLOWED_DOMAINS,
+} from '../urlValidator.js';
 
 describe('urlValidator', () => {
   describe('ALLOWED_DOMAINS', () => {
@@ -445,6 +451,136 @@ describe('urlValidator', () => {
       expect(config1.url).toBe(url1);
       expect(config2.url).toBe(url2);
       expect(config1.url).not.toBe(config2.url);
+    });
+
+    it('should include beforeRedirect callback', () => {
+      const config = createSecureAxiosConfig('https://imgur.com/image.jpg');
+      expect(config).toHaveProperty('beforeRedirect');
+      expect(typeof config.beforeRedirect).toBe('function');
+    });
+  });
+
+  describe('isSafeHost', () => {
+    it('should allow domains on the allowlist', () => {
+      expect(isSafeHost('imgur.com')).toBe(true);
+      expect(isSafeHost('i.imgur.com')).toBe(true);
+      expect(isSafeHost('github.com')).toBe(true);
+    });
+
+    it('should allow subdomains of allowed domains', () => {
+      expect(isSafeHost('cdn.images.unsplash.com')).toBe(true);
+      expect(isSafeHost('my-bucket.s3.amazonaws.com')).toBe(true);
+    });
+
+    it('should reject domains not on the allowlist', () => {
+      expect(isSafeHost('evil.com')).toBe(false);
+      expect(isSafeHost('fakeimgur.com')).toBe(false);
+    });
+
+    it('should block localhost IPs', () => {
+      expect(isSafeHost('127.0.0.1')).toBe(false);
+      expect(isSafeHost('127.0.0.2')).toBe(false);
+    });
+
+    it('should block private network IPs', () => {
+      expect(isSafeHost('10.0.0.1')).toBe(false);
+      expect(isSafeHost('192.168.1.1')).toBe(false);
+      expect(isSafeHost('172.16.0.1')).toBe(false);
+    });
+
+    it('should block link-local and cloud metadata IPs', () => {
+      expect(isSafeHost('169.254.169.254')).toBe(false);
+      expect(isSafeHost('169.254.0.1')).toBe(false);
+    });
+
+    it('should block IPv6 private addresses', () => {
+      expect(isSafeHost('::1')).toBe(false);
+      expect(isSafeHost('fc00::1')).toBe(false);
+      expect(isSafeHost('fe80::1')).toBe(false);
+    });
+
+    it('should allow public IPs not on blocklist', () => {
+      expect(isSafeHost('8.8.8.8')).toBe(true);
+      expect(isSafeHost('1.1.1.1')).toBe(true);
+    });
+  });
+
+  describe('createBeforeRedirect', () => {
+    it('should not throw for redirects to allowed domains', () => {
+      const beforeRedirect = createBeforeRedirect();
+      expect(() =>
+        beforeRedirect({
+          protocol: 'https:',
+          hostname: 'imgur.com',
+          path: '/image.jpg',
+        })
+      ).not.toThrow();
+    });
+
+    it('should throw for redirect to 127.0.0.1 (localhost)', () => {
+      const beforeRedirect = createBeforeRedirect();
+      expect(() =>
+        beforeRedirect({
+          protocol: 'https:',
+          hostname: '127.0.0.1',
+          path: '/secret',
+        })
+      ).toThrow('Redirect blocked');
+    });
+
+    it('should throw for redirect to 169.254.169.254 (AWS metadata)', () => {
+      const beforeRedirect = createBeforeRedirect();
+      expect(() =>
+        beforeRedirect({
+          protocol: 'http:',
+          hostname: '169.254.169.254',
+          path: '/latest/meta-data/',
+        })
+      ).toThrow('Redirect blocked');
+    });
+
+    it('should throw for redirect to 192.168.x.x (private network)', () => {
+      const beforeRedirect = createBeforeRedirect();
+      expect(() =>
+        beforeRedirect({
+          protocol: 'https:',
+          hostname: '192.168.1.1',
+          path: '/admin',
+        })
+      ).toThrow('Redirect blocked');
+    });
+
+    it('should throw for redirect to 10.x.x.x (private network)', () => {
+      const beforeRedirect = createBeforeRedirect();
+      expect(() =>
+        beforeRedirect({
+          protocol: 'https:',
+          hostname: '10.0.0.1',
+          path: '/internal',
+        })
+      ).toThrow('Redirect blocked');
+    });
+
+    it('should throw for redirect to disallowed domain', () => {
+      const beforeRedirect = createBeforeRedirect();
+      expect(() =>
+        beforeRedirect({
+          protocol: 'https:',
+          hostname: 'evil.com',
+          path: '/payload',
+        })
+      ).toThrow('Redirect blocked');
+    });
+
+    it('should allow redirect between allowed domains', () => {
+      const beforeRedirect = createBeforeRedirect();
+      expect(() =>
+        beforeRedirect({
+          protocol: 'https:',
+          hostname: 'images.unsplash.com',
+          path: '/photo-123',
+        })
+      ).not.toThrow();
     });
   });
 });
