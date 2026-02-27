@@ -57,8 +57,12 @@ export const createPostSchema = z.object({
     .max(500, 'Twitter description cannot exceed 500 characters')
     .optional(),
   canonical_url: canonicalUrlSchema,
-  tags: tagsSchema.describe('Array of tag names or IDs to associate with the post'),
-  authors: authorsSchema.describe('Array of author IDs or emails'),
+  tags: tagsSchema.describe(
+    'Array of tag names or IDs to associate with the post. On update, this fully replaces the existing tags array (not merged).'
+  ),
+  authors: authorsSchema.describe(
+    'Array of author IDs or emails. On update, this fully replaces the existing authors array (not merged).'
+  ),
   published_at: isoDateSchema.optional().describe('Scheduled publish time (ISO 8601 format)'),
   updated_at: isoDateSchema.optional(),
   created_at: isoDateSchema.optional(),

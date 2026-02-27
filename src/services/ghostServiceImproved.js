@@ -1,5 +1,4 @@
 import GhostAdminAPI from '@tryghost/admin-api';
-import sanitizeHtml from 'sanitize-html';
 import dotenv from 'dotenv';
 import { promises as fs } from 'fs';
 import {
@@ -118,6 +117,30 @@ const handleApiRequest = async (resource, action, data = {}, options = {}, confi
  * Input validation helpers
  */
 const validators = {
+  validateScheduledStatus(data) {
+    const errors = [];
+
+    if (data.status === 'scheduled' && !data.published_at) {
+      errors.push({
+        field: 'published_at',
+        message: 'published_at is required when status is scheduled',
+      });
+    }
+
+    if (data.published_at) {
+      const publishDate = new Date(data.published_at);
+      if (isNaN(publishDate.getTime())) {
+        errors.push({ field: 'published_at', message: 'Invalid date format' });
+      } else if (data.status === 'scheduled' && publishDate <= new Date()) {
+        errors.push({ field: 'published_at', message: 'Scheduled date must be in the future' });
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new ValidationError('Validation failed', errors);
+    }
+  },
+
   validatePostData(postData) {
     const errors = [];
 
@@ -136,25 +159,11 @@ const validators = {
       });
     }
 
-    if (postData.status === 'scheduled' && !postData.published_at) {
-      errors.push({
-        field: 'published_at',
-        message: 'published_at is required when status is scheduled',
-      });
-    }
-
-    if (postData.published_at) {
-      const publishDate = new Date(postData.published_at);
-      if (isNaN(publishDate.getTime())) {
-        errors.push({ field: 'published_at', message: 'Invalid date format' });
-      } else if (postData.status === 'scheduled' && publishDate <= new Date()) {
-        errors.push({ field: 'published_at', message: 'Scheduled date must be in the future' });
-      }
-    }
-
     if (errors.length > 0) {
       throw new ValidationError('Post validation failed', errors);
     }
+
+    this.validateScheduledStatus(postData);
   },
 
   validateTagData(tagData) {
@@ -228,25 +237,11 @@ const validators = {
       });
     }
 
-    if (pageData.status === 'scheduled' && !pageData.published_at) {
-      errors.push({
-        field: 'published_at',
-        message: 'published_at is required when status is scheduled',
-      });
-    }
-
-    if (pageData.published_at) {
-      const publishDate = new Date(pageData.published_at);
-      if (isNaN(publishDate.getTime())) {
-        errors.push({ field: 'published_at', message: 'Invalid date format' });
-      } else if (pageData.status === 'scheduled' && publishDate <= new Date()) {
-        errors.push({ field: 'published_at', message: 'Scheduled date must be in the future' });
-      }
-    }
-
     if (errors.length > 0) {
       throw new ValidationError('Page validation failed', errors);
     }
+
+    this.validateScheduledStatus(pageData);
   },
 
   validateNewsletterData(newsletterData) {
@@ -285,48 +280,7 @@ export async function createPost(postData, options = { source: 'html' }) {
     ...postData,
   };
 
-  // Sanitize HTML content if provided
-  if (dataWithDefaults.html) {
-    // Use proper HTML sanitization library to prevent XSS
-    dataWithDefaults.html = sanitizeHtml(dataWithDefaults.html, {
-      allowedTags: [
-        'h1',
-        'h2',
-        'h3',
-        'h4',
-        'h5',
-        'h6',
-        'blockquote',
-        'p',
-        'a',
-        'ul',
-        'ol',
-        'nl',
-        'li',
-        'b',
-        'i',
-        'strong',
-        'em',
-        'strike',
-        'code',
-        'hr',
-        'br',
-        'div',
-        'span',
-        'img',
-        'pre',
-      ],
-      allowedAttributes: {
-        a: ['href', 'title'],
-        img: ['src', 'alt', 'title', 'width', 'height'],
-        '*': ['class', 'id'],
-      },
-      allowedSchemes: ['http', 'https', 'mailto'],
-      allowedSchemesByTag: {
-        img: ['http', 'https', 'data'],
-      },
-    });
-  }
+  // HTML sanitization is enforced at the schema layer via htmlContentSchema
 
   try {
     return await handleApiRequest('posts', 'add', dataWithDefaults, options);
@@ -346,18 +300,22 @@ export async function updatePost(postId, updateData, options = {}) {
     throw new ValidationError('Post ID is required for update');
   }
 
+  // Validate scheduled status if status is being updated
+  if (updateData.status) {
+    validators.validateScheduledStatus(updateData);
+  }
+
   // Get the current post first to ensure it exists
   try {
     const existingPost = await handleApiRequest('posts', 'read', { id: postId });
 
-    // Merge with existing data
-    const mergedData = {
-      ...existingPost,
+    // Send only changed fields + updated_at for OCC (optimistic concurrency control)
+    const editData = {
       ...updateData,
-      updated_at: existingPost.updated_at, // Required for Ghost API
+      updated_at: existingPost.updated_at,
     };
 
-    return await handleApiRequest('posts', 'edit', mergedData, { id: postId, ...options });
+    return await handleApiRequest('posts', 'edit', editData, { id: postId, ...options });
   } catch (error) {
     if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
       throw new NotFoundError('Post', postId);
@@ -457,47 +415,7 @@ export async function createPage(pageData, options = { source: 'html' }) {
     ...pageData,
   };
 
-  // Sanitize HTML content if provided (use same sanitization as posts)
-  if (dataWithDefaults.html) {
-    dataWithDefaults.html = sanitizeHtml(dataWithDefaults.html, {
-      allowedTags: [
-        'h1',
-        'h2',
-        'h3',
-        'h4',
-        'h5',
-        'h6',
-        'blockquote',
-        'p',
-        'a',
-        'ul',
-        'ol',
-        'nl',
-        'li',
-        'b',
-        'i',
-        'strong',
-        'em',
-        'strike',
-        'code',
-        'hr',
-        'br',
-        'div',
-        'span',
-        'img',
-        'pre',
-      ],
-      allowedAttributes: {
-        a: ['href', 'title'],
-        img: ['src', 'alt', 'title', 'width', 'height'],
-        '*': ['class', 'id'],
-      },
-      allowedSchemes: ['http', 'https', 'mailto'],
-      allowedSchemesByTag: {
-        img: ['http', 'https', 'data'],
-      },
-    });
-  }
+  // HTML sanitization is enforced at the schema layer via htmlContentSchema
 
   try {
     return await handleApiRequest('pages', 'add', dataWithDefaults, options);
@@ -516,60 +434,24 @@ export async function updatePage(pageId, updateData, options = {}) {
     throw new ValidationError('Page ID is required for update');
   }
 
-  // Sanitize HTML if being updated
-  if (updateData.html) {
-    updateData.html = sanitizeHtml(updateData.html, {
-      allowedTags: [
-        'h1',
-        'h2',
-        'h3',
-        'h4',
-        'h5',
-        'h6',
-        'blockquote',
-        'p',
-        'a',
-        'ul',
-        'ol',
-        'nl',
-        'li',
-        'b',
-        'i',
-        'strong',
-        'em',
-        'strike',
-        'code',
-        'hr',
-        'br',
-        'div',
-        'span',
-        'img',
-        'pre',
-      ],
-      allowedAttributes: {
-        a: ['href', 'title'],
-        img: ['src', 'alt', 'title', 'width', 'height'],
-        '*': ['class', 'id'],
-      },
-      allowedSchemes: ['http', 'https', 'mailto'],
-      allowedSchemesByTag: {
-        img: ['http', 'https', 'data'],
-      },
-    });
+  // HTML sanitization is enforced at the schema layer via htmlContentSchema
+
+  // Validate scheduled status if status is being updated
+  if (updateData.status) {
+    validators.validateScheduledStatus(updateData);
   }
 
   try {
     // Get existing page to retrieve updated_at for conflict resolution
     const existingPage = await handleApiRequest('pages', 'read', { id: pageId });
 
-    // Merge existing data with updates, preserving updated_at
-    const mergedData = {
-      ...existingPage,
+    // Send only changed fields + updated_at for OCC (optimistic concurrency control)
+    const editData = {
       ...updateData,
       updated_at: existingPage.updated_at,
     };
 
-    return await handleApiRequest('pages', 'edit', mergedData, { id: pageId, ...options });
+    return await handleApiRequest('pages', 'edit', editData, { id: pageId, ...options });
   } catch (error) {
     if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
       throw new NotFoundError('Page', pageId);
@@ -743,13 +625,11 @@ export async function updateTag(tagId, updateData) {
   validators.validateTagUpdateData(updateData); // Validate update data
 
   try {
-    const existingTag = await getTag(tagId);
-    const mergedData = {
-      ...existingTag,
-      ...updateData,
-    };
+    // Verify tag exists before updating
+    await getTag(tagId);
 
-    return await handleApiRequest('tags', 'edit', mergedData, { id: tagId });
+    // Send only changed fields (tags don't use updated_at for OCC)
+    return await handleApiRequest('tags', 'edit', { ...updateData }, { id: tagId });
   } catch (error) {
     if (error instanceof NotFoundError) {
       throw error;
@@ -837,14 +717,13 @@ export async function updateMember(memberId, updateData, options = {}) {
     // Get existing member to retrieve updated_at for conflict resolution
     const existingMember = await handleApiRequest('members', 'read', { id: memberId });
 
-    // Merge existing data with updates, preserving updated_at
-    const mergedData = {
-      ...existingMember,
+    // Send only changed fields + updated_at for OCC (optimistic concurrency control)
+    const editData = {
       ...updateData,
       updated_at: existingMember.updated_at,
     };
 
-    return await handleApiRequest('members', 'edit', mergedData, { id: memberId, ...options });
+    return await handleApiRequest('members', 'edit', editData, { id: memberId, ...options });
   } catch (error) {
     if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
       throw new NotFoundError('Member', memberId);
@@ -1037,14 +916,13 @@ export async function updateNewsletter(newsletterId, updateData) {
       id: newsletterId,
     });
 
-    // Merge existing data with updates, preserving updated_at
-    const mergedData = {
-      ...existingNewsletter,
+    // Send only changed fields + updated_at for OCC (optimistic concurrency control)
+    const editData = {
       ...updateData,
       updated_at: existingNewsletter.updated_at,
     };
 
-    return await handleApiRequest('newsletters', 'edit', mergedData, { id: newsletterId });
+    return await handleApiRequest('newsletters', 'edit', editData, { id: newsletterId });
   } catch (error) {
     if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
       throw new NotFoundError('Newsletter', newsletterId);
@@ -1111,17 +989,16 @@ export async function updateTier(id, updateData, options = {}) {
   validateTierUpdateData(updateData);
 
   try {
-    // Get existing tier for merge
+    // Get existing tier to retrieve updated_at for conflict resolution
     const existingTier = await handleApiRequest('tiers', 'read', { id }, { id });
 
-    // Merge updates with existing data
-    const mergedData = {
-      ...existingTier,
+    // Send only changed fields + updated_at for OCC (optimistic concurrency control)
+    const editData = {
       ...updateData,
       updated_at: existingTier.updated_at,
     };
 
-    return await handleApiRequest('tiers', 'edit', mergedData, { id, ...options });
+    return await handleApiRequest('tiers', 'edit', editData, { id, ...options });
   } catch (error) {
     if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
       throw new NotFoundError('Tier', id);

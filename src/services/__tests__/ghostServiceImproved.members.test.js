@@ -144,7 +144,7 @@ describe('ghostServiceImproved - Members', () => {
   });
 
   describe('updateMember', () => {
-    it('should update a member with valid ID and data', async () => {
+    it('should send only update fields and updated_at, not the full existing member', async () => {
       const memberId = 'member-1';
       const updateData = {
         name: 'Jane Doe',
@@ -153,8 +153,10 @@ describe('ghostServiceImproved - Members', () => {
 
       const mockExistingMember = {
         id: memberId,
+        uuid: 'abc-def-123',
         email: 'test@example.com',
         name: 'John Doe',
+        status: 'free',
         updated_at: '2023-01-01T00:00:00.000Z',
       };
 
@@ -169,13 +171,15 @@ describe('ghostServiceImproved - Members', () => {
       const result = await updateMember(memberId, updateData);
 
       expect(api.members.read).toHaveBeenCalledWith(expect.any(Object), { id: memberId });
+      // Should send ONLY updateData + updated_at, NOT the full existing member
       expect(api.members.edit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          ...mockExistingMember,
-          ...updateData,
-        }),
+        { name: 'Jane Doe', note: 'Updated note', updated_at: '2023-01-01T00:00:00.000Z' },
         expect.objectContaining({ id: memberId })
       );
+      // Verify read-only fields are NOT sent
+      const editCallData = api.members.edit.mock.calls[0][0];
+      expect(editCallData).not.toHaveProperty('uuid');
+      expect(editCallData).not.toHaveProperty('status');
       expect(result).toEqual(mockUpdatedMember);
     });
 

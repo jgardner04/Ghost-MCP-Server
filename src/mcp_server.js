@@ -672,7 +672,7 @@ server.registerTool(
   'ghost_update_post',
   {
     description:
-      'Updates an existing post in Ghost CMS. Can update title, content, status, tags, images, and SEO fields.',
+      'Updates an existing post in Ghost CMS. Can update title, content, status, tags, images, and SEO fields. Only the provided fields are changed; omitted fields remain unchanged. Note: tags and authors arrays are fully replaced, not merged with existing values.',
     inputSchema: updatePostInputSchema,
   },
   async (rawInput) => {
@@ -939,7 +939,7 @@ server.registerTool(
   'ghost_update_page',
   {
     description:
-      'Updates an existing page in Ghost CMS. Can update title, content, status, images, and SEO fields.',
+      'Updates an existing page in Ghost CMS. Can update title, content, status, images, and SEO fields. Only the provided fields are changed; omitted fields remain unchanged.',
     inputSchema: updatePageInputSchema,
   },
   async (rawInput) => {

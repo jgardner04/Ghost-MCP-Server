@@ -403,7 +403,7 @@ describe('ghostServiceImproved - Tags', () => {
   });
 
   describe('updateTag', () => {
-    it('should update tag with valid ID and data', async () => {
+    it('should send only update fields, not the full existing tag', async () => {
       const tagId = 'tag-1';
       const updateData = {
         name: 'Updated JavaScript',
@@ -414,6 +414,8 @@ describe('ghostServiceImproved - Tags', () => {
         id: tagId,
         name: 'JavaScript',
         slug: 'javascript',
+        url: 'https://example.com/tag/javascript',
+        visibility: 'public',
       };
 
       const mockUpdatedTag = {
@@ -427,7 +429,16 @@ describe('ghostServiceImproved - Tags', () => {
       const result = await updateTag(tagId, updateData);
 
       expect(api.tags.read).toHaveBeenCalled();
-      expect(api.tags.edit).toHaveBeenCalled();
+      // Should send ONLY updateData, NOT the full existing tag
+      expect(api.tags.edit).toHaveBeenCalledWith(
+        { name: 'Updated JavaScript', description: 'Updated description' },
+        { id: tagId }
+      );
+      // Verify read-only fields are NOT sent
+      const editCallData = api.tags.edit.mock.calls[0][0];
+      expect(editCallData).not.toHaveProperty('url');
+      expect(editCallData).not.toHaveProperty('visibility');
+      expect(editCallData).not.toHaveProperty('slug');
       expect(result).toEqual(mockUpdatedTag);
     });
 
