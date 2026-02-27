@@ -61,6 +61,7 @@ vi.mock('fs/promises', () => ({
 
 // Import after setting up mocks
 import { updatePost, api, validators } from '../ghostServiceImproved.js';
+import { updatePostSchema } from '../../schemas/postSchemas.js';
 
 describe('ghostServiceImproved - Posts (updatePost)', () => {
   beforeEach(() => {
@@ -209,6 +210,24 @@ describe('ghostServiceImproved - Posts (updatePost)', () => {
       expect(() => validators.validateScheduledStatus({ status: 'draft' })).not.toThrow();
       expect(() => validators.validateScheduledStatus({ status: 'published' })).not.toThrow();
       expect(() => validators.validateScheduledStatus({})).not.toThrow();
+    });
+  });
+
+  describe('HTML sanitization (schema + service integration)', () => {
+    it('should strip XSS from post HTML on update when input flows through schema validation (production path)', async () => {
+      const rawUpdate = { html: '<p>Safe</p><script>alert("xss")</script>' };
+      const validated = updatePostSchema.parse(rawUpdate);
+
+      const existingPost = { id: 'post-1', updated_at: '2024-01-01T00:00:00.000Z' };
+      api.posts.read.mockResolvedValue(existingPost);
+      api.posts.edit.mockResolvedValue({ ...existingPost, ...validated });
+
+      await updatePost('post-1', validated);
+
+      const sentToApi = api.posts.edit.mock.calls[0][0];
+      expect(sentToApi.html).not.toContain('<script>');
+      expect(sentToApi.html).not.toContain('alert');
+      expect(sentToApi.html).toContain('<p>Safe</p>');
     });
   });
 });

@@ -280,7 +280,7 @@ export async function createPost(postData, options = { source: 'html' }) {
     ...postData,
   };
 
-  // HTML sanitization is enforced at the schema layer via htmlContentSchema
+  // SECURITY: HTML must be sanitized before reaching this function. See htmlContentSchema in schemas/common.js
 
   try {
     return await handleApiRequest('posts', 'add', dataWithDefaults, options);
@@ -415,7 +415,7 @@ export async function createPage(pageData, options = { source: 'html' }) {
     ...pageData,
   };
 
-  // HTML sanitization is enforced at the schema layer via htmlContentSchema
+  // SECURITY: HTML must be sanitized before reaching this function. See htmlContentSchema in schemas/common.js
 
   try {
     return await handleApiRequest('pages', 'add', dataWithDefaults, options);
@@ -434,7 +434,7 @@ export async function updatePage(pageId, updateData, options = {}) {
     throw new ValidationError('Page ID is required for update');
   }
 
-  // HTML sanitization is enforced at the schema layer via htmlContentSchema
+  // SECURITY: HTML must be sanitized before reaching this function. See htmlContentSchema in schemas/common.js
 
   // Validate scheduled status if status is being updated
   if (updateData.status) {

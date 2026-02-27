@@ -63,6 +63,7 @@ import {
   api,
   validators,
 } from '../ghostServiceImproved.js';
+import { createPageSchema, updatePageSchema } from '../../schemas/pageSchemas.js';
 
 describe('ghostServiceImproved - Pages', () => {
   beforeEach(() => {
@@ -568,6 +569,36 @@ describe('ghostServiceImproved - Pages', () => {
       expect(browseCall.filter).toContain('about');
       expect(browseCall.filter).toContain('status:published');
       expect(browseCall.filter).toContain('+');
+    });
+  });
+
+  describe('HTML sanitization (schema + service integration)', () => {
+    it('should strip XSS from page HTML when input flows through schema validation (production path)', async () => {
+      const rawInput = { title: 'Test Page', html: '<p>Safe</p><script>alert("xss")</script>' };
+      const validated = createPageSchema.parse(rawInput);
+
+      api.pages.add.mockResolvedValue({ id: '1', ...validated });
+      await createPage(validated);
+
+      const sentToApi = api.pages.add.mock.calls[0][0];
+      expect(sentToApi.html).not.toContain('<script>');
+      expect(sentToApi.html).not.toContain('alert');
+      expect(sentToApi.html).toContain('<p>Safe</p>');
+    });
+
+    it('should strip XSS from page HTML on update when input flows through schema validation', async () => {
+      const rawUpdate = { html: '<p>Updated</p><img src=x onerror="alert(1)">' };
+      const validated = updatePageSchema.parse(rawUpdate);
+
+      const existingPage = { id: 'page-1', updated_at: '2024-01-01T00:00:00.000Z' };
+      api.pages.read.mockResolvedValue(existingPage);
+      api.pages.edit.mockResolvedValue({ ...existingPage, ...validated });
+
+      await updatePage('page-1', validated);
+
+      const sentToApi = api.pages.edit.mock.calls[0][0];
+      expect(sentToApi.html).not.toContain('onerror');
+      expect(sentToApi.html).toContain('<img src="x"');
     });
   });
 });
