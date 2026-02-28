@@ -35,7 +35,7 @@ import {
 } from './schemas/index.js';
 
 // Load environment variables
-dotenv.config();
+dotenv.config({ quiet: true });
 
 // Lazy-loaded modules (to avoid Node.js v25 Buffer compatibility issues at startup)
 let ghostService = null;
