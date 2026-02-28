@@ -69,8 +69,7 @@
     "sharp": "^0.34.1",
     "uuid": "^11.1.0",
     "winston": "^3.17.0",
-    "zod": "^3.25.76",
-    "zod-to-json-schema": "^3.25.0"
+    "zod": "^4.0.0"
   },
   "keywords": [
     "ghost",

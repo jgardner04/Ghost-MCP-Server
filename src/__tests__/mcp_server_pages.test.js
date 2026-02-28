@@ -175,7 +175,7 @@ describe('mcp_server - ghost_get_pages tool', () => {
     const tool = mockTools.get('ghost_get_pages');
     const result = await tool.handler({});
 
-    expect(mockGetPages).toHaveBeenCalledWith({});
+    expect(mockGetPages).toHaveBeenCalledWith(expect.objectContaining({}));
     expect(result.content[0].text).toContain('About Us');
     expect(result.content[0].text).toContain('Contact');
   });
@@ -187,7 +187,7 @@ describe('mcp_server - ghost_get_pages tool', () => {
     const tool = mockTools.get('ghost_get_pages');
     await tool.handler({ limit: 10, page: 2 });
 
-    expect(mockGetPages).toHaveBeenCalledWith({ limit: 10, page: 2 });
+    expect(mockGetPages).toHaveBeenCalledWith(expect.objectContaining({ limit: 10, page: 2 }));
   });
 
   it('should validate limit is between 1 and 100', () => {
@@ -207,7 +207,9 @@ describe('mcp_server - ghost_get_pages tool', () => {
     const tool = mockTools.get('ghost_get_pages');
     await tool.handler({ filter: 'status:published' });
 
-    expect(mockGetPages).toHaveBeenCalledWith({ filter: 'status:published' });
+    expect(mockGetPages).toHaveBeenCalledWith(
+      expect.objectContaining({ filter: 'status:published' })
+    );
   });
 
   it('should handle errors gracefully', async () => {
@@ -236,8 +238,8 @@ describe('mcp_server - ghost_get_page tool', () => {
   it('should have correct schema with id and slug options', () => {
     const tool = mockTools.get('ghost_get_page');
     expect(tool).toBeDefined();
-    // ghost_get_page uses a refined schema, access via _def.schema.shape
-    const shape = tool.schema._def.schema.shape;
+    // In Zod v4, refined schemas expose .shape directly
+    const shape = tool.schema.shape;
     expect(shape.id).toBeDefined();
     expect(shape.slug).toBeDefined();
     expect(shape.include).toBeDefined();
@@ -250,7 +252,10 @@ describe('mcp_server - ghost_get_page tool', () => {
     const tool = mockTools.get('ghost_get_page');
     const result = await tool.handler({ id: '507f1f77bcf86cd799439011' });
 
-    expect(mockGetPage).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {});
+    expect(mockGetPage).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({})
+    );
     expect(result.content[0].text).toContain('About Us');
   });
 
@@ -261,7 +266,7 @@ describe('mcp_server - ghost_get_page tool', () => {
     const tool = mockTools.get('ghost_get_page');
     const result = await tool.handler({ slug: 'about-us' });
 
-    expect(mockGetPage).toHaveBeenCalledWith('slug/about-us', {});
+    expect(mockGetPage).toHaveBeenCalledWith('slug/about-us', expect.objectContaining({}));
     expect(result.content[0].text).toContain('About Us');
   });
 
@@ -389,9 +394,12 @@ describe('mcp_server - ghost_update_page tool', () => {
     const tool = mockTools.get('ghost_update_page');
     const result = await tool.handler({ id: '507f1f77bcf86cd799439011', title: 'Updated Title' });
 
-    expect(mockUpdatePage).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
-      title: 'Updated Title',
-    });
+    expect(mockUpdatePage).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({
+        title: 'Updated Title',
+      })
+    );
     expect(result.content[0].text).toContain('Updated Title');
   });
 
@@ -407,11 +415,14 @@ describe('mcp_server - ghost_update_page tool', () => {
       html: '<p>Updated content</p>',
     });
 
-    expect(mockUpdatePage).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
-      title: 'New Title',
-      status: 'published',
-      html: '<p>Updated content</p>',
-    });
+    expect(mockUpdatePage).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({
+        title: 'New Title',
+        status: 'published',
+        html: '<p>Updated content</p>',
+      })
+    );
     expect(result.content[0].text).toContain('New Title');
   });
 
@@ -493,7 +504,7 @@ describe('mcp_server - ghost_search_pages tool', () => {
     const tool = mockTools.get('ghost_search_pages');
     const result = await tool.handler({ query: 'about' });
 
-    expect(mockSearchPages).toHaveBeenCalledWith('about', {});
+    expect(mockSearchPages).toHaveBeenCalledWith('about', expect.objectContaining({}));
     expect(result.content[0].text).toContain('About Us');
   });
 
@@ -504,7 +515,10 @@ describe('mcp_server - ghost_search_pages tool', () => {
     const tool = mockTools.get('ghost_search_pages');
     await tool.handler({ query: 'test', status: 'published' });
 
-    expect(mockSearchPages).toHaveBeenCalledWith('test', { status: 'published' });
+    expect(mockSearchPages).toHaveBeenCalledWith(
+      'test',
+      expect.objectContaining({ status: 'published' })
+    );
   });
 
   it('should pass limit option', async () => {
@@ -514,7 +528,7 @@ describe('mcp_server - ghost_search_pages tool', () => {
     const tool = mockTools.get('ghost_search_pages');
     await tool.handler({ query: 'test', limit: 5 });
 
-    expect(mockSearchPages).toHaveBeenCalledWith('test', { limit: 5 });
+    expect(mockSearchPages).toHaveBeenCalledWith('test', expect.objectContaining({ limit: 5 }));
   });
 
   it('should validate limit is between 1 and 50', () => {

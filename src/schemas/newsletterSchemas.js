@@ -21,17 +21,17 @@ export const createNewsletterSchema = z.object({
   sender_email: emailSchema.optional(),
   sender_reply_to: z
     .enum(['newsletter', 'support'], {
-      errorMap: () => ({ message: 'Sender reply-to must be newsletter or support' }),
+      error: () => ({ message: 'Sender reply-to must be newsletter or support' }),
     })
     .default('newsletter'),
   status: z
     .enum(['active', 'archived'], {
-      errorMap: () => ({ message: 'Status must be active or archived' }),
+      error: () => ({ message: 'Status must be active or archived' }),
     })
     .default('active'),
   visibility: z
     .enum(['members', 'paid'], {
-      errorMap: () => ({ message: 'Visibility must be members or paid' }),
+      error: () => ({ message: 'Visibility must be members or paid' }),
     })
     .default('members'),
   subscribe_on_signup: z
@@ -49,18 +49,18 @@ export const createNewsletterSchema = z.object({
   show_header_title: z.boolean().default(true),
   title_font_category: z
     .enum(['serif', 'sans-serif'], {
-      errorMap: () => ({ message: 'Title font category must be serif or sans-serif' }),
+      error: () => ({ message: 'Title font category must be serif or sans-serif' }),
     })
     .default('sans-serif'),
   title_alignment: z
     .enum(['left', 'center'], {
-      errorMap: () => ({ message: 'Title alignment must be left or center' }),
+      error: () => ({ message: 'Title alignment must be left or center' }),
     })
     .default('center'),
   show_feature_image: z.boolean().default(true),
   body_font_category: z
     .enum(['serif', 'sans-serif'], {
-      errorMap: () => ({ message: 'Body font category must be serif or sans-serif' }),
+      error: () => ({ message: 'Body font category must be serif or sans-serif' }),
     })
     .default('sans-serif'),
   footer_content: z.string().optional(),

@@ -245,7 +245,7 @@ describe('Tag Schemas', () => {
       try {
         tagQuerySchema.parse(query);
       } catch (error) {
-        expect(error.errors[0].message).toContain('Cannot specify both "name" and "filter"');
+        expect(error.issues[0].message).toContain('Cannot specify both "name" and "filter"');
       }
     });
 

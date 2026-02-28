@@ -135,7 +135,7 @@ export const paginationSchema = z.object({
  * Valid values: draft, published, scheduled
  */
 export const postStatusSchema = z.enum(['draft', 'published', 'scheduled'], {
-  errorMap: () => ({ message: 'Status must be draft, published, or scheduled' }),
+  error: () => ({ message: 'Status must be draft, published, or scheduled' }),
 });
 
 /**
@@ -143,7 +143,7 @@ export const postStatusSchema = z.enum(['draft', 'published', 'scheduled'], {
  * Controls content visibility (public, members, paid, tiers)
  */
 export const visibilitySchema = z.enum(['public', 'members', 'paid', 'tiers'], {
-  errorMap: () => ({ message: 'Visibility must be public, members, paid, or tiers' }),
+  error: () => ({ message: 'Visibility must be public, members, paid, or tiers' }),
 });
 
 // ----- Common Field Validators -----
