@@ -125,7 +125,7 @@ describe('Error Handling System', () => {
 
     it('should create validation error from Zod error', () => {
       const zodError = {
-        errors: [
+        issues: [
           {
             path: ['user', 'email'],
             message: 'Invalid email',
@@ -157,7 +157,7 @@ describe('Error Handling System', () => {
 
     it('should create validation error from Zod error with context', () => {
       const zodError = {
-        errors: [
+        issues: [
           {
             path: ['name'],
             message: 'String must contain at least 1 character(s)',
@@ -179,7 +179,7 @@ describe('Error Handling System', () => {
 
     it('should create validation error from Zod error with empty path', () => {
       const zodError = {
-        errors: [
+        issues: [
           {
             path: [],
             message: 'Invalid input',

@@ -57,7 +57,7 @@ export class ValidationError extends BaseError {
   }
 
   static fromZod(zodError, context = '') {
-    const errors = zodError.errors.map((err) => ({
+    const errors = zodError.issues.map((err) => ({
       field: err.path.join('.'),
       message: err.message,
       type: err.code,

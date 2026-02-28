@@ -43,10 +43,10 @@ const getTags = async (req, res, next) => {
     res.status(200).json(tags);
   } catch (error) {
     if (error instanceof ZodError) {
-      logger.warn('Invalid query parameters', { errors: error.errors });
+      logger.warn('Invalid query parameters', { errors: error.issues });
       return res.status(400).json({
         message: 'Invalid query parameters',
-        errors: error.errors.map((e) => ({ path: e.path.join('.'), message: e.message })),
+        errors: error.issues.map((e) => ({ path: e.path.join('.'), message: e.message })),
       });
     }
 
