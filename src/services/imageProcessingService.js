@@ -89,7 +89,7 @@ const processImage = async (inputPath, outputDir) => {
     });
     // If processing fails, maybe fall back to using the original?
     // Or throw the error to fail the upload.
-    throw new Error('Image processing failed: ' + error.message);
+    throw new Error('Image processing failed: ' + error.message, { cause: error });
   }
 };
 
