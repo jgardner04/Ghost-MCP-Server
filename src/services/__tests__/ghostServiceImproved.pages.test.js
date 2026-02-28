@@ -63,6 +63,7 @@ import {
   api,
   validators,
 } from '../ghostServiceImproved.js';
+import { createPageSchema, updatePageSchema } from '../../schemas/pageSchemas.js';
 
 describe('ghostServiceImproved - Pages', () => {
   beforeEach(() => {
@@ -219,7 +220,7 @@ describe('ghostServiceImproved - Pages', () => {
       expect(api.pages.add).toHaveBeenCalledWith(pageData, { source: 'html' });
     });
 
-    it('should sanitize HTML content', async () => {
+    it('should pass HTML through without service-layer sanitization (schema layer handles it)', async () => {
       const pageData = {
         title: 'Test Page',
         html: '<p>Safe content</p><script>alert("xss")</script>',
@@ -228,10 +229,10 @@ describe('ghostServiceImproved - Pages', () => {
 
       await createPage(pageData);
 
-      // Verify that the HTML was sanitized (script tags removed)
+      // HTML sanitization is enforced at the schema layer via htmlContentSchema,
+      // not at the service layer
       const calledWith = api.pages.add.mock.calls[0][0];
-      expect(calledWith.html).not.toContain('<script>');
-      expect(calledWith.html).toContain('<p>Safe content</p>');
+      expect(calledWith.html).toBeDefined();
     });
 
     it('should handle Ghost API validation errors (422)', async () => {
@@ -266,12 +267,16 @@ describe('ghostServiceImproved - Pages', () => {
       await expect(updatePage('', { title: 'Updated' })).rejects.toThrow('Page ID is required');
     });
 
-    it('should update page with valid data', async () => {
+    it('should send only update fields and updated_at, not the full existing page', async () => {
       const pageId = 'page-123';
       const existingPage = {
         id: pageId,
+        uuid: 'abc-def-123',
         title: 'Original Title',
+        slug: 'original-title',
         html: '<p>Original content</p>',
+        url: 'https://example.com/original-title',
+        reading_time: 2,
         updated_at: '2024-01-01T00:00:00.000Z',
       };
       const updateData = { title: 'Updated Title' };
@@ -285,10 +290,16 @@ describe('ghostServiceImproved - Pages', () => {
       expect(result).toEqual(expectedPage);
       // handleApiRequest calls read with (options, data), where options={} and data={id}
       expect(api.pages.read).toHaveBeenCalledWith({}, { id: pageId });
+      // Should send ONLY updateData + updated_at, NOT the full existing page
       expect(api.pages.edit).toHaveBeenCalledWith(
-        { ...existingPage, ...updateData },
+        { title: 'Updated Title', updated_at: '2024-01-01T00:00:00.000Z' },
         { id: pageId }
       );
+      // Verify read-only fields are NOT sent
+      const editCallData = api.pages.edit.mock.calls[0][0];
+      expect(editCallData).not.toHaveProperty('uuid');
+      expect(editCallData).not.toHaveProperty('url');
+      expect(editCallData).not.toHaveProperty('reading_time');
     });
 
     it('should handle page not found (404)', async () => {
@@ -317,16 +328,18 @@ describe('ghostServiceImproved - Pages', () => {
       expect(editCall.updated_at).toBe('2024-01-01T00:00:00.000Z');
     });
 
-    it('should sanitize HTML content in updates', async () => {
+    it('should throw ValidationError when updating to scheduled without published_at', async () => {
       const pageId = 'page-123';
-      const existingPage = { id: pageId, title: 'Test', updated_at: '2024-01-01T00:00:00.000Z' };
+      const existingPage = {
+        id: pageId,
+        title: 'Test Page',
+        updated_at: '2024-01-01T00:00:00.000Z',
+      };
       api.pages.read.mockResolvedValue(existingPage);
-      api.pages.edit.mockResolvedValue({ ...existingPage });
 
-      await updatePage(pageId, { html: '<p>Safe</p><script>alert("xss")</script>' });
-
-      const editCall = api.pages.edit.mock.calls[0][0];
-      expect(editCall.html).not.toContain('<script>');
+      await expect(updatePage(pageId, { status: 'scheduled' })).rejects.toThrow(
+        'Page validation failed'
+      );
     });
   });
 
@@ -556,6 +569,36 @@ describe('ghostServiceImproved - Pages', () => {
       expect(browseCall.filter).toContain('about');
       expect(browseCall.filter).toContain('status:published');
       expect(browseCall.filter).toContain('+');
+    });
+  });
+
+  describe('HTML sanitization (schema + service integration)', () => {
+    it('should strip XSS from page HTML when input flows through schema validation (production path)', async () => {
+      const rawInput = { title: 'Test Page', html: '<p>Safe</p><script>alert("xss")</script>' };
+      const validated = createPageSchema.parse(rawInput);
+
+      api.pages.add.mockResolvedValue({ id: '1', ...validated });
+      await createPage(validated);
+
+      const sentToApi = api.pages.add.mock.calls[0][0];
+      expect(sentToApi.html).not.toContain('<script>');
+      expect(sentToApi.html).not.toContain('alert');
+      expect(sentToApi.html).toContain('<p>Safe</p>');
+    });
+
+    it('should strip XSS from page HTML on update when input flows through schema validation', async () => {
+      const rawUpdate = { html: '<p>Updated</p><img src=x onerror="alert(1)">' };
+      const validated = updatePageSchema.parse(rawUpdate);
+
+      const existingPage = { id: 'page-1', updated_at: '2024-01-01T00:00:00.000Z' };
+      api.pages.read.mockResolvedValue(existingPage);
+      api.pages.edit.mockResolvedValue({ ...existingPage, ...validated });
+
+      await updatePage('page-1', validated);
+
+      const sentToApi = api.pages.edit.mock.calls[0][0];
+      expect(sentToApi.html).not.toContain('onerror');
+      expect(sentToApi.html).toContain('<img src="x"');
     });
   });
 });

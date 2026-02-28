@@ -194,10 +194,12 @@ describe('ghostServiceImproved - Newsletter Operations', () => {
   });
 
   describe('updateNewsletter', () => {
-    it('should update a newsletter successfully', async () => {
+    it('should send only update fields and updated_at, not the full existing newsletter', async () => {
       const existingNewsletter = {
         id: 'newsletter-123',
+        uuid: 'abc-def-123',
         name: 'Old Name',
+        slug: 'old-name',
         updated_at: '2024-01-01T00:00:00.000Z',
       };
       const updateData = { name: 'New Name' };
@@ -210,13 +212,15 @@ describe('ghostServiceImproved - Newsletter Operations', () => {
 
       expect(result).toEqual(updatedNewsletter);
       expect(mockNewslettersApi.read).toHaveBeenCalledWith({}, { id: 'newsletter-123' });
+      // Should send ONLY updateData + updated_at, NOT the full existing newsletter
       expect(mockNewslettersApi.edit).toHaveBeenCalledWith(
-        {
-          ...existingNewsletter,
-          ...updateData,
-        },
+        { name: 'New Name', updated_at: '2024-01-01T00:00:00.000Z' },
         { id: 'newsletter-123' }
       );
+      // Verify read-only fields are NOT sent
+      const editCallData = mockNewslettersApi.edit.mock.calls[0][0];
+      expect(editCallData).not.toHaveProperty('uuid');
+      expect(editCallData).not.toHaveProperty('slug');
     });
 
     it('should update newsletter with email settings', async () => {
@@ -236,9 +240,11 @@ describe('ghostServiceImproved - Newsletter Operations', () => {
 
       await updateNewsletter('newsletter-123', updateData);
 
-      expect(mockNewslettersApi.edit).toHaveBeenCalledWith(expect.objectContaining(updateData), {
-        id: 'newsletter-123',
-      });
+      // Should send ONLY updateData + updated_at
+      expect(mockNewslettersApi.edit).toHaveBeenCalledWith(
+        { ...updateData, updated_at: '2024-01-01T00:00:00.000Z' },
+        { id: 'newsletter-123' }
+      );
     });
 
     it('should throw ValidationError if ID is missing', async () => {
@@ -270,10 +276,9 @@ describe('ghostServiceImproved - Newsletter Operations', () => {
 
       await updateNewsletter('newsletter-123', updateData);
 
+      // Should send ONLY updateData + updated_at
       expect(mockNewslettersApi.edit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          updated_at: '2024-01-01T00:00:00.000Z',
-        }),
+        { description: 'Updated description', updated_at: '2024-01-01T00:00:00.000Z' },
         { id: 'newsletter-123' }
       );
     });

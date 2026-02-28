@@ -300,12 +300,15 @@ describe('ghostServiceImproved - Tiers', () => {
   });
 
   describe('updateTier', () => {
-    it('should update a tier', async () => {
+    it('should send only update fields and updated_at, not the full existing tier', async () => {
       const existingTier = {
         id: 'tier-1',
+        slug: 'premium',
         name: 'Premium',
         currency: 'USD',
         monthly_price: 999,
+        type: 'paid',
+        active: true,
         updated_at: '2024-01-01T00:00:00.000Z',
       };
 
@@ -328,15 +331,16 @@ describe('ghostServiceImproved - Tiers', () => {
         expect.objectContaining({ id: 'tier-1' }),
         expect.objectContaining({ id: 'tier-1' })
       );
+      // Should send ONLY updateData + updated_at, NOT the full existing tier
       expect(api.tiers.edit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          ...existingTier,
-          ...updateData,
-        }),
-        expect.objectContaining({
-          id: 'tier-1',
-        })
+        { name: 'Premium Plus', monthly_price: 1299, updated_at: '2024-01-01T00:00:00.000Z' },
+        expect.objectContaining({ id: 'tier-1' })
       );
+      // Verify read-only fields are NOT sent
+      const editCallData = api.tiers.edit.mock.calls[0][0];
+      expect(editCallData).not.toHaveProperty('slug');
+      expect(editCallData).not.toHaveProperty('type');
+      expect(editCallData).not.toHaveProperty('active');
       expect(result).toEqual(mockUpdatedTier);
     });
 
