@@ -8,7 +8,7 @@ import tagRoutes from './routes/tagRoutes.js'; // Import tag routes
 import { createContextLogger } from './utils/logger.js';
 
 // Load environment variables from .env file
-dotenv.config();
+dotenv.config({ quiet: true });
 
 // Initialize logger for main server
 const logger = createContextLogger('main');
