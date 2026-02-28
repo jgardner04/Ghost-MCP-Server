@@ -37,13 +37,13 @@ export const createNewsletterSchema = z.object({
   subscribe_on_signup: z
     .boolean()
     .default(true)
-    .describe('Whether new members are automatically subscribed'),
+    .meta({ description: 'Whether new members are automatically subscribed' }),
   sort_order: z
     .number()
     .int()
     .min(0, 'Sort order must be non-negative')
     .optional()
-    .describe('Display order for newsletters'),
+    .meta({ description: 'Display order for newsletters' }),
   header_image: z.string().url('Invalid header image URL').optional(),
   show_header_icon: z.boolean().default(true),
   show_header_title: z.boolean().default(true),
@@ -85,11 +85,11 @@ export const newsletterQuerySchema = z.object({
     .string()
     .regex(/^[a-zA-Z0-9_\-:.'"\s,[\]<>=!+]+$/, 'Invalid filter: contains disallowed characters')
     .optional()
-    .describe('NQL filter string (e.g., "status:active")'),
+    .meta({ description: 'NQL filter string (e.g., "status:active")' }),
   order: z
     .string()
     .optional()
-    .describe('Order results (e.g., "sort_order ASC", "created_at DESC")'),
+    .meta({ description: 'Order results (e.g., "sort_order ASC", "created_at DESC")' }),
 });
 
 /**

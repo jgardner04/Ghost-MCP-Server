@@ -47,7 +47,10 @@ export const createTierSchema = z.object({
   name: z.string().min(1, 'Name cannot be empty').max(191, 'Name cannot exceed 191 characters'),
   description: z.string().max(2000, 'Description cannot exceed 2000 characters').optional(),
   slug: slugSchema.optional(),
-  active: z.boolean().default(true).describe('Whether tier is currently active/available'),
+  active: z
+    .boolean()
+    .default(true)
+    .meta({ description: 'Whether tier is currently active/available' }),
   type: z
     .enum(['free', 'paid'], {
       error: () => ({ message: 'Type must be free or paid' }),
@@ -64,7 +67,7 @@ export const createTierSchema = z.object({
     .int()
     .min(0, 'Trial days must be non-negative')
     .default(0)
-    .describe('Number of trial days for paid tiers'),
+    .meta({ description: 'Number of trial days for paid tiers' }),
   currency: z
     .string()
     .length(3, 'Currency must be 3-letter ISO code')
@@ -72,7 +75,10 @@ export const createTierSchema = z.object({
     .optional(),
   monthly_price: z.number().int().min(0, 'Monthly price must be non-negative').optional(),
   yearly_price: z.number().int().min(0, 'Yearly price must be non-negative').optional(),
-  benefits: z.array(z.string()).optional().describe('Array of benefit names/descriptions'),
+  benefits: z
+    .array(z.string())
+    .optional()
+    .meta({ description: 'Array of benefit names/descriptions' }),
 });
 
 /**
@@ -91,12 +97,15 @@ export const tierQuerySchema = z.object({
     .string()
     .regex(/^[a-zA-Z0-9_\-:.'"\s,[\]<>=!+]+$/, 'Invalid filter: contains disallowed characters')
     .optional()
-    .describe('NQL filter string (e.g., "type:paid+active:true")'),
-  include: z.string().optional().describe('Comma-separated list of relations to include'),
+    .meta({ description: 'NQL filter string (e.g., "type:paid+active:true")' }),
+  include: z
+    .string()
+    .optional()
+    .meta({ description: 'Comma-separated list of relations to include' }),
   order: z
     .string()
     .optional()
-    .describe('Order results (e.g., "monthly_price ASC", "created_at DESC")'),
+    .meta({ description: 'Order results (e.g., "monthly_price ASC", "created_at DESC")' }),
 });
 
 /**

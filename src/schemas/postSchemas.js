@@ -35,7 +35,7 @@ import {
  */
 export const createPostSchema = z.object({
   title: titleSchema,
-  html: htmlContentSchema.describe('HTML content of the post'),
+  html: htmlContentSchema.meta({ description: 'HTML content of the post' }),
   slug: slugSchema.optional(),
   status: postStatusSchema.default('draft'),
   visibility: visibilitySchema.default('public'),
@@ -57,17 +57,21 @@ export const createPostSchema = z.object({
     .max(500, 'Twitter description cannot exceed 500 characters')
     .optional(),
   canonical_url: canonicalUrlSchema,
-  tags: tagsSchema.describe(
-    'Array of tag names or IDs to associate with the post. On update, this fully replaces the existing tags array (not merged).'
-  ),
-  authors: authorsSchema.describe(
-    'Array of author IDs or emails. On update, this fully replaces the existing authors array (not merged).'
-  ),
-  published_at: isoDateSchema.optional().describe('Scheduled publish time (ISO 8601 format)'),
+  tags: tagsSchema.meta({
+    description:
+      'Array of tag names or IDs to associate with the post. On update, this fully replaces the existing tags array (not merged).',
+  }),
+  authors: authorsSchema.meta({
+    description:
+      'Array of author IDs or emails. On update, this fully replaces the existing authors array (not merged).',
+  }),
+  published_at: isoDateSchema
+    .optional()
+    .meta({ description: 'Scheduled publish time (ISO 8601 format)' }),
   codeinjection_head: z.string().optional(),
   codeinjection_foot: z.string().optional(),
-  custom_template: z.string().optional().describe('Custom template filename'),
-  email_only: z.boolean().default(false).describe('Whether post is email-only'),
+  custom_template: z.string().optional().meta({ description: 'Custom template filename' }),
+  email_only: z.boolean().default(false).meta({ description: 'Whether post is email-only' }),
 });
 
 /**
@@ -86,17 +90,20 @@ export const postQuerySchema = z.object({
     .string()
     .regex(/^[a-zA-Z0-9_\-:.'"\s,[\]<>=!+]+$/, 'Invalid filter: contains disallowed characters')
     .optional()
-    .describe('NQL filter string (e.g., "status:published+featured:true")'),
+    .meta({ description: 'NQL filter string (e.g., "status:published+featured:true")' }),
   include: z
     .string()
     .optional()
-    .describe('Comma-separated list of relations (e.g., "tags,authors")'),
-  fields: z.string().optional().describe('Comma-separated list of fields to return'),
+    .meta({ description: 'Comma-separated list of relations (e.g., "tags,authors")' }),
+  fields: z.string().optional().meta({ description: 'Comma-separated list of fields to return' }),
   formats: z
     .string()
     .optional()
-    .describe('Comma-separated list of formats (html, plaintext, mobiledoc)'),
-  order: z.string().optional().describe('Order results (e.g., "published_at DESC", "title ASC")'),
+    .meta({ description: 'Comma-separated list of formats (html, plaintext, mobiledoc)' }),
+  order: z
+    .string()
+    .optional()
+    .meta({ description: 'Order results (e.g., "published_at DESC", "title ASC")' }),
 });
 
 /**

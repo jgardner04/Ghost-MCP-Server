@@ -68,9 +68,11 @@ export const tagQueryBaseSchema = z.object({
       'Tag name contains invalid characters. Only letters, numbers, spaces, hyphens, underscores, and apostrophes are allowed'
     )
     .optional()
-    .describe('Filter by exact tag name (legacy parameter, converted to filter internally)'),
-  slug: z.string().optional().describe('Filter by tag slug'),
-  visibility: visibilitySchema.optional().describe('Filter by visibility'),
+    .meta({
+      description: 'Filter by exact tag name (legacy parameter, converted to filter internally)',
+    }),
+  slug: z.string().optional().meta({ description: 'Filter by tag slug' }),
+  visibility: visibilitySchema.optional().meta({ description: 'Filter by visibility' }),
   limit: z
     .union([
       z.number().int().min(1).max(100),
@@ -79,7 +81,7 @@ export const tagQueryBaseSchema = z.object({
     ])
     .default(15)
     .optional()
-    .describe('Number of tags to return (1-100) or "all" for all tags'),
+    .meta({ description: 'Number of tags to return (1-100) or "all" for all tags' }),
   page: z
     .union([z.number().int().min(1), z.string().regex(/^\d+$/).transform(Number)])
     .default(1)
@@ -88,12 +90,15 @@ export const tagQueryBaseSchema = z.object({
     .string()
     .regex(/^[a-zA-Z0-9_\-:.'"\s,[\]<>=!+]+$/, 'Invalid filter: contains disallowed characters')
     .optional()
-    .describe('NQL filter string'),
+    .meta({ description: 'NQL filter string' }),
   include: z
     .string()
     .optional()
-    .describe('Comma-separated list of relations to include (e.g., "count.posts")'),
-  order: z.string().optional().describe('Order results (e.g., "name ASC", "created_at DESC")'),
+    .meta({ description: 'Comma-separated list of relations to include (e.g., "count.posts")' }),
+  order: z
+    .string()
+    .optional()
+    .meta({ description: 'Order results (e.g., "name ASC", "created_at DESC")' }),
 });
 
 /**
