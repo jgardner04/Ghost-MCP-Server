@@ -50,13 +50,13 @@ export const createTierSchema = z.object({
   active: z.boolean().default(true).describe('Whether tier is currently active/available'),
   type: z
     .enum(['free', 'paid'], {
-      errorMap: () => ({ message: 'Type must be free or paid' }),
+      error: () => ({ message: 'Type must be free or paid' }),
     })
     .default('paid'),
   welcome_page_url: z.string().url('Invalid welcome page URL').optional(),
   visibility: z
     .enum(['public', 'none'], {
-      errorMap: () => ({ message: 'Visibility must be public or none' }),
+      error: () => ({ message: 'Visibility must be public or none' }),
     })
     .default('public'),
   trial_days: z

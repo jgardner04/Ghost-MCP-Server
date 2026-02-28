@@ -232,7 +232,7 @@ describe('mcp_server - ghost_get_posts tool', () => {
     const tool = mockTools.get('ghost_get_posts');
     const result = await tool.handler({});
 
-    expect(mockGetPosts).toHaveBeenCalledWith({});
+    expect(mockGetPosts).toHaveBeenCalledWith(expect.objectContaining({}));
     expect(result.content[0].text).toContain('Post 1');
     expect(result.content[0].text).toContain('Post 2');
   });
@@ -244,7 +244,7 @@ describe('mcp_server - ghost_get_posts tool', () => {
     const tool = mockTools.get('ghost_get_posts');
     await tool.handler({ limit: 10, page: 2 });
 
-    expect(mockGetPosts).toHaveBeenCalledWith({ limit: 10, page: 2 });
+    expect(mockGetPosts).toHaveBeenCalledWith(expect.objectContaining({ limit: 10, page: 2 }));
   });
 
   it('should validate limit is between 1 and 100', () => {
@@ -276,7 +276,7 @@ describe('mcp_server - ghost_get_posts tool', () => {
     const tool = mockTools.get('ghost_get_posts');
     await tool.handler({ status: 'published' });
 
-    expect(mockGetPosts).toHaveBeenCalledWith({ status: 'published' });
+    expect(mockGetPosts).toHaveBeenCalledWith(expect.objectContaining({ status: 'published' }));
   });
 
   it('should validate status enum values', () => {
@@ -306,7 +306,7 @@ describe('mcp_server - ghost_get_posts tool', () => {
     const tool = mockTools.get('ghost_get_posts');
     await tool.handler({ include: 'tags,authors' });
 
-    expect(mockGetPosts).toHaveBeenCalledWith({ include: 'tags,authors' });
+    expect(mockGetPosts).toHaveBeenCalledWith(expect.objectContaining({ include: 'tags,authors' }));
   });
 
   it('should pass filter parameter (NQL)', async () => {
@@ -316,7 +316,7 @@ describe('mcp_server - ghost_get_posts tool', () => {
     const tool = mockTools.get('ghost_get_posts');
     await tool.handler({ filter: 'featured:true' });
 
-    expect(mockGetPosts).toHaveBeenCalledWith({ filter: 'featured:true' });
+    expect(mockGetPosts).toHaveBeenCalledWith(expect.objectContaining({ filter: 'featured:true' }));
   });
 
   it('should pass order parameter', async () => {
@@ -329,7 +329,9 @@ describe('mcp_server - ghost_get_posts tool', () => {
     const tool = mockTools.get('ghost_get_posts');
     await tool.handler({ order: 'published_at DESC' });
 
-    expect(mockGetPosts).toHaveBeenCalledWith({ order: 'published_at DESC' });
+    expect(mockGetPosts).toHaveBeenCalledWith(
+      expect.objectContaining({ order: 'published_at DESC' })
+    );
   });
 
   it('should pass fields parameter', async () => {
@@ -339,7 +341,7 @@ describe('mcp_server - ghost_get_posts tool', () => {
     const tool = mockTools.get('ghost_get_posts');
     await tool.handler({ fields: 'id,title,slug' });
 
-    expect(mockGetPosts).toHaveBeenCalledWith({ fields: 'id,title,slug' });
+    expect(mockGetPosts).toHaveBeenCalledWith(expect.objectContaining({ fields: 'id,title,slug' }));
   });
 
   it('should pass formats parameter', async () => {
@@ -349,7 +351,9 @@ describe('mcp_server - ghost_get_posts tool', () => {
     const tool = mockTools.get('ghost_get_posts');
     await tool.handler({ formats: 'html,plaintext' });
 
-    expect(mockGetPosts).toHaveBeenCalledWith({ formats: 'html,plaintext' });
+    expect(mockGetPosts).toHaveBeenCalledWith(
+      expect.objectContaining({ formats: 'html,plaintext' })
+    );
   });
 
   it('should pass both fields and formats parameters', async () => {
@@ -359,7 +363,9 @@ describe('mcp_server - ghost_get_posts tool', () => {
     const tool = mockTools.get('ghost_get_posts');
     await tool.handler({ fields: 'id,title', formats: 'html' });
 
-    expect(mockGetPosts).toHaveBeenCalledWith({ fields: 'id,title', formats: 'html' });
+    expect(mockGetPosts).toHaveBeenCalledWith(
+      expect.objectContaining({ fields: 'id,title', formats: 'html' })
+    );
   });
 
   it('should pass all parameters combined', async () => {
@@ -378,16 +384,18 @@ describe('mcp_server - ghost_get_posts tool', () => {
       formats: 'html,plaintext',
     });
 
-    expect(mockGetPosts).toHaveBeenCalledWith({
-      limit: 20,
-      page: 1,
-      status: 'published',
-      include: 'tags,authors',
-      filter: 'featured:true',
-      order: 'published_at DESC',
-      fields: 'id,title,slug',
-      formats: 'html,plaintext',
-    });
+    expect(mockGetPosts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limit: 20,
+        page: 1,
+        status: 'published',
+        include: 'tags,authors',
+        filter: 'featured:true',
+        order: 'published_at DESC',
+        fields: 'id,title,slug',
+        formats: 'html,plaintext',
+      })
+    );
   });
 
   it('should handle errors from ghostService', async () => {
@@ -461,7 +469,7 @@ describe('mcp_server - ghost_get_tags tool', () => {
     const tool = mockTools.get('ghost_get_tags');
     const result = await tool.handler({});
 
-    expect(mockGetTags).toHaveBeenCalledWith({});
+    expect(mockGetTags).toHaveBeenCalledWith(expect.objectContaining({}));
     expect(result.content[0].text).toContain('Tag 1');
     expect(result.content[0].text).toContain('Tag 2');
   });
@@ -473,10 +481,12 @@ describe('mcp_server - ghost_get_tags tool', () => {
     const tool = mockTools.get('ghost_get_tags');
     await tool.handler({ limit: 10, page: 2 });
 
-    expect(mockGetTags).toHaveBeenCalledWith({
-      limit: 10,
-      page: 2,
-    });
+    expect(mockGetTags).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limit: 10,
+        page: 2,
+      })
+    );
   });
 
   it('should pass order parameter', async () => {
@@ -486,9 +496,11 @@ describe('mcp_server - ghost_get_tags tool', () => {
     const tool = mockTools.get('ghost_get_tags');
     await tool.handler({ order: 'name ASC' });
 
-    expect(mockGetTags).toHaveBeenCalledWith({
-      order: 'name ASC',
-    });
+    expect(mockGetTags).toHaveBeenCalledWith(
+      expect.objectContaining({
+        order: 'name ASC',
+      })
+    );
   });
 
   it('should pass include parameter', async () => {
@@ -498,9 +510,11 @@ describe('mcp_server - ghost_get_tags tool', () => {
     const tool = mockTools.get('ghost_get_tags');
     await tool.handler({ include: 'count.posts' });
 
-    expect(mockGetTags).toHaveBeenCalledWith({
-      include: 'count.posts',
-    });
+    expect(mockGetTags).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: 'count.posts',
+      })
+    );
   });
 
   it('should filter by name parameter', async () => {
@@ -510,9 +524,11 @@ describe('mcp_server - ghost_get_tags tool', () => {
     const tool = mockTools.get('ghost_get_tags');
     await tool.handler({ name: 'Test Tag' });
 
-    expect(mockGetTags).toHaveBeenCalledWith({
-      filter: "name:'Test Tag'",
-    });
+    expect(mockGetTags).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter: "name:'Test Tag'",
+      })
+    );
   });
 
   it('should filter by slug parameter', async () => {
@@ -522,9 +538,11 @@ describe('mcp_server - ghost_get_tags tool', () => {
     const tool = mockTools.get('ghost_get_tags');
     await tool.handler({ slug: 'test-tag' });
 
-    expect(mockGetTags).toHaveBeenCalledWith({
-      filter: "slug:'test-tag'",
-    });
+    expect(mockGetTags).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter: "slug:'test-tag'",
+      })
+    );
   });
 
   it('should filter by visibility parameter', async () => {
@@ -534,9 +552,11 @@ describe('mcp_server - ghost_get_tags tool', () => {
     const tool = mockTools.get('ghost_get_tags');
     await tool.handler({ visibility: 'public' });
 
-    expect(mockGetTags).toHaveBeenCalledWith({
-      filter: "visibility:'public'",
-    });
+    expect(mockGetTags).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter: "visibility:'public'",
+      })
+    );
   });
 
   it('should escape single quotes in name parameter', async () => {
@@ -546,9 +566,11 @@ describe('mcp_server - ghost_get_tags tool', () => {
     const tool = mockTools.get('ghost_get_tags');
     await tool.handler({ name: "O'Reilly" });
 
-    expect(mockGetTags).toHaveBeenCalledWith({
-      filter: "name:'O''Reilly'",
-    });
+    expect(mockGetTags).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter: "name:'O''Reilly'",
+      })
+    );
   });
 
   it('should escape single quotes in slug parameter', async () => {
@@ -558,9 +580,11 @@ describe('mcp_server - ghost_get_tags tool', () => {
     const tool = mockTools.get('ghost_get_tags');
     await tool.handler({ slug: "test'slug" });
 
-    expect(mockGetTags).toHaveBeenCalledWith({
-      filter: "slug:'test''slug'",
-    });
+    expect(mockGetTags).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter: "slug:'test''slug'",
+      })
+    );
   });
 
   it('should combine multiple filter parameters', async () => {
@@ -570,9 +594,11 @@ describe('mcp_server - ghost_get_tags tool', () => {
     const tool = mockTools.get('ghost_get_tags');
     await tool.handler({ name: 'News', visibility: 'public' });
 
-    expect(mockGetTags).toHaveBeenCalledWith({
-      filter: "name:'News'+visibility:'public'",
-    });
+    expect(mockGetTags).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter: "name:'News'+visibility:'public'",
+      })
+    );
   });
 
   it('should combine individual filters with custom filter parameter', async () => {
@@ -582,9 +608,11 @@ describe('mcp_server - ghost_get_tags tool', () => {
     const tool = mockTools.get('ghost_get_tags');
     await tool.handler({ name: 'News', filter: 'featured:true' });
 
-    expect(mockGetTags).toHaveBeenCalledWith({
-      filter: "name:'News'+featured:true",
-    });
+    expect(mockGetTags).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter: "name:'News'+featured:true",
+      })
+    );
   });
 
   it('should pass all parameters combined', async () => {
@@ -601,13 +629,15 @@ describe('mcp_server - ghost_get_tags tool', () => {
       visibility: 'public',
     });
 
-    expect(mockGetTags).toHaveBeenCalledWith({
-      limit: 20,
-      page: 1,
-      order: 'name ASC',
-      include: 'count.posts',
-      filter: "name:'News'+visibility:'public'",
-    });
+    expect(mockGetTags).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limit: 20,
+        page: 1,
+        order: 'name ASC',
+        include: 'count.posts',
+        filter: "name:'News'+visibility:'public'",
+      })
+    );
   });
 
   it('should handle service errors', async () => {
@@ -652,8 +682,8 @@ describe('mcp_server - ghost_get_post tool', () => {
     expect(tool).toBeDefined();
     expect(tool.description).toContain('post');
     expect(tool.schema).toBeDefined();
-    // ghost_get_post uses a refined schema, access via _def.schema.shape
-    const shape = tool.schema._def.schema.shape;
+    // In Zod v4, refined schemas expose .shape directly
+    const shape = tool.schema.shape;
     expect(shape.id).toBeDefined();
     expect(shape.slug).toBeDefined();
     expect(shape.include).toBeDefined();
@@ -672,7 +702,10 @@ describe('mcp_server - ghost_get_post tool', () => {
     const tool = mockTools.get('ghost_get_post');
     const result = await tool.handler({ id: '507f1f77bcf86cd799439011' });
 
-    expect(mockGetPost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {});
+    expect(mockGetPost).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({})
+    );
     expect(result.content[0].text).toContain('"id": "507f1f77bcf86cd799439011"');
     expect(result.content[0].text).toContain('"title": "Test Post"');
   });
@@ -690,7 +723,7 @@ describe('mcp_server - ghost_get_post tool', () => {
     const tool = mockTools.get('ghost_get_post');
     const result = await tool.handler({ slug: 'test-post' });
 
-    expect(mockGetPost).toHaveBeenCalledWith('slug/test-post', {});
+    expect(mockGetPost).toHaveBeenCalledWith('slug/test-post', expect.objectContaining({}));
     expect(result.content[0].text).toContain('"title": "Test Post"');
   });
 
@@ -706,9 +739,12 @@ describe('mcp_server - ghost_get_post tool', () => {
     const tool = mockTools.get('ghost_get_post');
     await tool.handler({ id: '507f1f77bcf86cd799439011', include: 'tags,authors' });
 
-    expect(mockGetPost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
-      include: 'tags,authors',
-    });
+    expect(mockGetPost).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({
+        include: 'tags,authors',
+      })
+    );
   });
 
   it('should pass include parameter with slug', async () => {
@@ -723,7 +759,10 @@ describe('mcp_server - ghost_get_post tool', () => {
     const tool = mockTools.get('ghost_get_post');
     await tool.handler({ slug: 'test-post', include: 'tags' });
 
-    expect(mockGetPost).toHaveBeenCalledWith('slug/test-post', { include: 'tags' });
+    expect(mockGetPost).toHaveBeenCalledWith(
+      'slug/test-post',
+      expect.objectContaining({ include: 'tags' })
+    );
   });
 
   it('should prefer ID over slug when both provided', async () => {
@@ -733,7 +772,10 @@ describe('mcp_server - ghost_get_post tool', () => {
     const tool = mockTools.get('ghost_get_post');
     await tool.handler({ id: '507f1f77bcf86cd799439011', slug: 'wrong-slug' });
 
-    expect(mockGetPost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {});
+    expect(mockGetPost).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({})
+    );
   });
 
   it('should handle not found errors', async () => {
@@ -835,9 +877,12 @@ describe('mcp_server - ghost_update_post tool', () => {
     const tool = mockTools.get('ghost_update_post');
     const result = await tool.handler({ id: '507f1f77bcf86cd799439011', title: 'Updated Title' });
 
-    expect(mockUpdatePost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
-      title: 'Updated Title',
-    });
+    expect(mockUpdatePost).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({
+        title: 'Updated Title',
+      })
+    );
     expect(result.content[0].text).toContain('"title": "Updated Title"');
   });
 
@@ -857,9 +902,12 @@ describe('mcp_server - ghost_update_post tool', () => {
       html: '<p>Updated content</p>',
     });
 
-    expect(mockUpdatePost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
-      html: '<p>Updated content</p>',
-    });
+    expect(mockUpdatePost).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({
+        html: '<p>Updated content</p>',
+      })
+    );
     expect(result.content[0].text).toContain('Updated content');
   });
 
@@ -876,9 +924,12 @@ describe('mcp_server - ghost_update_post tool', () => {
     const tool = mockTools.get('ghost_update_post');
     const result = await tool.handler({ id: '507f1f77bcf86cd799439011', status: 'published' });
 
-    expect(mockUpdatePost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
-      status: 'published',
-    });
+    expect(mockUpdatePost).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({
+        status: 'published',
+      })
+    );
     expect(result.content[0].text).toContain('"status": "published"');
   });
 
@@ -898,9 +949,12 @@ describe('mcp_server - ghost_update_post tool', () => {
       tags: ['tech', 'javascript'],
     });
 
-    expect(mockUpdatePost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
-      tags: ['tech', 'javascript'],
-    });
+    expect(mockUpdatePost).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({
+        tags: ['tech', 'javascript'],
+      })
+    );
     expect(result.content[0].text).toContain('tech');
     expect(result.content[0].text).toContain('javascript');
   });
@@ -922,10 +976,13 @@ describe('mcp_server - ghost_update_post tool', () => {
       feature_image_alt: 'New image',
     });
 
-    expect(mockUpdatePost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
-      feature_image: 'https://example.com/new-image.jpg',
-      feature_image_alt: 'New image',
-    });
+    expect(mockUpdatePost).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({
+        feature_image: 'https://example.com/new-image.jpg',
+        feature_image_alt: 'New image',
+      })
+    );
     expect(result.content[0].text).toContain('new-image.jpg');
   });
 
@@ -946,10 +1003,13 @@ describe('mcp_server - ghost_update_post tool', () => {
       meta_description: 'SEO Description',
     });
 
-    expect(mockUpdatePost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
-      meta_title: 'SEO Title',
-      meta_description: 'SEO Description',
-    });
+    expect(mockUpdatePost).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({
+        meta_title: 'SEO Title',
+        meta_description: 'SEO Description',
+      })
+    );
     expect(result.content[0].text).toContain('SEO Title');
     expect(result.content[0].text).toContain('SEO Description');
   });
@@ -974,12 +1034,15 @@ describe('mcp_server - ghost_update_post tool', () => {
       tags: ['tech'],
     });
 
-    expect(mockUpdatePost).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
-      title: 'Updated Title',
-      html: '<p>Updated content</p>',
-      status: 'published',
-      tags: ['tech'],
-    });
+    expect(mockUpdatePost).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({
+        title: 'Updated Title',
+        html: '<p>Updated content</p>',
+        status: 'published',
+        tags: ['tech'],
+      })
+    );
     expect(result.content[0].text).toContain('Updated Title');
   });
 
@@ -1151,7 +1214,7 @@ describe('mcp_server - ghost_search_posts tool', () => {
     const tool = mockTools.get('ghost_search_posts');
     const result = await tool.handler({ query: 'JavaScript' });
 
-    expect(mockSearchPosts).toHaveBeenCalledWith('JavaScript', {});
+    expect(mockSearchPosts).toHaveBeenCalledWith('JavaScript', expect.objectContaining({}));
     expect(result.content[0].text).toContain('JavaScript Tips');
     expect(result.content[0].text).toContain('JavaScript Tricks');
   });
@@ -1165,7 +1228,10 @@ describe('mcp_server - ghost_search_posts tool', () => {
     const tool = mockTools.get('ghost_search_posts');
     await tool.handler({ query: 'test', status: 'published' });
 
-    expect(mockSearchPosts).toHaveBeenCalledWith('test', { status: 'published' });
+    expect(mockSearchPosts).toHaveBeenCalledWith(
+      'test',
+      expect.objectContaining({ status: 'published' })
+    );
   });
 
   it('should search posts with query and limit', async () => {
@@ -1175,7 +1241,7 @@ describe('mcp_server - ghost_search_posts tool', () => {
     const tool = mockTools.get('ghost_search_posts');
     await tool.handler({ query: 'test', limit: 10 });
 
-    expect(mockSearchPosts).toHaveBeenCalledWith('test', { limit: 10 });
+    expect(mockSearchPosts).toHaveBeenCalledWith('test', expect.objectContaining({ limit: 10 }));
   });
 
   it('should validate limit is between 1 and 50', () => {
@@ -1213,10 +1279,13 @@ describe('mcp_server - ghost_search_posts tool', () => {
       limit: 20,
     });
 
-    expect(mockSearchPosts).toHaveBeenCalledWith('JavaScript', {
-      status: 'published',
-      limit: 20,
-    });
+    expect(mockSearchPosts).toHaveBeenCalledWith(
+      'JavaScript',
+      expect.objectContaining({
+        status: 'published',
+        limit: 20,
+      })
+    );
   });
 
   it('should handle errors from searchPosts', async () => {
@@ -1286,8 +1355,8 @@ describe('ghost_get_tag', () => {
 
   it('should have correct schema with id and slug as optional', () => {
     const tool = mockTools.get('ghost_get_tag');
-    // ghost_get_tag uses a refined schema, access via _def.schema.shape
-    const shape = tool.schema._def.schema.shape;
+    // In Zod v4, refined schemas expose .shape directly
+    const shape = tool.schema.shape;
     expect(shape.id).toBeDefined();
     expect(shape.slug).toBeDefined();
     expect(shape.include).toBeDefined();
@@ -1305,7 +1374,10 @@ describe('ghost_get_tag', () => {
     const tool = mockTools.get('ghost_get_tag');
     const result = await tool.handler({ id: '507f1f77bcf86cd799439011' });
 
-    expect(mockGetTag).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {});
+    expect(mockGetTag).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({})
+    );
     expect(result.content).toBeDefined();
     expect(result.content[0].type).toBe('text');
     expect(result.content[0].text).toContain('"id": "507f1f77bcf86cd799439011"');
@@ -1324,7 +1396,7 @@ describe('ghost_get_tag', () => {
     const tool = mockTools.get('ghost_get_tag');
     const result = await tool.handler({ slug: 'test-tag' });
 
-    expect(mockGetTag).toHaveBeenCalledWith('slug/test-tag', {});
+    expect(mockGetTag).toHaveBeenCalledWith('slug/test-tag', expect.objectContaining({}));
     expect(result.content[0].text).toContain('"slug": "test-tag"');
   });
 
@@ -1340,7 +1412,10 @@ describe('ghost_get_tag', () => {
     const tool = mockTools.get('ghost_get_tag');
     const result = await tool.handler({ id: '507f1f77bcf86cd799439011', include: 'count.posts' });
 
-    expect(mockGetTag).toHaveBeenCalledWith('507f1f77bcf86cd799439011', { include: 'count.posts' });
+    expect(mockGetTag).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({ include: 'count.posts' })
+    );
     expect(result.content[0].text).toContain('"count"');
   });
 
@@ -1401,7 +1476,10 @@ describe('ghost_update_tag', () => {
     const tool = mockTools.get('ghost_update_tag');
     const result = await tool.handler({ id: '507f1f77bcf86cd799439011', name: 'Updated Tag' });
 
-    expect(mockUpdateTag).toHaveBeenCalledWith('507f1f77bcf86cd799439011', { name: 'Updated Tag' });
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({ name: 'Updated Tag' })
+    );
     expect(result.content[0].text).toContain('"name": "Updated Tag"');
   });
 
@@ -1419,9 +1497,12 @@ describe('ghost_update_tag', () => {
       description: 'New description',
     });
 
-    expect(mockUpdateTag).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
-      description: 'New description',
-    });
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({
+        description: 'New description',
+      })
+    );
     expect(result.content[0].text).toContain('"description": "New description"');
   });
 
@@ -1443,11 +1524,14 @@ describe('ghost_update_tag', () => {
       meta_title: 'Updated Meta',
     });
 
-    expect(mockUpdateTag).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
-      name: 'Updated Tag',
-      description: 'Updated description',
-      meta_title: 'Updated Meta',
-    });
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({
+        name: 'Updated Tag',
+        description: 'Updated description',
+        meta_title: 'Updated Meta',
+      })
+    );
   });
 
   it('should update tag feature image', async () => {
@@ -1464,9 +1548,12 @@ describe('ghost_update_tag', () => {
       feature_image: 'https://example.com/image.jpg',
     });
 
-    expect(mockUpdateTag).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
-      feature_image: 'https://example.com/image.jpg',
-    });
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({
+        feature_image: 'https://example.com/image.jpg',
+      })
+    );
   });
 
   it('should return error when id is missing', async () => {

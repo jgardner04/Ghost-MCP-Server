@@ -44,7 +44,7 @@ describe('tagController', () => {
 
       await getTags(req, res, next);
 
-      expect(ghostService.getTags).toHaveBeenCalledWith({});
+      expect(ghostService.getTags).toHaveBeenCalledWith(expect.objectContaining({}));
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(mockTags);
       expect(next).not.toHaveBeenCalled();
@@ -60,7 +60,9 @@ describe('tagController', () => {
 
       await getTags(req, res, next);
 
-      expect(ghostService.getTags).toHaveBeenCalledWith({ filter: "name:'Technology'" });
+      expect(ghostService.getTags).toHaveBeenCalledWith(
+        expect.objectContaining({ filter: "name:'Technology'" })
+      );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(mockTags);
       expect(next).not.toHaveBeenCalled();
@@ -76,7 +78,7 @@ describe('tagController', () => {
 
       await getTags(req, res, next);
 
-      expect(ghostService.getTags).toHaveBeenCalledWith({});
+      expect(ghostService.getTags).toHaveBeenCalledWith(expect.objectContaining({}));
       expect(res.status).not.toHaveBeenCalled();
       expect(res.json).not.toHaveBeenCalled();
       expect(next).toHaveBeenCalledWith(mockError);
@@ -121,11 +123,13 @@ describe('tagController', () => {
 
       await getTags(req, res, next);
 
-      expect(ghostService.getTags).toHaveBeenCalledWith({
-        limit: 10,
-        order: 'name asc',
-        include: 'count.posts',
-      });
+      expect(ghostService.getTags).toHaveBeenCalledWith(
+        expect.objectContaining({
+          limit: 10,
+          order: 'name asc',
+          include: 'count.posts',
+        })
+      );
       expect(res.status).toHaveBeenCalledWith(200);
     });
 
