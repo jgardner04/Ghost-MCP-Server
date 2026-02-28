@@ -114,7 +114,7 @@ describe('ghostServiceImproved - Pages', () => {
     it('should require published_at when status is scheduled', () => {
       expect(() =>
         validators.validatePageData({ title: 'Test', html: '<p>Content</p>', status: 'scheduled' })
-      ).toThrow('Validation failed');
+      ).toThrow('Page validation failed');
     });
 
     it('should validate published_at date format', () => {
@@ -124,7 +124,7 @@ describe('ghostServiceImproved - Pages', () => {
           html: '<p>Content</p>',
           published_at: 'invalid-date',
         })
-      ).toThrow('Validation failed');
+      ).toThrow('Page validation failed');
     });
 
     it('should require future date for scheduled pages', () => {
@@ -136,7 +136,7 @@ describe('ghostServiceImproved - Pages', () => {
           status: 'scheduled',
           published_at: pastDate,
         })
-      ).toThrow('Validation failed');
+      ).toThrow('Page validation failed');
     });
 
     it('should accept future date for scheduled pages', () => {
@@ -338,7 +338,7 @@ describe('ghostServiceImproved - Pages', () => {
       api.pages.read.mockResolvedValue(existingPage);
 
       await expect(updatePage(pageId, { status: 'scheduled' })).rejects.toThrow(
-        'Validation failed'
+        'Page validation failed'
       );
     });
   });

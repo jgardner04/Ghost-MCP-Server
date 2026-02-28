@@ -161,9 +161,9 @@ const createBeforeRedirect = () => {
   };
 };
 
+// Note: DNS rebinding (TOCTOU) attacks are not mitigated by hostname-based validation
 /**
- * Configures axios with security settings for external requests
- * // Note: DNS rebinding (TOCTOU) attacks are not mitigated by hostname-based validation
+ * Configures axios with security settings for external requests.
  * @param {string} url - The validated URL to request
  * @returns {object} Axios configuration with security settings
  */

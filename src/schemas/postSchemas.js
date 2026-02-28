@@ -64,8 +64,6 @@ export const createPostSchema = z.object({
     'Array of author IDs or emails. On update, this fully replaces the existing authors array (not merged).'
   ),
   published_at: isoDateSchema.optional().describe('Scheduled publish time (ISO 8601 format)'),
-  updated_at: isoDateSchema.optional(),
-  created_at: isoDateSchema.optional(),
   codeinjection_head: z.string().optional(),
   codeinjection_foot: z.string().optional(),
   custom_template: z.string().optional().describe('Custom template filename'),

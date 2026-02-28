@@ -152,7 +152,7 @@ describe('ghostServiceImproved - Posts (updatePost)', () => {
       api.posts.read.mockResolvedValue(existingPost);
 
       await expect(updatePost(postId, { status: 'scheduled' })).rejects.toThrow(
-        'Validation failed'
+        'Post validation failed'
       );
     });
 
@@ -182,13 +182,13 @@ describe('ghostServiceImproved - Posts (updatePost)', () => {
   describe('validators.validateScheduledStatus', () => {
     it('should throw when status is scheduled without published_at', () => {
       expect(() => validators.validateScheduledStatus({ status: 'scheduled' })).toThrow(
-        'Validation failed'
+        'validation failed'
       );
     });
 
     it('should throw when published_at has invalid date format', () => {
       expect(() => validators.validateScheduledStatus({ published_at: 'not-a-date' })).toThrow(
-        'Validation failed'
+        'validation failed'
       );
     });
 
@@ -196,7 +196,7 @@ describe('ghostServiceImproved - Posts (updatePost)', () => {
       const pastDate = new Date(Date.now() - 86400000).toISOString();
       expect(() =>
         validators.validateScheduledStatus({ status: 'scheduled', published_at: pastDate })
-      ).toThrow('Validation failed');
+      ).toThrow('validation failed');
     });
 
     it('should not throw for valid scheduled status with future date', () => {

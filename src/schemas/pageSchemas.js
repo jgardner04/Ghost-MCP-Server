@@ -62,8 +62,6 @@ export const createPageSchema = z.object({
   tags: tagsSchema.describe('Array of tag names or IDs (rarely used for pages)'),
   authors: authorsSchema.describe('Array of author IDs or emails'),
   published_at: isoDateSchema.optional().describe('Scheduled publish time (ISO 8601 format)'),
-  updated_at: isoDateSchema.optional(),
-  created_at: isoDateSchema.optional(),
   codeinjection_head: z.string().optional(),
   codeinjection_foot: z.string().optional(),
   custom_template: z.string().optional().describe('Custom template filename'),

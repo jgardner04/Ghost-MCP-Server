@@ -117,7 +117,7 @@ const handleApiRequest = async (resource, action, data = {}, options = {}, confi
  * Input validation helpers
  */
 const validators = {
-  validateScheduledStatus(data) {
+  validateScheduledStatus(data, resourceLabel = 'Resource') {
     const errors = [];
 
     if (data.status === 'scheduled' && !data.published_at) {
@@ -137,7 +137,7 @@ const validators = {
     }
 
     if (errors.length > 0) {
-      throw new ValidationError('Validation failed', errors);
+      throw new ValidationError(`${resourceLabel} validation failed`, errors);
     }
   },
 
@@ -163,7 +163,7 @@ const validators = {
       throw new ValidationError('Post validation failed', errors);
     }
 
-    this.validateScheduledStatus(postData);
+    this.validateScheduledStatus(postData, 'Post');
   },
 
   validateTagData(tagData) {
@@ -241,7 +241,7 @@ const validators = {
       throw new ValidationError('Page validation failed', errors);
     }
 
-    this.validateScheduledStatus(pageData);
+    this.validateScheduledStatus(pageData, 'Page');
   },
 
   validateNewsletterData(newsletterData) {
@@ -302,7 +302,7 @@ export async function updatePost(postId, updateData, options = {}) {
 
   // Validate scheduled status if status is being updated
   if (updateData.status) {
-    validators.validateScheduledStatus(updateData);
+    validators.validateScheduledStatus(updateData, 'Post');
   }
 
   // Get the current post first to ensure it exists
@@ -438,7 +438,7 @@ export async function updatePage(pageId, updateData, options = {}) {
 
   // Validate scheduled status if status is being updated
   if (updateData.status) {
-    validators.validateScheduledStatus(updateData);
+    validators.validateScheduledStatus(updateData, 'Page');
   }
 
   try {
