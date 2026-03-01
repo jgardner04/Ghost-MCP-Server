@@ -17,13 +17,22 @@ export const createMemberSchema = z.object({
   email: emailSchema,
   name: z.string().max(191, 'Name cannot exceed 191 characters').optional(),
   note: z.string().max(2000, 'Note cannot exceed 2000 characters').optional(),
-  subscribed: z.boolean().default(true).describe('Whether member is subscribed to newsletter'),
-  comped: z.boolean().default(false).describe('Whether member has complimentary subscription'),
-  labels: z.array(z.string()).optional().describe('Array of label names to associate with member'),
+  subscribed: z
+    .boolean()
+    .default(true)
+    .meta({ description: 'Whether member is subscribed to newsletter' }),
+  comped: z
+    .boolean()
+    .default(false)
+    .meta({ description: 'Whether member has complimentary subscription' }),
+  labels: z
+    .array(z.string())
+    .optional()
+    .meta({ description: 'Array of label names to associate with member' }),
   newsletters: z
     .array(ghostIdSchema)
     .optional()
-    .describe('Array of newsletter IDs to subscribe member to'),
+    .meta({ description: 'Array of newsletter IDs to subscribe member to' }),
 });
 
 /**
@@ -42,13 +51,16 @@ export const memberQuerySchema = z.object({
     .string()
     .regex(/^[a-zA-Z0-9_\-:.'"\s,[\]<>=!+]+$/, 'Invalid filter: contains disallowed characters')
     .optional()
-    .describe('NQL filter string (e.g., "status:paid+subscribed:true")'),
+    .meta({ description: 'NQL filter string (e.g., "status:paid+subscribed:true")' }),
   include: z
     .string()
     .optional()
-    .describe('Comma-separated list of relations (e.g., "labels,newsletters")'),
-  order: z.string().optional().describe('Order results (e.g., "created_at DESC", "name ASC")'),
-  search: z.string().optional().describe('Search members by name or email'),
+    .meta({ description: 'Comma-separated list of relations (e.g., "labels,newsletters")' }),
+  order: z
+    .string()
+    .optional()
+    .meta({ description: 'Order results (e.g., "created_at DESC", "name ASC")' }),
+  search: z.string().optional().meta({ description: 'Search members by name or email' }),
 });
 
 /**

@@ -95,12 +95,12 @@ const server = new McpServer({
 const getTagsSchema = tagQueryBaseSchema.partial();
 const getTagSchema = z
   .object({
-    id: ghostIdSchema.optional().describe('The ID of the tag to retrieve.'),
-    slug: z.string().optional().describe('The slug of the tag to retrieve.'),
+    id: ghostIdSchema.optional().meta({ description: 'The ID of the tag to retrieve.' }),
+    slug: z.string().optional().meta({ description: 'The slug of the tag to retrieve.' }),
     include: z
       .string()
       .optional()
-      .describe('Additional resources to include (e.g., "count.posts").'),
+      .meta({ description: 'Additional resources to include (e.g., "count.posts").' }),
   })
   .refine((data) => data.id || data.slug, {
     message: 'Either id or slug is required to retrieve a tag',
@@ -350,11 +350,11 @@ server.registerTool(
 
 // --- Image Schema ---
 const uploadImageSchema = z.object({
-  imageUrl: z.string().describe('The publicly accessible URL of the image to upload.'),
-  alt: z
-    .string()
-    .optional()
-    .describe('Alt text for the image. If omitted, a default will be generated from the filename.'),
+  imageUrl: z.string().meta({ description: 'The publicly accessible URL of the image to upload.' }),
+  alt: z.string().optional().meta({
+    description:
+      'Alt text for the image. If omitted, a default will be generated from the filename.',
+  }),
 });
 
 // Upload Image Tool
@@ -449,33 +449,32 @@ const getPostsSchema = postQuerySchema.extend({
   status: z
     .enum(['published', 'draft', 'scheduled', 'all'])
     .optional()
-    .describe('Filter posts by status. Options: published, draft, scheduled, all.'),
+    .meta({ description: 'Filter posts by status. Options: published, draft, scheduled, all.' }),
 });
 const getPostSchema = z
   .object({
-    id: ghostIdSchema.optional().describe('The ID of the post to retrieve.'),
-    slug: z.string().optional().describe('The slug of the post to retrieve.'),
-    include: z
-      .string()
-      .optional()
-      .describe('Comma-separated list of relations to include (e.g., "tags,authors").'),
+    id: ghostIdSchema.optional().meta({ description: 'The ID of the post to retrieve.' }),
+    slug: z.string().optional().meta({ description: 'The slug of the post to retrieve.' }),
+    include: z.string().optional().meta({
+      description: 'Comma-separated list of relations to include (e.g., "tags,authors").',
+    }),
   })
   .refine((data) => data.id || data.slug, {
     message: 'Either id or slug is required to retrieve a post',
   });
 const searchPostsSchema = z.object({
-  query: z.string().min(1).describe('Search query to find in post titles.'),
+  query: z.string().min(1).meta({ description: 'Search query to find in post titles.' }),
   status: z
     .enum(['published', 'draft', 'scheduled', 'all'])
     .optional()
-    .describe('Filter by post status. Default searches all statuses.'),
+    .meta({ description: 'Filter by post status. Default searches all statuses.' }),
   limit: z
     .number()
     .int()
     .min(1)
     .max(50)
     .optional()
-    .describe('Maximum number of results (1-50). Default is 15.'),
+    .meta({ description: 'Maximum number of results (1-50). Default is 15.' }),
 });
 const updatePostInputSchema = updatePostSchema.extend({ id: ghostIdSchema });
 const deletePostSchema = z.object({ id: ghostIdSchema });
@@ -762,29 +761,31 @@ server.registerTool(
 // --- Page Schema Definitions ---
 const getPageSchema = z
   .object({
-    id: ghostIdSchema.optional().describe('The ID of the page to retrieve.'),
-    slug: z.string().optional().describe('The slug of the page to retrieve.'),
+    id: ghostIdSchema.optional().meta({ description: 'The ID of the page to retrieve.' }),
+    slug: z.string().optional().meta({ description: 'The slug of the page to retrieve.' }),
     include: z
       .string()
       .optional()
-      .describe('Comma-separated list of relations to include (e.g., "authors").'),
+      .meta({ description: 'Comma-separated list of relations to include (e.g., "authors").' }),
   })
   .refine((data) => data.id || data.slug, {
     message: 'Either id or slug is required to retrieve a page',
   });
 const updatePageInputSchema = z
-  .object({ id: ghostIdSchema.describe('The ID of the page to update.') })
+  .object({ id: ghostIdSchema.meta({ description: 'The ID of the page to update.' }) })
   .merge(updatePageSchema);
-const deletePageSchema = z.object({ id: ghostIdSchema.describe('The ID of the page to delete.') });
+const deletePageSchema = z.object({
+  id: ghostIdSchema.meta({ description: 'The ID of the page to delete.' }),
+});
 const searchPagesSchema = z.object({
   query: z
     .string()
     .min(1, 'Search query cannot be empty')
-    .describe('Search query to find in page titles.'),
+    .meta({ description: 'Search query to find in page titles.' }),
   status: z
     .enum(['published', 'draft', 'scheduled', 'all'])
     .optional()
-    .describe('Filter by page status. Default searches all statuses.'),
+    .meta({ description: 'Filter by page status. Default searches all statuses.' }),
   limit: z
     .number()
     .int()
@@ -792,7 +793,7 @@ const searchPagesSchema = z.object({
     .max(50)
     .default(15)
     .optional()
-    .describe('Maximum number of results (1-50). Default is 15.'),
+    .meta({ description: 'Maximum number of results (1-50). Default is 15.' }),
 });
 
 // Get Pages Tool
@@ -1076,21 +1077,24 @@ const deleteMemberSchema = z.object({ id: ghostIdSchema });
 const getMembersSchema = memberQuerySchema.omit({ search: true });
 const getMemberSchema = z
   .object({
-    id: ghostIdSchema.optional().describe('The ID of the member to retrieve.'),
-    email: emailSchema.optional().describe('The email of the member to retrieve.'),
+    id: ghostIdSchema.optional().meta({ description: 'The ID of the member to retrieve.' }),
+    email: emailSchema.optional().meta({ description: 'The email of the member to retrieve.' }),
   })
   .refine((data) => data.id || data.email, {
     message: 'Either id or email must be provided',
   });
 const searchMembersSchema = z.object({
-  query: z.string().min(1).describe('Search query to match against member name or email.'),
+  query: z
+    .string()
+    .min(1)
+    .meta({ description: 'Search query to match against member name or email.' }),
   limit: z
     .number()
     .int()
     .min(1)
     .max(50)
     .optional()
-    .describe('Maximum number of results to return (1-50). Default is 15.'),
+    .meta({ description: 'Maximum number of results to return (1-50). Default is 15.' }),
 });
 
 // Create Member Tool

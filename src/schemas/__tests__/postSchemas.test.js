@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
 import {
   createPostSchema,
   updatePostSchema,
@@ -189,6 +190,24 @@ describe('Post Schemas', () => {
       };
 
       expect(() => postOutputSchema.parse(apiPost)).not.toThrow();
+    });
+  });
+
+  describe('schema metadata', () => {
+    it('should expose descriptions via .meta()', () => {
+      expect(createPostSchema.shape.html.meta()?.description).toBe('HTML content of the post');
+      expect(createPostSchema.shape.tags.meta()?.description).toContain(
+        'Array of tag names or IDs'
+      );
+      expect(createPostSchema.shape.email_only.meta()?.description).toBe(
+        'Whether post is email-only'
+      );
+    });
+
+    it('should include descriptions in JSON Schema output', () => {
+      const jsonSchema = z.toJSONSchema(createPostSchema, { unrepresentable: 'any' });
+      expect(jsonSchema.properties.html.description).toBe('HTML content of the post');
+      expect(jsonSchema.properties.email_only.description).toBe('Whether post is email-only');
     });
   });
 });
