@@ -1,3 +1,10 @@
+/**
+ * Enhanced Ghost Admin API service layer.
+ *
+ * Wraps @tryghost/admin-api with circuit-breaker, retry, and structured error
+ * handling.  This file is consumed by the MCP server (mcp_server.js); the
+ * simpler ghostService.js is used by the Express REST routes.
+ */
 import GhostAdminAPI from '@tryghost/admin-api';
 import dotenv from 'dotenv';
 import { promises as fs } from 'fs';
@@ -41,7 +48,28 @@ const ghostCircuitBreaker = new CircuitBreaker({
 });
 
 /**
- * Enhanced handler for Ghost Admin API requests with proper error handling
+ * Enhanced handler for Ghost Admin API requests with proper error handling.
+ *
+ * Routes SDK calls based on action type — the Ghost Admin API client uses
+ * different argument orderings per action:
+ *   - add / edit:  api[resource][action](data, options)
+ *   - browse / read: api[resource][action](options, data)
+ *   - delete:      api[resource][action](data.id || data, options)
+ *   - upload:      api[resource][action](data)
+ *
+ * NOTE: The SDK mutates data objects (deletes id/slug/email).  Always pass
+ * fresh object literals — never reuse a data object across calls.
+ *
+ * @param {string} resource - Ghost API resource name (e.g. 'posts', 'tags')
+ * @param {string} action   - SDK method name ('add'|'edit'|'read'|'browse'|'delete'|'upload')
+ * @param {Object} [data={}]    - Data payload (e.g. { id, title, html })
+ * @param {Object} [options={}] - Query/browse options (e.g. { limit, include, filter })
+ * @param {Object} [config={}]  - Execution config
+ * @param {number} [config.maxRetries=3]        - Maximum retry attempts
+ * @param {boolean} [config.useCircuitBreaker=true] - Whether to use the circuit breaker
+ * @returns {Promise<Object|Array>} API response
+ * @throws {ValidationError} If resource or action is invalid
+ * @throws {GhostAPIError} If the Ghost API returns an error after all retries
  */
 const handleApiRequest = async (resource, action, data = {}, options = {}, config = {}) => {
   // Validate inputs
@@ -145,18 +173,18 @@ const validators = {
     }
   },
 
-  validatePostData(postData) {
+  _validateContentData(data, label) {
     const errors = [];
 
-    if (!postData.title || postData.title.trim().length === 0) {
+    if (!data.title || data.title.trim().length === 0) {
       errors.push({ field: 'title', message: 'Title is required' });
     }
 
-    if (!postData.html && !postData.mobiledoc) {
+    if (!data.html && !data.mobiledoc) {
       errors.push({ field: 'content', message: 'Either html or mobiledoc content is required' });
     }
 
-    if (postData.status && !['draft', 'published', 'scheduled'].includes(postData.status)) {
+    if (data.status && !['draft', 'published', 'scheduled'].includes(data.status)) {
       errors.push({
         field: 'status',
         message: 'Invalid status. Must be draft, published, or scheduled',
@@ -164,10 +192,23 @@ const validators = {
     }
 
     if (errors.length > 0) {
-      throw new ValidationError('Post validation failed', errors);
+      throw new ValidationError(`${label} validation failed`, errors);
     }
 
-    this.validateScheduledStatus(postData, 'Post');
+    this.validateScheduledStatus(data, label);
+  },
+
+  validatePostData(postData) {
+    this._validateContentData(postData, 'Post');
+  },
+
+  _validateSlug(slug, errors) {
+    if (slug && !/^[a-z0-9-]+$/.test(slug)) {
+      errors.push({
+        field: 'slug',
+        message: 'Slug must contain only lowercase letters, numbers, and hyphens',
+      });
+    }
   },
 
   validateTagData(tagData) {
@@ -177,12 +218,7 @@ const validators = {
       errors.push({ field: 'name', message: 'Tag name is required' });
     }
 
-    if (tagData.slug && !/^[a-z0-9-]+$/.test(tagData.slug)) {
-      errors.push({
-        field: 'slug',
-        message: 'Slug must contain only lowercase letters, numbers, and hyphens',
-      });
-    }
+    this._validateSlug(tagData.slug, errors);
 
     if (errors.length > 0) {
       throw new ValidationError('Tag validation failed', errors);
@@ -197,13 +233,7 @@ const validators = {
       errors.push({ field: 'name', message: 'Tag name cannot be empty' });
     }
 
-    // Validate slug format if provided
-    if (updateData.slug && !/^[a-z0-9-]+$/.test(updateData.slug)) {
-      errors.push({
-        field: 'slug',
-        message: 'Slug must contain only lowercase letters, numbers, and hyphens',
-      });
-    }
+    this._validateSlug(updateData.slug, errors);
 
     if (errors.length > 0) {
       throw new ValidationError('Tag update validation failed', errors);
@@ -224,28 +254,7 @@ const validators = {
   },
 
   validatePageData(pageData) {
-    const errors = [];
-
-    if (!pageData.title || pageData.title.trim().length === 0) {
-      errors.push({ field: 'title', message: 'Title is required' });
-    }
-
-    if (!pageData.html && !pageData.mobiledoc) {
-      errors.push({ field: 'content', message: 'Either html or mobiledoc content is required' });
-    }
-
-    if (pageData.status && !['draft', 'published', 'scheduled'].includes(pageData.status)) {
-      errors.push({
-        field: 'status',
-        message: 'Invalid status. Must be draft, published, or scheduled',
-      });
-    }
-
-    if (errors.length > 0) {
-      throw new ValidationError('Page validation failed', errors);
-    }
-
-    this.validateScheduledStatus(pageData, 'Page');
+    this._validateContentData(pageData, 'Page');
   },
 
   validateNewsletterData(newsletterData) {
@@ -490,10 +499,8 @@ export async function uploadImage(imagePath) {
   // Validate input
   await validators.validateImagePath(imagePath);
 
-  const imageData = { file: imagePath };
-
   try {
-    return await handleApiRequest('images', 'upload', imageData);
+    return await handleApiRequest('images', 'upload', { file: imagePath });
   } catch (error) {
     if (error instanceof GhostAPIError) {
       throw new ValidationError(`Image upload failed: ${error.originalError}`);
@@ -506,20 +513,24 @@ export async function createTag(tagData) {
   // Validate input
   validators.validateTagData(tagData);
 
-  // Auto-generate slug if not provided
-  if (!tagData.slug) {
-    tagData.slug = tagData.name
+  // Auto-generate slug if not provided (without mutating the caller's object)
+  const slug =
+    tagData.slug ??
+    tagData.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
-  }
+  const dataToSend = { slug, ...tagData };
 
   try {
-    return await handleApiRequest('tags', 'add', tagData);
+    return await handleApiRequest('tags', 'add', dataToSend);
   } catch (error) {
     if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
       // Check if it's a duplicate tag error
-      if (error.originalError.includes('already exists')) {
+      if (
+        typeof error.originalError === 'string' &&
+        error.originalError.includes('already exists')
+      ) {
         // Try to fetch the existing tag by name filter
         const existingTags = await getTags({ filter: `name:'${tagData.name}'` });
         if (existingTags.length > 0) {
@@ -544,7 +555,7 @@ export async function getTags(options = {}) {
       ...options,
     }
   );
-  return tags || [];
+  return tags ?? [];
 }
 
 export async function getTag(tagId, options = {}) {
@@ -668,7 +679,7 @@ export async function getMembers(options = {}) {
   };
 
   const members = await handleApiRequest('members', 'browse', {}, defaultOptions);
-  return members || [];
+  return members ?? [];
 }
 
 /**
@@ -735,7 +746,7 @@ export async function searchMembers(query, options = {}) {
   const filter = `name:~'${sanitizedQuery}',email:~'${sanitizedQuery}'`;
 
   const members = await handleApiRequest('members', 'browse', {}, { filter, limit });
-  return members || [];
+  return members ?? [];
 }
 
 /**
@@ -749,7 +760,7 @@ export async function getNewsletters(options = {}) {
   };
 
   const newsletters = await handleApiRequest('newsletters', 'browse', {}, defaultOptions);
-  return newsletters || [];
+  return newsletters ?? [];
 }
 
 export async function getNewsletter(newsletterId) {
@@ -866,7 +877,7 @@ export async function getTiers(options = {}) {
   };
 
   const tiers = await handleApiRequest('tiers', 'browse', {}, defaultOptions);
-  return tiers || [];
+  return tiers ?? [];
 }
 
 /**
