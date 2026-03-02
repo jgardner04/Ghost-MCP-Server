@@ -284,21 +284,8 @@ export function validateTierQueryOptions(options) {
   }
 }
 
-/**
- * Sanitizes a value for use in NQL filters to prevent injection
- * Escapes backslashes, single quotes, and double quotes
- * @param {string} value - The value to sanitize
- * @returns {string} The sanitized value
- */
-export function sanitizeNqlValue(value) {
-  if (!value) return value;
-  // Escape backslashes first, then quotes
-  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
-}
-
 export default {
   validateTierData,
   validateTierUpdateData,
   validateTierQueryOptions,
-  sanitizeNqlValue,
 };

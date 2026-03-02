@@ -11,6 +11,7 @@ import {
   retryWithBackoff,
 } from '../errors/index.js';
 import { createContextLogger } from '../utils/logger.js';
+import { sanitizeNqlValue } from '../utils/nqlSanitizer.js';
 
 dotenv.config();
 
@@ -376,7 +377,7 @@ export async function searchPosts(query, options = {}) {
   }
 
   // Sanitize query - escape special NQL characters to prevent injection
-  const sanitizedQuery = query.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const sanitizedQuery = sanitizeNqlValue(query);
 
   // Build filter with fuzzy title match using Ghost NQL
   const filterParts = [`title:~'${sanitizedQuery}'`];
@@ -512,7 +513,7 @@ export async function searchPages(query, options = {}) {
   }
 
   // Sanitize query - escape special NQL characters to prevent injection
-  const sanitizedQuery = query.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const sanitizedQuery = sanitizeNqlValue(query);
 
   // Build filter with fuzzy title match using Ghost NQL
   const filterParts = [`title:~'${sanitizedQuery}'`];
@@ -795,7 +796,6 @@ export async function getMembers(options = {}) {
  */
 export async function getMember(params) {
   // Input validation is performed at the MCP tool layer using Zod schemas
-  const { sanitizeNqlValue } = await import('./memberService.js');
   const { id, email } = params;
 
   try {
@@ -837,7 +837,6 @@ export async function getMember(params) {
  */
 export async function searchMembers(query, options = {}) {
   // Input validation is performed at the MCP tool layer using Zod schemas
-  const { sanitizeNqlValue } = await import('./memberService.js');
   const sanitizedQuery = sanitizeNqlValue(query.trim());
 
   const limit = options.limit || 15;
