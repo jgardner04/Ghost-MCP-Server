@@ -35,7 +35,15 @@
       "WebFetch(domain:vitest.dev)",
       "WebFetch(domain:www.anthropic.com)",
       "WebFetch(domain:modelcontextprotocol.info)",
-      "Skill(describe_pr)"
+      "Skill(describe_pr)",
+      "mcp__plugin_linear_linear__list_issues",
+      "mcp__plugin_linear_linear__save_issue",
+      "mcp__plugin_linear_linear__get_issue",
+      "mcp__plugin_linear_linear__list_issue_statuses",
+      "mcp__plugin_linear_linear__list_issue_labels",
+      "WebFetch(domain:zod.dev)",
+      "Bash(npm info:*)",
+      "WebFetch(domain:docs.npmjs.com)"
     ],
     "deny": [],
     "ask": []

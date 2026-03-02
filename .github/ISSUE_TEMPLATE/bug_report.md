@@ -25,12 +25,14 @@ assignees: ''
 <!-- Provide additional context that might be relevant -->
 
 **Environment:**
+
 - Component (e.g., MCP Server, REST API, Ghost Service):
 - Version:
 - OS:
 - Node version (if applicable):
 
 **Related Issues/PRs:**
+
 <!-- Link to any related issues or pull requests -->
 
 ## Additional Information

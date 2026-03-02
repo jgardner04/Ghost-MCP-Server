@@ -22,6 +22,7 @@ const loadServices = async () => {
 ```
 
 **Benefits:**
+
 - Avoids Node.js v25 Buffer compatibility issues at startup
 - Services are loaded once and cached
 - Consistent access pattern across all tool handlers
@@ -63,8 +64,8 @@ const loadServices = async () => {
 server.tool('ghost_get_tags', '...', schema, async (rawInput) => {
   // ... validation ...
   try {
-    await loadServices();  // Ensure services are loaded
-    const tags = await ghostService.getTags();  // Use the variable
+    await loadServices(); // Ensure services are loaded
+    const tags = await ghostService.getTags(); // Use the variable
     // ...
   } catch (error) {
     // ...
@@ -89,6 +90,7 @@ server.tool('ghost_get_tags', '...', schema, async (rawInput) => {
 ```
 
 **Problems with inline imports:**
+
 - Redundant code (same import repeated 30+ times)
 - Inconsistent naming (`ghostServiceImproved` vs `ghostService`)
 - Harder to maintain and refactor
@@ -98,8 +100,8 @@ server.tool('ghost_get_tags', '...', schema, async (rawInput) => {
 
 ```javascript
 // WRONG: Don't mix lazy-loaded variables with inline imports
-const tags = await ghostService.getTags();  // Uses lazy-loaded
-const post = await ghostServiceImproved.updatePost(id, data);  // Uses inline import
+const tags = await ghostService.getTags(); // Uses lazy-loaded
+const post = await ghostServiceImproved.updatePost(id, data); // Uses inline import
 ```
 
 ## Adding a New Service
@@ -107,11 +109,13 @@ const post = await ghostServiceImproved.updatePost(id, data);  // Uses inline im
 When adding a new service to the MCP server:
 
 1. **Add the variable declaration:**
+
    ```javascript
    let myNewService = null;
    ```
 
 2. **Add to loadServices():**
+
    ```javascript
    const loadServices = async () => {
      if (!ghostService) {
@@ -122,12 +126,14 @@ When adding a new service to the MCP server:
    ```
 
 3. **Use in handlers:**
+
    ```javascript
    await loadServices();
    const result = await myNewService.doSomething();
    ```
 
 4. **Add mocks in tests:**
+
    ```javascript
    const mockMyNewMethod = vi.fn();
 
@@ -150,6 +156,7 @@ src/services/
 ```
 
 **Key distinction:**
+
 - `ghostServiceImproved.js` - Enhanced Ghost API client with circuit breaker, retry logic, and comprehensive validation. **Use this for MCP tools.**
 - `ghostService.js` - Basic Ghost API client. **Used by Express REST API controllers only.**
 

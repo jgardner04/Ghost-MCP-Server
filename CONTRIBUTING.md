@@ -26,13 +26,13 @@ git checkout -b <type>/issue-<number>-<description>
 
 ### Branch Naming Convention
 
-| Prefix      | Use Case                                      | Example                              |
-| ----------- | --------------------------------------------- | ------------------------------------ |
-| `feature/`  | New features                                  | `feature/issue-42-add-pagination`    |
-| `fix/`      | Bug fixes                                     | `fix/issue-15-image-upload-error`    |
-| `docs/`     | Documentation changes                         | `docs/update-api-reference`          |
-| `refactor/` | Code refactoring                              | `refactor/issue-30-simplify-auth`    |
-| `test/`     | Test additions or fixes                       | `test/add-member-service-tests`      |
+| Prefix      | Use Case                | Example                           |
+| ----------- | ----------------------- | --------------------------------- |
+| `feature/`  | New features            | `feature/issue-42-add-pagination` |
+| `fix/`      | Bug fixes               | `fix/issue-15-image-upload-error` |
+| `docs/`     | Documentation changes   | `docs/update-api-reference`       |
+| `refactor/` | Code refactoring        | `refactor/issue-30-simplify-auth` |
+| `test/`     | Test additions or fixes | `test/add-member-service-tests`   |
 
 **Important:** Never commit directly to `main`. All changes must go through pull requests.
 
