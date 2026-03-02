@@ -64,6 +64,9 @@ await ghost_get_tags({ limit: 50, page: 1 });
 
 ### Fixed
 
+- `ghost_get_tier` and `ghost_update_tier` now pass arguments in the correct order to the Ghost SDK (JON-41)
+  - `read` and `edit` operations for tiers were failing due to incorrect `handleApiRequest` argument ordering
+  - `id` is now correctly placed on the data object (first arg) for `edit` calls, matching all other resources
 - `ghost_get_posts` now properly passes `fields` and `formats` parameters to Ghost API (PR #87)
 - `ghost_get_tags` now passes all query parameters to Ghost API instead of client-side filtering (PR #87)
 

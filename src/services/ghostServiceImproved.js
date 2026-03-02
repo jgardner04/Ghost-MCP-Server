@@ -990,7 +990,7 @@ export async function updateTier(id, updateData, options = {}) {
 
   try {
     // Get existing tier to retrieve updated_at for conflict resolution
-    const existingTier = await handleApiRequest('tiers', 'read', { id }, { id });
+    const existingTier = await handleApiRequest('tiers', 'read', { id });
 
     // Send only changed fields + updated_at for OCC (optimistic concurrency control)
     const editData = {
@@ -998,7 +998,7 @@ export async function updateTier(id, updateData, options = {}) {
       updated_at: existingTier.updated_at,
     };
 
-    return await handleApiRequest('tiers', 'edit', editData, { id, ...options });
+    return await handleApiRequest('tiers', 'edit', { id, ...editData }, options);
   } catch (error) {
     if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
       throw new NotFoundError('Tier', id);
@@ -1066,7 +1066,7 @@ export async function getTier(id) {
   }
 
   try {
-    return await handleApiRequest('tiers', 'read', { id }, { id });
+    return await handleApiRequest('tiers', 'read', { id });
   } catch (error) {
     if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
       throw new NotFoundError('Tier', id);
