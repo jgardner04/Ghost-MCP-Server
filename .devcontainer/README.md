@@ -34,10 +34,10 @@ GHOST_ADMIN_API_KEY=your_admin_api_key
 
 The following ports are forwarded from the container:
 
-| Port | Service |
-|------|---------|
+| Port | Service          |
+| ---- | ---------------- |
 | 3000 | Express REST API |
-| 3001 | MCP Server |
+| 3001 | MCP Server       |
 
 ## Customization
 
@@ -49,9 +49,7 @@ Edit `devcontainer.json` and add extensions to the `customizations.vscode.extens
 {
   "customizations": {
     "vscode": {
-      "extensions": [
-        "your-extension-id"
-      ]
+      "extensions": ["your-extension-id"]
     }
   }
 }

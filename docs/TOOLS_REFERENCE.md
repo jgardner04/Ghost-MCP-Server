@@ -7,9 +7,11 @@ This document provides a comprehensive reference for all 34 MCP tools available 
 ### v1.x - getTags Default Limit Changed (PR #87)
 
 **What Changed:**
+
 - The `ghost_get_tags` tool default `limit` parameter changed from `'all'` (unlimited) to `15`
 
 **Impact:**
+
 - Users with more than 15 tags will now see only the first 15 tags by default
 - This may affect existing integrations that expected all tags to be returned
 
@@ -33,6 +35,7 @@ For better performance with large tag lists, use pagination instead:
 ```
 
 **Rationale:**
+
 - Aligns with Ghost API best practices
 - Prevents performance issues with large tag lists
 - Matches the schema-defined default
@@ -87,35 +90,39 @@ Retrieves a list of tags from Ghost CMS with advanced filtering and pagination.
 ```
 
 **⚠️ Breaking Change:**
+
 - **Default limit changed from 'all' to 15** in PR #87
 - To retrieve all tags, set `limit: 'all'` or use pagination
 
 **Parameters:**
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `name` | string | - | Filter by exact tag name (case-sensitive) |
-| `slug` | string | - | Filter by tag slug |
-| `visibility` | enum | - | Filter by visibility: `'public'` or `'internal'` |
-| `limit` | number \| 'all' | 15 | Number of tags to return (1-100, or 'all' for unlimited) |
-| `page` | number | 1 | Page number for pagination |
-| `order` | string | - | Sort field and direction (e.g., `"name ASC"`, `"created_at DESC"`) |
-| `include` | string | - | Comma-separated relations to include (e.g., `"count.posts"`) |
-| `filter` | string | - | NQL filter string for complex queries |
+| Parameter    | Type            | Default | Description                                                        |
+| ------------ | --------------- | ------- | ------------------------------------------------------------------ |
+| `name`       | string          | -       | Filter by exact tag name (case-sensitive)                          |
+| `slug`       | string          | -       | Filter by tag slug                                                 |
+| `visibility` | enum            | -       | Filter by visibility: `'public'` or `'internal'`                   |
+| `limit`      | number \| 'all' | 15      | Number of tags to return (1-100, or 'all' for unlimited)           |
+| `page`       | number          | 1       | Page number for pagination                                         |
+| `order`      | string          | -       | Sort field and direction (e.g., `"name ASC"`, `"created_at DESC"`) |
+| `include`    | string          | -       | Comma-separated relations to include (e.g., `"count.posts"`)       |
+| `filter`     | string          | -       | NQL filter string for complex queries                              |
 
 **Examples:**
 
 Basic usage (returns first 15 tags):
+
 ```json
 {}
 ```
 
 Get all tags (for backward compatibility):
+
 ```json
 { "limit": "all" }
 ```
 
 Filter by tag name:
+
 ```json
 // Get first 10 tags, ordered by name
 {
@@ -330,20 +337,21 @@ Retrieves posts with pagination, filtering, and field selection.
 ```
 
 **⚠️ Breaking Change:**
+
 - **Default limit changed from 'all' to 15** in PR #87
 - To retrieve all posts, set `limit: 100` and implement pagination
 
 **Parameters:**
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `limit` | number | 15 | Number of posts to return (1-100) |
-| `page` | number | 1 | Page number for pagination |
-| `filter` | string | - | NQL filter string (e.g., `"status:published+featured:true"`) |
-| `order` | string | - | Sort field and direction (e.g., `"published_at DESC"`) |
-| `include` | string | - | Comma-separated relations (e.g., `"tags,authors"`) |
-| `fields` | string | - | Comma-separated fields to return (e.g., `"id,title,slug"`) |
-| `formats` | string | - | Content formats: `"html"`, `"plaintext"`, `"mobiledoc"` (comma-separated) |
+| Parameter | Type   | Default | Description                                                               |
+| --------- | ------ | ------- | ------------------------------------------------------------------------- |
+| `limit`   | number | 15      | Number of posts to return (1-100)                                         |
+| `page`    | number | 1       | Page number for pagination                                                |
+| `filter`  | string | -       | NQL filter string (e.g., `"status:published+featured:true"`)              |
+| `order`   | string | -       | Sort field and direction (e.g., `"published_at DESC"`)                    |
+| `include` | string | -       | Comma-separated relations (e.g., `"tags,authors"`)                        |
+| `fields`  | string | -       | Comma-separated fields to return (e.g., `"id,title,slug"`)                |
+| `formats` | string | -       | Content formats: `"html"`, `"plaintext"`, `"mobiledoc"` (comma-separated) |
 
 **Examples:**
 
@@ -421,11 +429,11 @@ Retrieves posts with pagination, filtering, and field selection.
 
 **Format Options:**
 
-| Format | Description |
-|--------|-------------|
-| `html` | HTML content (default, always included) |
-| `plaintext` | Plain text version of content |
-| `mobiledoc` | Ghost's internal JSON format |
+| Format      | Description                             |
+| ----------- | --------------------------------------- |
+| `html`      | HTML content (default, always included) |
+| `plaintext` | Plain text version of content           |
+| `mobiledoc` | Ghost's internal JSON format            |
 
 ```json
 // Get all three formats
@@ -828,154 +836,161 @@ field:value
 
 ### Operators
 
-| Operator | Description | Example |
-|----------|-------------|---------|
-| `:` | Equals | `status:published` |
-| `:-` | Not equals | `status:-draft` |
-| `:>` | Greater than | `created_at:>'2024-01-01'` |
-| `:>=` | Greater than or equal | `published_at:>='2024-01-01'` |
-| `:<` | Less than | `created_at:<'2024-12-31'` |
-| `:<=` | Less than or equal | `created_at:<='2024-12-31'` |
-| `:~` | Contains (case-insensitive) | `title:~'tutorial'` |
-| `:[...]` | In array (OR) | `tag:[javascript,python]` |
+| Operator | Description                 | Example                       |
+| -------- | --------------------------- | ----------------------------- |
+| `:`      | Equals                      | `status:published`            |
+| `:-`     | Not equals                  | `status:-draft`               |
+| `:>`     | Greater than                | `created_at:>'2024-01-01'`    |
+| `:>=`    | Greater than or equal       | `published_at:>='2024-01-01'` |
+| `:<`     | Less than                   | `created_at:<'2024-12-31'`    |
+| `:<=`    | Less than or equal          | `created_at:<='2024-12-31'`   |
+| `:~`     | Contains (case-insensitive) | `title:~'tutorial'`           |
+| `:[...]` | In array (OR)               | `tag:[javascript,python]`     |
 
 ### Combining Filters
 
-| Combinator | Description | Example |
-|------------|-------------|---------|
-| `+` | AND | `status:published+featured:true` |
-| `,` | OR (within same field) | `status:published,status:scheduled` |
+| Combinator | Description            | Example                             |
+| ---------- | ---------------------- | ----------------------------------- |
+| `+`        | AND                    | `status:published+featured:true`    |
+| `,`        | OR (within same field) | `status:published,status:scheduled` |
 
 ### Common Filter Examples
 
 **Posts:**
+
 ```javascript
 // Published posts
-"status:published"
+'status:published';
 
 // Featured posts published after 2024
-"featured:true+published_at:>='2024-01-01'"
+"featured:true+published_at:>='2024-01-01'";
 
 // Posts with specific tag
-"tag:javascript"
+'tag:javascript';
 
 // Posts with multiple tags (any)
-"tag:[javascript,typescript,nodejs]"
+'tag:[javascript,typescript,nodejs]';
 
 // Posts without a tag
-"tag:-archived"
+'tag:-archived';
 
 // Posts by author
-"author:john@example.com"
+'author:john@example.com';
 
 // Public posts only
-"visibility:public"
+'visibility:public';
 
 // Title contains keyword
-"title:~'guide'"
+"title:~'guide'";
 
 // Email-only posts
-"email_only:true"
+'email_only:true';
 ```
 
 **Tags:**
+
 ```javascript
 // Public tags only
-"visibility:public"
+'visibility:public';
 
 // Tags with name containing keyword
-"name:~'tech'"
+"name:~'tech'";
 
 // Tags created in 2024
-"created_at:>='2024-01-01'+created_at:<'2025-01-01'"
+"created_at:>='2024-01-01'+created_at:<'2025-01-01'";
 
 // Multiple slugs
-"slug:[javascript,python,ruby]"
+'slug:[javascript,python,ruby]';
 ```
 
 **Members:**
+
 ```javascript
 // Members subscribed to newsletter
-"newsletters.id:507f1f77bcf86cd799439011"
+'newsletters.id:507f1f77bcf86cd799439011';
 
 // Members with specific label
-"label:vip"
+'label:vip';
 
 // Free members
-"status:free"
+'status:free';
 
 // Paid members
-"status:paid"
+'status:paid';
 
 // Members created after date
-"created_at:>'2024-01-01'"
+"created_at:>'2024-01-01'";
 
 // Email domain filter
-"email:~'@company.com'"
+"email:~'@company.com'";
 ```
 
 ### Field Types
 
 **Boolean Fields:**
+
 ```javascript
-"featured:true"
-"featured:false"
+'featured:true';
+'featured:false';
 ```
 
 **Date Fields:**
+
 ```javascript
 // ISO 8601 format recommended
-"published_at:>='2024-01-01'"
-"created_at:<'2024-12-31'"
+"published_at:>='2024-01-01'";
+"created_at:<'2024-12-31'";
 
 // Relative dates (if supported)
-"updated_at:>'2024-01-01T00:00:00.000Z'"
+"updated_at:>'2024-01-01T00:00:00.000Z'";
 ```
 
 **String Fields:**
+
 ```javascript
 // Exact match
-"status:published"
+'status:published';
 
 // Contains (case-insensitive)
-"title:~'tutorial'"
+"title:~'tutorial'";
 
 // Not equals
-"status:-draft"
+'status:-draft';
 ```
 
 **Array Fields (tags, authors, etc.):**
+
 ```javascript
 // Has any of these values
-"tag:[javascript,python]"
+'tag:[javascript,python]';
 
 // Doesn't have this value
-"tag:-archived"
+'tag:-archived';
 ```
 
 ### Complex Filter Examples
 
 ```javascript
 // Published featured posts from 2024 with 'tutorial' tag
-"status:published+featured:true+tag:tutorial+published_at:>='2024-01-01'"
+"status:published+featured:true+tag:tutorial+published_at:>='2024-01-01'";
 
 // Posts that are either featured OR have tutorial tag
-"featured:true,tag:tutorial"  // Note: This may not work; use multiple filters instead
+'featured:true,tag:tutorial'; // Note: This may not work; use multiple filters instead
 
 // Draft or scheduled posts
-"status:draft,status:scheduled"
+'status:draft,status:scheduled';
 
 // Posts published in Q1 2024
-"published_at:>='2024-01-01'+published_at:<'2024-04-01'"
+"published_at:>='2024-01-01'+published_at:<'2024-04-01'";
 
 // Member posts with public visibility
-"visibility:members+status:published"
+'visibility:members+status:published';
 
 // Posts with JavaScript or TypeScript tags
-"tag:[javascript,typescript]"
+'tag:[javascript,typescript]';
 
 // Posts updated in last year excluding archived
-"updated_at:>='2024-01-01'+tag:-archived"
+"updated_at:>='2024-01-01'+tag:-archived";
 ```
 
 ### Security Notes

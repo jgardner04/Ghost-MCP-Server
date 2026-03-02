@@ -12,13 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### ghost_get_tags Default Limit Changed (PR #87)
 
 **Changed:**
+
 - `ghost_get_tags` tool default `limit` parameter changed from `'all'` (unlimited) to `15`
 
 **Migration:**
+
 - If you need all tags, explicitly set `limit: 'all'` in your queries
 - For better performance, use pagination with explicit `limit` and `page` parameters
 
 **Rationale:**
+
 - Aligns with Ghost API best practices and schema-defined defaults
 - Prevents performance issues when fetching large numbers of tags
 - Encourages explicit pagination for scalability
@@ -26,21 +29,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **Example:**
 
 Before (implicit behavior):
+
 ```javascript
 // Returned ALL tags
-await ghost_get_tags({})
+await ghost_get_tags({});
 ```
 
 After (explicit behavior required):
+
 ```javascript
 // Returns first 15 tags only
-await ghost_get_tags({})
+await ghost_get_tags({});
 
 // To get all tags (old behavior):
-await ghost_get_tags({ limit: 'all' })
+await ghost_get_tags({ limit: 'all' });
 
 // Recommended approach for large tag lists:
-await ghost_get_tags({ limit: 50, page: 1 })
+await ghost_get_tags({ limit: 50, page: 1 });
 ```
 
 ### Added
