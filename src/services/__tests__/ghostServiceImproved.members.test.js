@@ -173,8 +173,13 @@ describe('ghostServiceImproved - Members', () => {
       expect(api.members.read).toHaveBeenCalledWith(expect.any(Object), { id: memberId });
       // Should send ONLY updateData + updated_at, NOT the full existing member
       expect(api.members.edit).toHaveBeenCalledWith(
-        { name: 'Jane Doe', note: 'Updated note', updated_at: '2023-01-01T00:00:00.000Z' },
-        expect.objectContaining({ id: memberId })
+        {
+          id: memberId,
+          name: 'Jane Doe',
+          note: 'Updated note',
+          updated_at: '2023-01-01T00:00:00.000Z',
+        },
+        {}
       );
       // Verify read-only fields are NOT sent
       const editCallData = api.members.edit.mock.calls[0][0];
