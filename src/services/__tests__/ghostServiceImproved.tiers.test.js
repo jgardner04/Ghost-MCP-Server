@@ -270,14 +270,7 @@ describe('ghostServiceImproved - Tiers', () => {
 
       const result = await getTier('tier-1');
 
-      expect(api.tiers.read).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: 'tier-1',
-        }),
-        expect.objectContaining({
-          id: 'tier-1',
-        })
-      );
+      expect(api.tiers.read).toHaveBeenCalledWith({}, { id: 'tier-1' });
       expect(result).toEqual(mockTier);
     });
 
@@ -327,14 +320,16 @@ describe('ghostServiceImproved - Tiers', () => {
 
       const result = await updateTier('tier-1', updateData);
 
-      expect(api.tiers.read).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'tier-1' }),
-        expect.objectContaining({ id: 'tier-1' })
-      );
+      expect(api.tiers.read).toHaveBeenCalledWith({}, { id: 'tier-1' });
       // Should send ONLY updateData + updated_at, NOT the full existing tier
       expect(api.tiers.edit).toHaveBeenCalledWith(
-        { name: 'Premium Plus', monthly_price: 1299, updated_at: '2024-01-01T00:00:00.000Z' },
-        expect.objectContaining({ id: 'tier-1' })
+        {
+          id: 'tier-1',
+          name: 'Premium Plus',
+          monthly_price: 1299,
+          updated_at: '2024-01-01T00:00:00.000Z',
+        },
+        {}
       );
       // Verify read-only fields are NOT sent
       const editCallData = api.tiers.edit.mock.calls[0][0];
