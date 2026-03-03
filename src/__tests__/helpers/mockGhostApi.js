@@ -5,7 +5,11 @@ import { vi } from 'vitest';
  *
  * @param {Object} options - Configuration options for the mock
  * @param {Object} options.posts - Mock implementations for posts methods
+ * @param {Object} options.pages - Mock implementations for pages methods
  * @param {Object} options.tags - Mock implementations for tags methods
+ * @param {Object} options.members - Mock implementations for members methods
+ * @param {Object} options.newsletters - Mock implementations for newsletters methods
+ * @param {Object} options.tiers - Mock implementations for tiers methods
  * @param {Object} options.site - Mock implementations for site methods
  * @param {Object} options.images - Mock implementations for images methods
  * @returns {Object} Mock Ghost Admin API instance
@@ -32,6 +36,14 @@ export function createMockGhostApi(options = {}) {
       delete: vi.fn(),
       ...options.posts,
     },
+    pages: {
+      add: vi.fn(),
+      browse: vi.fn(),
+      read: vi.fn(),
+      edit: vi.fn(),
+      delete: vi.fn(),
+      ...options.pages,
+    },
     tags: {
       add: vi.fn(),
       browse: vi.fn(),
@@ -39,6 +51,30 @@ export function createMockGhostApi(options = {}) {
       edit: vi.fn(),
       delete: vi.fn(),
       ...options.tags,
+    },
+    members: {
+      add: vi.fn(),
+      browse: vi.fn(),
+      read: vi.fn(),
+      edit: vi.fn(),
+      delete: vi.fn(),
+      ...options.members,
+    },
+    newsletters: {
+      add: vi.fn(),
+      browse: vi.fn(),
+      read: vi.fn(),
+      edit: vi.fn(),
+      delete: vi.fn(),
+      ...options.newsletters,
+    },
+    tiers: {
+      add: vi.fn(),
+      browse: vi.fn(),
+      read: vi.fn(),
+      edit: vi.fn(),
+      delete: vi.fn(),
+      ...options.tiers,
     },
     site: {
       read: vi.fn(),

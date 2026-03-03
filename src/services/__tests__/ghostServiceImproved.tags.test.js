@@ -1,48 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createMockContextLogger } from '../../__tests__/helpers/mockLogger.js';
 import { mockDotenv } from '../../__tests__/helpers/testUtils.js';
+import { mockGhostApiModule } from '../../__tests__/helpers/mockGhostApi.js';
 
-// Mock the Ghost Admin API with tags support
-vi.mock('@tryghost/admin-api', () => ({
-  default: vi.fn(function () {
-    return {
-      posts: {
-        add: vi.fn(),
-        browse: vi.fn(),
-        read: vi.fn(),
-        edit: vi.fn(),
-        delete: vi.fn(),
-      },
-      pages: {
-        add: vi.fn(),
-        browse: vi.fn(),
-        read: vi.fn(),
-        edit: vi.fn(),
-        delete: vi.fn(),
-      },
-      tags: {
-        add: vi.fn(),
-        browse: vi.fn(),
-        read: vi.fn(),
-        edit: vi.fn(),
-        delete: vi.fn(),
-      },
-      members: {
-        add: vi.fn(),
-        browse: vi.fn(),
-        read: vi.fn(),
-        edit: vi.fn(),
-        delete: vi.fn(),
-      },
-      site: {
-        read: vi.fn(),
-      },
-      images: {
-        upload: vi.fn(),
-      },
-    };
-  }),
-}));
+// Mock the Ghost Admin API using shared mock factory
+vi.mock('@tryghost/admin-api', () => mockGhostApiModule());
 
 // Mock dotenv
 vi.mock('dotenv', () => mockDotenv());
