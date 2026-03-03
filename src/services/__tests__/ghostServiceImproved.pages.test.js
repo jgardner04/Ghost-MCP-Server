@@ -261,8 +261,8 @@ describe('ghostServiceImproved - Pages', () => {
       expect(api.pages.read).toHaveBeenCalledWith({}, { id: pageId });
       // Should send ONLY updateData + updated_at, NOT the full existing page
       expect(api.pages.edit).toHaveBeenCalledWith(
-        { title: 'Updated Title', updated_at: '2024-01-01T00:00:00.000Z' },
-        { id: pageId }
+        { id: pageId, title: 'Updated Title', updated_at: '2024-01-01T00:00:00.000Z' },
+        {}
       );
       // Verify read-only fields are NOT sent
       const editCallData = api.pages.edit.mock.calls[0][0];
@@ -314,8 +314,8 @@ describe('ghostServiceImproved - Pages', () => {
 
   describe('deletePage', () => {
     it('should throw error when page ID is missing', async () => {
-      await expect(deletePage(null)).rejects.toThrow('Page ID is required');
-      await expect(deletePage('')).rejects.toThrow('Page ID is required');
+      await expect(deletePage(null)).rejects.toThrow('Page ID is required for deletion');
+      await expect(deletePage('')).rejects.toThrow('Page ID is required for deletion');
     });
 
     it('should delete page successfully', async () => {

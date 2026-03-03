@@ -11,6 +11,7 @@ import {
   retryWithBackoff,
 } from '../errors/index.js';
 import { createContextLogger } from '../utils/logger.js';
+import { sanitizeNqlValue } from '../utils/nqlSanitizer.js';
 
 dotenv.config();
 
@@ -56,7 +57,7 @@ const handleApiRequest = async (resource, action, data = {}, options = {}, confi
   // Main execution function
   const executeRequest = async () => {
     try {
-      console.error(`Executing Ghost API request: ${operation}`);
+      logger.info('Executing Ghost API request', { operation });
 
       let result;
 
@@ -80,7 +81,7 @@ const handleApiRequest = async (resource, action, data = {}, options = {}, confi
           result = await api[resource][action](data);
       }
 
-      console.error(`Successfully executed Ghost API request: ${operation}`);
+      logger.info('Successfully executed Ghost API request', { operation });
       return result;
     } catch (error) {
       // Transform Ghost API errors into our error types
@@ -98,17 +99,21 @@ const handleApiRequest = async (resource, action, data = {}, options = {}, confi
     return await retryWithBackoff(wrappedExecute, {
       maxAttempts: maxRetries,
       onRetry: (attempt, _error) => {
-        console.error(`Retrying ${operation} (attempt ${attempt}/${maxRetries})`);
+        logger.info('Retrying Ghost API request', { operation, attempt, maxRetries });
 
         // Log circuit breaker state if relevant
         if (useCircuitBreaker) {
           const state = ghostCircuitBreaker.getState();
-          console.error(`Circuit breaker state:`, state);
+          logger.info('Circuit breaker state', { operation, state });
         }
       },
     });
   } catch (error) {
-    console.error(`Failed to execute ${operation} after ${maxRetries} attempts:`, error.message);
+    logger.error('Failed to execute Ghost API request', {
+      operation,
+      maxRetries,
+      error: error.message,
+    });
     throw error;
   }
 };
@@ -258,16 +263,58 @@ const validators = {
 };
 
 /**
+ * Shared CRUD helper: read a single resource by ID with 404→NotFoundError handling
+ */
+async function readResource(resource, id, label, options = {}) {
+  if (!id) throw new ValidationError(`${label} ID is required`);
+  try {
+    return await handleApiRequest(resource, 'read', { id }, options);
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError(label, id);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Shared CRUD helper: update a resource with optimistic concurrency control (OCC)
+ * Reads the current version, merges updated_at, then edits.
+ */
+async function updateWithOCC(resource, id, updateData, options = {}, label = resource) {
+  const existing = await readResource(resource, id, label);
+  const editData = { ...updateData, updated_at: existing.updated_at };
+  try {
+    return await handleApiRequest(resource, 'edit', { id, ...editData }, options);
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError(label, id);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Shared CRUD helper: delete a resource by ID with 404→NotFoundError handling
+ */
+async function deleteResource(resource, id, label) {
+  if (!id) throw new ValidationError(`${label} ID is required for deletion`);
+  try {
+    return await handleApiRequest(resource, 'delete', { id });
+  } catch (error) {
+    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
+      throw new NotFoundError(label, id);
+    }
+    throw error;
+  }
+}
+
+/**
  * Service functions with enhanced error handling
  */
 
 export async function getSiteInfo() {
-  try {
-    return await handleApiRequest('site', 'read');
-  } catch (error) {
-    console.error('Failed to get site info:', error);
-    throw error;
-  }
+  return handleApiRequest('site', 'read');
 }
 
 export async function createPost(postData, options = { source: 'html' }) {
@@ -305,53 +352,15 @@ export async function updatePost(postId, updateData, options = {}) {
     validators.validateScheduledStatus(updateData, 'Post');
   }
 
-  // Get the current post first to ensure it exists
-  try {
-    const existingPost = await handleApiRequest('posts', 'read', { id: postId });
-
-    // Send only changed fields + updated_at for OCC (optimistic concurrency control)
-    const editData = {
-      ...updateData,
-      updated_at: existingPost.updated_at,
-    };
-
-    return await handleApiRequest('posts', 'edit', editData, { id: postId, ...options });
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
-      throw new NotFoundError('Post', postId);
-    }
-    throw error;
-  }
+  return updateWithOCC('posts', postId, updateData, options, 'Post');
 }
 
 export async function deletePost(postId) {
-  if (!postId) {
-    throw new ValidationError('Post ID is required for deletion');
-  }
-
-  try {
-    return await handleApiRequest('posts', 'delete', { id: postId });
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
-      throw new NotFoundError('Post', postId);
-    }
-    throw error;
-  }
+  return deleteResource('posts', postId, 'Post');
 }
 
 export async function getPost(postId, options = {}) {
-  if (!postId) {
-    throw new ValidationError('Post ID is required');
-  }
-
-  try {
-    return await handleApiRequest('posts', 'read', { id: postId }, options);
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
-      throw new NotFoundError('Post', postId);
-    }
-    throw error;
-  }
+  return readResource('posts', postId, 'Post', options);
 }
 
 export async function getPosts(options = {}) {
@@ -361,12 +370,7 @@ export async function getPosts(options = {}) {
     ...options,
   };
 
-  try {
-    return await handleApiRequest('posts', 'browse', {}, defaultOptions);
-  } catch (error) {
-    console.error('Failed to get posts:', error);
-    throw error;
-  }
+  return handleApiRequest('posts', 'browse', {}, defaultOptions);
 }
 
 export async function searchPosts(query, options = {}) {
@@ -376,7 +380,7 @@ export async function searchPosts(query, options = {}) {
   }
 
   // Sanitize query - escape special NQL characters to prevent injection
-  const sanitizedQuery = query.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const sanitizedQuery = sanitizeNqlValue(query);
 
   // Build filter with fuzzy title match using Ghost NQL
   const filterParts = [`title:~'${sanitizedQuery}'`];
@@ -392,12 +396,7 @@ export async function searchPosts(query, options = {}) {
     filter: filterParts.join('+'),
   };
 
-  try {
-    return await handleApiRequest('posts', 'browse', {}, searchOptions);
-  } catch (error) {
-    console.error('Failed to search posts:', error);
-    throw error;
-  }
+  return handleApiRequest('posts', 'browse', {}, searchOptions);
 }
 
 /**
@@ -441,53 +440,15 @@ export async function updatePage(pageId, updateData, options = {}) {
     validators.validateScheduledStatus(updateData, 'Page');
   }
 
-  try {
-    // Get existing page to retrieve updated_at for conflict resolution
-    const existingPage = await handleApiRequest('pages', 'read', { id: pageId });
-
-    // Send only changed fields + updated_at for OCC (optimistic concurrency control)
-    const editData = {
-      ...updateData,
-      updated_at: existingPage.updated_at,
-    };
-
-    return await handleApiRequest('pages', 'edit', editData, { id: pageId, ...options });
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
-      throw new NotFoundError('Page', pageId);
-    }
-    throw error;
-  }
+  return updateWithOCC('pages', pageId, updateData, options, 'Page');
 }
 
 export async function deletePage(pageId) {
-  if (!pageId) {
-    throw new ValidationError('Page ID is required for delete');
-  }
-
-  try {
-    return await handleApiRequest('pages', 'delete', { id: pageId });
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
-      throw new NotFoundError('Page', pageId);
-    }
-    throw error;
-  }
+  return deleteResource('pages', pageId, 'Page');
 }
 
 export async function getPage(pageId, options = {}) {
-  if (!pageId) {
-    throw new ValidationError('Page ID is required');
-  }
-
-  try {
-    return await handleApiRequest('pages', 'read', { id: pageId }, options);
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
-      throw new NotFoundError('Page', pageId);
-    }
-    throw error;
-  }
+  return readResource('pages', pageId, 'Page', options);
 }
 
 export async function getPages(options = {}) {
@@ -497,12 +458,7 @@ export async function getPages(options = {}) {
     ...options,
   };
 
-  try {
-    return await handleApiRequest('pages', 'browse', {}, defaultOptions);
-  } catch (error) {
-    console.error('Failed to get pages:', error);
-    throw error;
-  }
+  return handleApiRequest('pages', 'browse', {}, defaultOptions);
 }
 
 export async function searchPages(query, options = {}) {
@@ -512,7 +468,7 @@ export async function searchPages(query, options = {}) {
   }
 
   // Sanitize query - escape special NQL characters to prevent injection
-  const sanitizedQuery = query.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const sanitizedQuery = sanitizeNqlValue(query);
 
   // Build filter with fuzzy title match using Ghost NQL
   const filterParts = [`title:~'${sanitizedQuery}'`];
@@ -528,12 +484,7 @@ export async function searchPages(query, options = {}) {
     filter: filterParts.join('+'),
   };
 
-  try {
-    return await handleApiRequest('pages', 'browse', {}, searchOptions);
-  } catch (error) {
-    console.error('Failed to search pages:', error);
-    throw error;
-  }
+  return handleApiRequest('pages', 'browse', {}, searchOptions);
 }
 
 export async function uploadImage(imagePath) {
@@ -585,36 +536,20 @@ export async function createTag(tagData) {
 }
 
 export async function getTags(options = {}) {
-  try {
-    const tags = await handleApiRequest(
-      'tags',
-      'browse',
-      {},
-      {
-        limit: 15,
-        ...options,
-      }
-    );
-    return tags || [];
-  } catch (error) {
-    logger.error('Failed to get tags', { error: error.message });
-    throw error;
-  }
+  const tags = await handleApiRequest(
+    'tags',
+    'browse',
+    {},
+    {
+      limit: 15,
+      ...options,
+    }
+  );
+  return tags || [];
 }
 
 export async function getTag(tagId, options = {}) {
-  if (!tagId) {
-    throw new ValidationError('Tag ID is required');
-  }
-
-  try {
-    return await handleApiRequest('tags', 'read', { id: tagId }, options);
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
-      throw new NotFoundError('Tag', tagId);
-    }
-    throw error;
-  }
+  return readResource('tags', tagId, 'Tag', options);
 }
 
 export async function updateTag(tagId, updateData) {
@@ -622,14 +557,11 @@ export async function updateTag(tagId, updateData) {
     throw new ValidationError('Tag ID is required for update');
   }
 
-  validators.validateTagUpdateData(updateData); // Validate update data
+  validators.validateTagUpdateData(updateData);
 
   try {
-    // Verify tag exists before updating
-    await getTag(tagId);
-
-    // Send only changed fields (tags don't use updated_at for OCC)
-    return await handleApiRequest('tags', 'edit', { ...updateData }, { id: tagId });
+    await readResource('tags', tagId, 'Tag');
+    return await handleApiRequest('tags', 'edit', { id: tagId, ...updateData });
   } catch (error) {
     if (error instanceof NotFoundError) {
       throw error;
@@ -644,18 +576,7 @@ export async function updateTag(tagId, updateData) {
 }
 
 export async function deleteTag(tagId) {
-  if (!tagId) {
-    throw new ValidationError('Tag ID is required for deletion');
-  }
-
-  try {
-    return await handleApiRequest('tags', 'delete', { id: tagId });
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
-      throw new NotFoundError('Tag', tagId);
-    }
-    throw error;
-  }
+  return deleteResource('tags', tagId, 'Tag');
 }
 
 /**
@@ -713,23 +634,7 @@ export async function updateMember(memberId, updateData, options = {}) {
     throw new ValidationError('Member ID is required for update');
   }
 
-  try {
-    // Get existing member to retrieve updated_at for conflict resolution
-    const existingMember = await handleApiRequest('members', 'read', { id: memberId });
-
-    // Send only changed fields + updated_at for OCC (optimistic concurrency control)
-    const editData = {
-      ...updateData,
-      updated_at: existingMember.updated_at,
-    };
-
-    return await handleApiRequest('members', 'edit', editData, { id: memberId, ...options });
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
-      throw new NotFoundError('Member', memberId);
-    }
-    throw error;
-  }
+  return updateWithOCC('members', memberId, updateData, options, 'Member');
 }
 
 /**
@@ -741,18 +646,7 @@ export async function updateMember(memberId, updateData, options = {}) {
  * @throws {GhostAPIError} If the API request fails
  */
 export async function deleteMember(memberId) {
-  if (!memberId) {
-    throw new ValidationError('Member ID is required for deletion');
-  }
-
-  try {
-    return await handleApiRequest('members', 'delete', { id: memberId });
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
-      throw new NotFoundError('Member', memberId);
-    }
-    throw error;
-  }
+  return deleteResource('members', memberId, 'Member');
 }
 
 /**
@@ -774,13 +668,8 @@ export async function getMembers(options = {}) {
     ...options,
   };
 
-  try {
-    const members = await handleApiRequest('members', 'browse', {}, defaultOptions);
-    return members || [];
-  } catch (error) {
-    console.error('Failed to get members:', error);
-    throw error;
-  }
+  const members = await handleApiRequest('members', 'browse', {}, defaultOptions);
+  return members || [];
 }
 
 /**
@@ -795,7 +684,6 @@ export async function getMembers(options = {}) {
  */
 export async function getMember(params) {
   // Input validation is performed at the MCP tool layer using Zod schemas
-  const { sanitizeNqlValue } = await import('./memberService.js');
   const { id, email } = params;
 
   try {
@@ -837,7 +725,6 @@ export async function getMember(params) {
  */
 export async function searchMembers(query, options = {}) {
   // Input validation is performed at the MCP tool layer using Zod schemas
-  const { sanitizeNqlValue } = await import('./memberService.js');
   const sanitizedQuery = sanitizeNqlValue(query.trim());
 
   const limit = options.limit || 15;
@@ -846,13 +733,8 @@ export async function searchMembers(query, options = {}) {
   // Ghost uses ~ for contains/like matching
   const filter = `name:~'${sanitizedQuery}',email:~'${sanitizedQuery}'`;
 
-  try {
-    const members = await handleApiRequest('members', 'browse', {}, { filter, limit });
-    return members || [];
-  } catch (error) {
-    console.error('Failed to search members:', error);
-    throw error;
-  }
+  const members = await handleApiRequest('members', 'browse', {}, { filter, limit });
+  return members || [];
 }
 
 /**
@@ -865,28 +747,12 @@ export async function getNewsletters(options = {}) {
     ...options,
   };
 
-  try {
-    const newsletters = await handleApiRequest('newsletters', 'browse', {}, defaultOptions);
-    return newsletters || [];
-  } catch (error) {
-    console.error('Failed to get newsletters:', error);
-    throw error;
-  }
+  const newsletters = await handleApiRequest('newsletters', 'browse', {}, defaultOptions);
+  return newsletters || [];
 }
 
 export async function getNewsletter(newsletterId) {
-  if (!newsletterId) {
-    throw new ValidationError('Newsletter ID is required');
-  }
-
-  try {
-    return await handleApiRequest('newsletters', 'read', { id: newsletterId });
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
-      throw new NotFoundError('Newsletter', newsletterId);
-    }
-    throw error;
-  }
+  return readResource('newsletters', newsletterId, 'Newsletter');
 }
 
 export async function createNewsletter(newsletterData) {
@@ -911,22 +777,8 @@ export async function updateNewsletter(newsletterId, updateData) {
   }
 
   try {
-    // Get existing newsletter to retrieve updated_at for conflict resolution
-    const existingNewsletter = await handleApiRequest('newsletters', 'read', {
-      id: newsletterId,
-    });
-
-    // Send only changed fields + updated_at for OCC (optimistic concurrency control)
-    const editData = {
-      ...updateData,
-      updated_at: existingNewsletter.updated_at,
-    };
-
-    return await handleApiRequest('newsletters', 'edit', editData, { id: newsletterId });
+    return await updateWithOCC('newsletters', newsletterId, updateData, {}, 'Newsletter');
   } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
-      throw new NotFoundError('Newsletter', newsletterId);
-    }
     if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
       throw new ValidationError('Newsletter update failed', [
         { field: 'newsletter', message: error.originalError },
@@ -937,18 +789,7 @@ export async function updateNewsletter(newsletterId, updateData) {
 }
 
 export async function deleteNewsletter(newsletterId) {
-  if (!newsletterId) {
-    throw new ValidationError('Newsletter ID is required for deletion');
-  }
-
-  try {
-    return await handleApiRequest('newsletters', 'delete', newsletterId);
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
-      throw new NotFoundError('Newsletter', newsletterId);
-    }
-    throw error;
-  }
+  return deleteResource('newsletters', newsletterId, 'Newsletter');
 }
 
 /**
@@ -988,23 +829,7 @@ export async function updateTier(id, updateData, options = {}) {
   const { validateTierUpdateData } = await import('./tierService.js');
   validateTierUpdateData(updateData);
 
-  try {
-    // Get existing tier to retrieve updated_at for conflict resolution
-    const existingTier = await handleApiRequest('tiers', 'read', { id }, { id });
-
-    // Send only changed fields + updated_at for OCC (optimistic concurrency control)
-    const editData = {
-      ...updateData,
-      updated_at: existingTier.updated_at,
-    };
-
-    return await handleApiRequest('tiers', 'edit', editData, { id, ...options });
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
-      throw new NotFoundError('Tier', id);
-    }
-    throw error;
-  }
+  return updateWithOCC('tiers', id, updateData, options, 'Tier');
 }
 
 /**
@@ -1017,14 +842,7 @@ export async function deleteTier(id) {
     throw new ValidationError('Tier ID is required for deletion');
   }
 
-  try {
-    return await handleApiRequest('tiers', 'delete', { id });
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
-      throw new NotFoundError('Tier', id);
-    }
-    throw error;
-  }
+  return deleteResource('tiers', id, 'Tier');
 }
 
 /**
@@ -1046,13 +864,8 @@ export async function getTiers(options = {}) {
     ...options,
   };
 
-  try {
-    const tiers = await handleApiRequest('tiers', 'browse', {}, defaultOptions);
-    return tiers || [];
-  } catch (error) {
-    console.error('Failed to get tiers:', error);
-    throw error;
-  }
+  const tiers = await handleApiRequest('tiers', 'browse', {}, defaultOptions);
+  return tiers || [];
 }
 
 /**
@@ -1065,14 +878,7 @@ export async function getTier(id) {
     throw new ValidationError('Tier ID is required and must be a non-empty string');
   }
 
-  try {
-    return await handleApiRequest('tiers', 'read', { id }, { id });
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 404) {
-      throw new NotFoundError('Tier', id);
-    }
-    throw error;
-  }
+  return readResource('tiers', id, 'Tier');
 }
 
 /**

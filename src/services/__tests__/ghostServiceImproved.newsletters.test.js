@@ -207,8 +207,8 @@ describe('ghostServiceImproved - Newsletter Operations', () => {
       expect(api.newsletters.read).toHaveBeenCalledWith({}, { id: 'newsletter-123' });
       // Should send ONLY updateData + updated_at, NOT the full existing newsletter
       expect(api.newsletters.edit).toHaveBeenCalledWith(
-        { name: 'New Name', updated_at: '2024-01-01T00:00:00.000Z' },
-        { id: 'newsletter-123' }
+        { id: 'newsletter-123', name: 'New Name', updated_at: '2024-01-01T00:00:00.000Z' },
+        {}
       );
       // Verify read-only fields are NOT sent
       const editCallData = api.newsletters.edit.mock.calls[0][0];
@@ -235,8 +235,8 @@ describe('ghostServiceImproved - Newsletter Operations', () => {
 
       // Should send ONLY updateData + updated_at
       expect(api.newsletters.edit).toHaveBeenCalledWith(
-        { ...updateData, updated_at: '2024-01-01T00:00:00.000Z' },
-        { id: 'newsletter-123' }
+        { id: 'newsletter-123', ...updateData, updated_at: '2024-01-01T00:00:00.000Z' },
+        {}
       );
     });
 
@@ -271,8 +271,12 @@ describe('ghostServiceImproved - Newsletter Operations', () => {
 
       // Should send ONLY updateData + updated_at
       expect(api.newsletters.edit).toHaveBeenCalledWith(
-        { description: 'Updated description', updated_at: '2024-01-01T00:00:00.000Z' },
-        { id: 'newsletter-123' }
+        {
+          id: 'newsletter-123',
+          description: 'Updated description',
+          updated_at: '2024-01-01T00:00:00.000Z',
+        },
+        {}
       );
     });
   });
