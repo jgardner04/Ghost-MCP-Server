@@ -95,8 +95,8 @@ describe('ghostServiceImproved - Posts (updatePost)', () => {
       expect(result).toEqual(expectedResult);
       // Should send ONLY updateData + updated_at, NOT the full existing post
       expect(api.posts.edit).toHaveBeenCalledWith(
-        { title: 'Updated Title', updated_at: '2024-01-01T00:00:00.000Z' },
-        { id: postId }
+        { id: postId, title: 'Updated Title', updated_at: '2024-01-01T00:00:00.000Z' },
+        {}
       );
       // Verify read-only fields are NOT sent
       const editCallData = api.posts.edit.mock.calls[0][0];
@@ -173,8 +173,8 @@ describe('ghostServiceImproved - Posts (updatePost)', () => {
 
       expect(result).toBeDefined();
       expect(api.posts.edit).toHaveBeenCalledWith(
-        { ...updateData, updated_at: existingPost.updated_at },
-        { id: postId }
+        { id: postId, ...updateData, updated_at: existingPost.updated_at },
+        {}
       );
     });
   });

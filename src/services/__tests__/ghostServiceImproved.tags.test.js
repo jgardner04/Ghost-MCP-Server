@@ -431,8 +431,8 @@ describe('ghostServiceImproved - Tags', () => {
       expect(api.tags.read).toHaveBeenCalled();
       // Should send ONLY updateData, NOT the full existing tag
       expect(api.tags.edit).toHaveBeenCalledWith(
-        { name: 'Updated JavaScript', description: 'Updated description' },
-        { id: tagId }
+        { id: tagId, name: 'Updated JavaScript', description: 'Updated description' },
+        {}
       );
       // Verify read-only fields are NOT sent
       const editCallData = api.tags.edit.mock.calls[0][0];
