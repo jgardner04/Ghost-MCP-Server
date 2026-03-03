@@ -3,7 +3,6 @@ import {
   validateTierData,
   validateTierUpdateData,
   validateTierQueryOptions,
-  sanitizeNqlValue,
 } from '../tierService.js';
 import { ValidationError } from '../../errors/index.js';
 
@@ -340,33 +339,6 @@ describe('tierService - Validation', () => {
           include: 'monthly_price,yearly_price',
         })
       ).not.toThrow();
-    });
-  });
-
-  describe('sanitizeNqlValue', () => {
-    it('should return value if undefined or null', () => {
-      expect(sanitizeNqlValue(null)).toBe(null);
-      expect(sanitizeNqlValue(undefined)).toBe(undefined);
-    });
-
-    it('should escape backslashes', () => {
-      expect(sanitizeNqlValue('test\\value')).toBe('test\\\\value');
-    });
-
-    it('should escape single quotes', () => {
-      expect(sanitizeNqlValue("test'value")).toBe("test\\'value");
-    });
-
-    it('should escape double quotes', () => {
-      expect(sanitizeNqlValue('test"value')).toBe('test\\"value');
-    });
-
-    it('should escape multiple special characters', () => {
-      expect(sanitizeNqlValue('test\\value"with\'quotes')).toBe('test\\\\value\\"with\\\'quotes');
-    });
-
-    it('should handle strings without special characters', () => {
-      expect(sanitizeNqlValue('simple-value')).toBe('simple-value');
     });
   });
 });

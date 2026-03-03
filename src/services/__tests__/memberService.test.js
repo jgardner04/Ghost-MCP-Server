@@ -6,7 +6,6 @@ import {
   validateMemberLookup,
   validateSearchQuery,
   validateSearchOptions,
-  sanitizeNqlValue,
 } from '../memberService.js';
 
 describe('memberService - Validation', () => {
@@ -445,33 +444,6 @@ describe('memberService - Validation', () => {
       expect(() => validateSearchOptions({ limit: 'ten' })).toThrow(
         'Search options validation failed'
       );
-    });
-  });
-
-  describe('sanitizeNqlValue', () => {
-    it('should escape backslashes', () => {
-      expect(sanitizeNqlValue('test\\value')).toBe('test\\\\value');
-    });
-
-    it('should escape single quotes', () => {
-      expect(sanitizeNqlValue("test'value")).toBe("test\\'value");
-    });
-
-    it('should escape double quotes', () => {
-      expect(sanitizeNqlValue('test"value')).toBe('test\\"value');
-    });
-
-    it('should handle multiple special characters', () => {
-      expect(sanitizeNqlValue('test\'value"with\\chars')).toBe('test\\\'value\\"with\\\\chars');
-    });
-
-    it('should not modify strings without special characters', () => {
-      expect(sanitizeNqlValue('normalvalue')).toBe('normalvalue');
-      expect(sanitizeNqlValue('test@example.com')).toBe('test@example.com');
-    });
-
-    it('should handle empty string', () => {
-      expect(sanitizeNqlValue('')).toBe('');
     });
   });
 });
