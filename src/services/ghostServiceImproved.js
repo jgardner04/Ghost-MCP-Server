@@ -57,7 +57,7 @@ const handleApiRequest = async (resource, action, data = {}, options = {}, confi
   // Main execution function
   const executeRequest = async () => {
     try {
-      console.error(`Executing Ghost API request: ${operation}`);
+      logger.info('Executing Ghost API request', { operation });
 
       let result;
 
@@ -81,7 +81,7 @@ const handleApiRequest = async (resource, action, data = {}, options = {}, confi
           result = await api[resource][action](data);
       }
 
-      console.error(`Successfully executed Ghost API request: ${operation}`);
+      logger.info('Successfully executed Ghost API request', { operation });
       return result;
     } catch (error) {
       // Transform Ghost API errors into our error types
@@ -99,17 +99,21 @@ const handleApiRequest = async (resource, action, data = {}, options = {}, confi
     return await retryWithBackoff(wrappedExecute, {
       maxAttempts: maxRetries,
       onRetry: (attempt, _error) => {
-        console.error(`Retrying ${operation} (attempt ${attempt}/${maxRetries})`);
+        logger.info('Retrying Ghost API request', { operation, attempt, maxRetries });
 
         // Log circuit breaker state if relevant
         if (useCircuitBreaker) {
           const state = ghostCircuitBreaker.getState();
-          console.error(`Circuit breaker state:`, state);
+          logger.info('Circuit breaker state', { operation, state });
         }
       },
     });
   } catch (error) {
-    console.error(`Failed to execute ${operation} after ${maxRetries} attempts:`, error.message);
+    logger.error('Failed to execute Ghost API request', {
+      operation,
+      maxRetries,
+      error: error.message,
+    });
     throw error;
   }
 };
@@ -310,12 +314,7 @@ async function deleteResource(resource, id, label) {
  */
 
 export async function getSiteInfo() {
-  try {
-    return await handleApiRequest('site', 'read');
-  } catch (error) {
-    console.error('Failed to get site info:', error);
-    throw error;
-  }
+  return handleApiRequest('site', 'read');
 }
 
 export async function createPost(postData, options = { source: 'html' }) {
@@ -371,12 +370,7 @@ export async function getPosts(options = {}) {
     ...options,
   };
 
-  try {
-    return await handleApiRequest('posts', 'browse', {}, defaultOptions);
-  } catch (error) {
-    console.error('Failed to get posts:', error);
-    throw error;
-  }
+  return handleApiRequest('posts', 'browse', {}, defaultOptions);
 }
 
 export async function searchPosts(query, options = {}) {
@@ -402,12 +396,7 @@ export async function searchPosts(query, options = {}) {
     filter: filterParts.join('+'),
   };
 
-  try {
-    return await handleApiRequest('posts', 'browse', {}, searchOptions);
-  } catch (error) {
-    console.error('Failed to search posts:', error);
-    throw error;
-  }
+  return handleApiRequest('posts', 'browse', {}, searchOptions);
 }
 
 /**
@@ -469,12 +458,7 @@ export async function getPages(options = {}) {
     ...options,
   };
 
-  try {
-    return await handleApiRequest('pages', 'browse', {}, defaultOptions);
-  } catch (error) {
-    console.error('Failed to get pages:', error);
-    throw error;
-  }
+  return handleApiRequest('pages', 'browse', {}, defaultOptions);
 }
 
 export async function searchPages(query, options = {}) {
@@ -500,12 +484,7 @@ export async function searchPages(query, options = {}) {
     filter: filterParts.join('+'),
   };
 
-  try {
-    return await handleApiRequest('pages', 'browse', {}, searchOptions);
-  } catch (error) {
-    console.error('Failed to search pages:', error);
-    throw error;
-  }
+  return handleApiRequest('pages', 'browse', {}, searchOptions);
 }
 
 export async function uploadImage(imagePath) {
@@ -557,21 +536,16 @@ export async function createTag(tagData) {
 }
 
 export async function getTags(options = {}) {
-  try {
-    const tags = await handleApiRequest(
-      'tags',
-      'browse',
-      {},
-      {
-        limit: 15,
-        ...options,
-      }
-    );
-    return tags || [];
-  } catch (error) {
-    logger.error('Failed to get tags', { error: error.message });
-    throw error;
-  }
+  const tags = await handleApiRequest(
+    'tags',
+    'browse',
+    {},
+    {
+      limit: 15,
+      ...options,
+    }
+  );
+  return tags || [];
 }
 
 export async function getTag(tagId, options = {}) {
@@ -694,13 +668,8 @@ export async function getMembers(options = {}) {
     ...options,
   };
 
-  try {
-    const members = await handleApiRequest('members', 'browse', {}, defaultOptions);
-    return members || [];
-  } catch (error) {
-    console.error('Failed to get members:', error);
-    throw error;
-  }
+  const members = await handleApiRequest('members', 'browse', {}, defaultOptions);
+  return members || [];
 }
 
 /**
@@ -764,13 +733,8 @@ export async function searchMembers(query, options = {}) {
   // Ghost uses ~ for contains/like matching
   const filter = `name:~'${sanitizedQuery}',email:~'${sanitizedQuery}'`;
 
-  try {
-    const members = await handleApiRequest('members', 'browse', {}, { filter, limit });
-    return members || [];
-  } catch (error) {
-    console.error('Failed to search members:', error);
-    throw error;
-  }
+  const members = await handleApiRequest('members', 'browse', {}, { filter, limit });
+  return members || [];
 }
 
 /**
@@ -783,13 +747,8 @@ export async function getNewsletters(options = {}) {
     ...options,
   };
 
-  try {
-    const newsletters = await handleApiRequest('newsletters', 'browse', {}, defaultOptions);
-    return newsletters || [];
-  } catch (error) {
-    console.error('Failed to get newsletters:', error);
-    throw error;
-  }
+  const newsletters = await handleApiRequest('newsletters', 'browse', {}, defaultOptions);
+  return newsletters || [];
 }
 
 export async function getNewsletter(newsletterId) {
@@ -905,13 +864,8 @@ export async function getTiers(options = {}) {
     ...options,
   };
 
-  try {
-    const tiers = await handleApiRequest('tiers', 'browse', {}, defaultOptions);
-    return tiers || [];
-  } catch (error) {
-    console.error('Failed to get tiers:', error);
-    throw error;
-  }
+  const tiers = await handleApiRequest('tiers', 'browse', {}, defaultOptions);
+  return tiers || [];
 }
 
 /**
