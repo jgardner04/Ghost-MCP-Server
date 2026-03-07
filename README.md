@@ -278,6 +278,74 @@ For development, the following scripts are available:
 | `npm run lint`                | Check code for linting errors        |
 | `npm run lint:fix`            | Auto-fix linting errors              |
 
+## MCP Client Configuration
+
+The Ghost MCP Server works with any MCP-compatible client. Below are quickstart configurations for the most common clients. For a complete guide including WebSocket and HTTP/SSE transports, see [docs/MCP_CLIENT_SETUP.md](docs/MCP_CLIENT_SETUP.md).
+
+### Claude Code (including the Sidedoc project)
+
+Create a `.mcp.json` file at the root of your project (e.g., the [Sidedoc repository](https://github.com/jgardner04/sidedoc)):
+
+```json
+{
+  "mcpServers": {
+    "ghost": {
+      "command": "npx",
+      "args": ["-y", "@jgardner04/ghost-mcp-server"],
+      "env": {
+        "GHOST_ADMIN_API_URL": "https://your-ghost-site.com",
+        "GHOST_ADMIN_API_KEY": "your_admin_api_key"
+      }
+    }
+  }
+}
+```
+
+Claude Code will automatically detect this file and make all 34 Ghost MCP tools available within that project. You can also register the server globally:
+
+```bash
+claude mcp add ghost \
+  --scope user \
+  --command npx \
+  --args "-y @jgardner04/ghost-mcp-server" \
+  --env GHOST_ADMIN_API_URL=https://your-ghost-site.com \
+  --env GHOST_ADMIN_API_KEY=your_admin_api_key
+```
+
+> **Tip:** Do not commit `.mcp.json` files that contain real API keys. Add `.mcp.json` to your `.gitignore` or source credentials from a `.env` file.
+
+### Claude Desktop
+
+Add the server to your Claude Desktop configuration file:
+
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "ghost": {
+      "command": "npx",
+      "args": ["-y", "@jgardner04/ghost-mcp-server"],
+      "env": {
+        "GHOST_ADMIN_API_URL": "https://your-ghost-site.com",
+        "GHOST_ADMIN_API_KEY": "your_admin_api_key"
+      }
+    }
+  }
+}
+```
+
+Restart Claude Desktop after saving the file.
+
+### Cursor
+
+Open **Cursor Settings → Features → MCP Servers**, click **Add Server**, and provide:
+
+- **Name:** `ghost`
+- **Command:** `npx -y @jgardner04/ghost-mcp-server`
+- **Environment Variables:** `GHOST_ADMIN_API_URL` and `GHOST_ADMIN_API_KEY`
+
 ## Development Setup
 
 For contributors or advanced users who want to modify the source code:
