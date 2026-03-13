@@ -139,6 +139,61 @@ describe('ghostServiceImproved - Posts (updatePost)', () => {
         {}
       );
     });
+
+    it('should reject past published_at when existing post is scheduled (no status in update)', async () => {
+      const postId = 'post-123';
+      const existingPost = {
+        id: postId,
+        title: 'Scheduled Post',
+        status: 'scheduled',
+        published_at: new Date(Date.now() + 86400000).toISOString(),
+        updated_at: '2024-01-01T00:00:00.000Z',
+      };
+      const pastDate = new Date(Date.now() - 86400000).toISOString();
+
+      api.posts.read.mockResolvedValue(existingPost);
+
+      await expect(updatePost(postId, { published_at: pastDate })).rejects.toThrow(
+        'Post validation failed'
+      );
+    });
+
+    it('should allow future published_at when existing post is scheduled (no status in update)', async () => {
+      const postId = 'post-123';
+      const futureDate = new Date(Date.now() + 172800000).toISOString();
+      const existingPost = {
+        id: postId,
+        title: 'Scheduled Post',
+        status: 'scheduled',
+        published_at: new Date(Date.now() + 86400000).toISOString(),
+        updated_at: '2024-01-01T00:00:00.000Z',
+      };
+
+      api.posts.read.mockResolvedValue(existingPost);
+      api.posts.edit.mockResolvedValue({ ...existingPost, published_at: futureDate });
+
+      const result = await updatePost(postId, { published_at: futureDate });
+
+      expect(result).toBeDefined();
+    });
+
+    it('should allow published_at change when existing post is not scheduled', async () => {
+      const postId = 'post-123';
+      const pastDate = new Date(Date.now() - 86400000).toISOString();
+      const existingPost = {
+        id: postId,
+        title: 'Draft Post',
+        status: 'draft',
+        updated_at: '2024-01-01T00:00:00.000Z',
+      };
+
+      api.posts.read.mockResolvedValue(existingPost);
+      api.posts.edit.mockResolvedValue({ ...existingPost, published_at: pastDate });
+
+      const result = await updatePost(postId, { published_at: pastDate });
+
+      expect(result).toBeDefined();
+    });
   });
 
   describe('validators.validateScheduledStatus', () => {

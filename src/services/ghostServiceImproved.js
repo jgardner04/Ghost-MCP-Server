@@ -347,9 +347,15 @@ export async function updatePost(postId, updateData, options = {}) {
     throw new ValidationError('Post ID is required for update');
   }
 
-  // Validate scheduled status if status is being updated
-  if (updateData.status) {
-    validators.validateScheduledStatus(updateData, 'Post');
+  // Validate scheduled status when status or published_at is being updated
+  if (updateData.status || updateData.published_at) {
+    let validationData = updateData;
+    // When only published_at changes, fetch existing status to check if post is scheduled
+    if (!updateData.status && updateData.published_at) {
+      const existing = await readResource('posts', postId, 'Post');
+      validationData = { ...updateData, status: existing.status };
+    }
+    validators.validateScheduledStatus(validationData, 'Post');
   }
 
   return updateWithOCC('posts', postId, updateData, options, 'Post');
@@ -435,9 +441,15 @@ export async function updatePage(pageId, updateData, options = {}) {
 
   // SECURITY: HTML must be sanitized before reaching this function. See htmlContentSchema in schemas/common.js
 
-  // Validate scheduled status if status is being updated
-  if (updateData.status) {
-    validators.validateScheduledStatus(updateData, 'Page');
+  // Validate scheduled status when status or published_at is being updated
+  if (updateData.status || updateData.published_at) {
+    let validationData = updateData;
+    // When only published_at changes, fetch existing status to check if page is scheduled
+    if (!updateData.status && updateData.published_at) {
+      const existing = await readResource('pages', pageId, 'Page');
+      validationData = { ...updateData, status: existing.status };
+    }
+    validators.validateScheduledStatus(validationData, 'Page');
   }
 
   return updateWithOCC('pages', pageId, updateData, options, 'Page');
