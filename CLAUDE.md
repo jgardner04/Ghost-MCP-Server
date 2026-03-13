@@ -244,6 +244,7 @@ This project maintains detailed documentation in the `docs/` directory:
 | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
 | [CHANGELOG.md](CHANGELOG.md)                           | Version history, breaking changes, new features, and migration guides                          |
 | [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md)       | Error types, circuit breaker pattern, retry mechanisms, error logging strategies               |
+| [docs/MCP_CLIENT_SETUP.md](docs/MCP_CLIENT_SETUP.md)   | Step-by-step setup for Claude Code, Claude Desktop, Cursor, and custom MCP clients             |
 | [docs/MCP_TRANSPORT.md](docs/MCP_TRANSPORT.md)         | Transport configuration (stdio, HTTP/SSE, WebSocket), use cases, security considerations       |
 | [docs/RESOURCE_FETCHING.md](docs/RESOURCE_FETCHING.md) | Resource URI patterns, caching strategies (LRU/TTL), real-time subscriptions, batch operations |
 | [docs/TESTING.md](docs/TESTING.md)                     | Manual testing setup with Ghost CMS, MCP Inspector usage, debugging tips                       |
