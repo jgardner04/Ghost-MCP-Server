@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Standardized tool error handling** - Extracted `withErrorHandling` higher-order function to eliminate ~735 lines of duplicated try/catch blocks across 33 tool handlers. Error messages now use a consistent `Error in <tool_name>: <message>` format. ([JON-17](https://linear.app/jonathangardner/issue/JON-17/extract-error-handler-hof-in-mcp-serverjs-to-reduce-duplication), [#138](https://github.com/jgardner04/Ghost-MCP-Server/pull/138))
+
 ### Fixed
 
 - **Scheduled status validation on published_at-only updates** - `updatePost` and `updatePage` now validate scheduled-date constraints when only `published_at` changes (without `status` in the update payload). Previously, a scheduled post/page could have its publish date set to the past without triggering validation. ([JON-19](https://linear.app/jonathangardner/issue/JON-19/edge-case-validatescheduledstatus-skipped-when-only-published-at), [#136](https://github.com/jgardner04/Ghost-MCP-Server/pull/136))
