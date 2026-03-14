@@ -176,9 +176,7 @@ describe('ghostServiceImproved - Members', () => {
     });
 
     it('should throw validation error for missing member ID', async () => {
-      await expect(updateMember(null, { name: 'Test' })).rejects.toThrow(
-        'Member ID is required for update'
-      );
+      await expect(updateMember(null, { name: 'Test' })).rejects.toThrow('Member ID is required');
     });
 
     // NOTE: Input validation tests (invalid email in update) have been moved to
@@ -207,7 +205,7 @@ describe('ghostServiceImproved - Members', () => {
     });
 
     it('should throw validation error for missing member ID', async () => {
-      await expect(deleteMember(null)).rejects.toThrow('Member ID is required for deletion');
+      await expect(deleteMember(null)).rejects.toThrow('Member ID is required');
     });
 
     it('should throw not found error if member does not exist', async () => {

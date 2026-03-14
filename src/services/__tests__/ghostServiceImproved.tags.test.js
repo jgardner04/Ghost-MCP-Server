@@ -405,9 +405,7 @@ describe('ghostServiceImproved - Tags', () => {
     });
 
     it('should throw validation error for missing tag ID', async () => {
-      await expect(updateTag(null, { name: 'Test' })).rejects.toThrow(
-        'Tag ID is required for update'
-      );
+      await expect(updateTag(null, { name: 'Test' })).rejects.toThrow('Tag ID is required');
     });
 
     it('should throw not found error if tag does not exist', async () => {
@@ -433,7 +431,7 @@ describe('ghostServiceImproved - Tags', () => {
     });
 
     it('should throw validation error for missing tag ID', async () => {
-      await expect(deleteTag(null)).rejects.toThrow('Tag ID is required for deletion');
+      await expect(deleteTag(null)).rejects.toThrow('Tag ID is required');
     });
 
     it('should throw not found error if tag does not exist', async () => {
