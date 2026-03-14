@@ -89,12 +89,13 @@ const escapeNqlValue = (value) => {
  *
  * @param {string} toolName - The tool identifier (e.g., 'ghost_get_tags')
  * @param {object} schema - Zod schema for input validation
- * @param {string} zodContext - Context label for ValidationError.fromZod (e.g., 'Tags retrieval')
  * @param {Function} handler - Async function receiving validated input, returns MCP response
  * @returns {Function} Wrapped async handler for server.registerTool
  */
-const withErrorHandling = (toolName, schema, zodContext, handler) => {
+const withErrorHandling = (toolName, schema, handler) => {
+  const zodContext = toolName.replace('ghost_', '').replace(/_/g, ' ');
   return async (rawInput) => {
+    console.error(`Executing tool: ${toolName}`);
     const validation = validateToolInput(schema, rawInput, toolName);
     if (!validation.success) {
       return validation.errorResponse;
@@ -153,7 +154,7 @@ server.registerTool(
       'Retrieves a list of tags from Ghost CMS with pagination, filtering, sorting, and relation inclusion. Supports filtering by name, slug, visibility, or custom NQL filter expressions.',
     inputSchema: getTagsSchema,
   },
-  withErrorHandling('ghost_get_tags', getTagsSchema, 'Tags retrieval', async (input) => {
+  withErrorHandling('ghost_get_tags', getTagsSchema, async (input) => {
     // Build options object with provided parameters
     const options = {};
     if (input.limit !== undefined) options.limit = input.limit;
@@ -188,7 +189,7 @@ server.registerTool(
     description: 'Creates a new tag in Ghost CMS.',
     inputSchema: createTagSchema,
   },
-  withErrorHandling('ghost_create_tag', createTagSchema, 'Tag creation', async (input) => {
+  withErrorHandling('ghost_create_tag', createTagSchema, async (input) => {
     const createdTag = await ghostService.createTag(input);
     console.error(`Tag created successfully. Tag ID: ${createdTag.id}`);
 
@@ -205,7 +206,7 @@ server.registerTool(
     description: 'Retrieves a single tag from Ghost CMS by ID or slug.',
     inputSchema: getTagSchema,
   },
-  withErrorHandling('ghost_get_tag', getTagSchema, 'Tag retrieval', async (input) => {
+  withErrorHandling('ghost_get_tag', getTagSchema, async (input) => {
     const options = {};
     if (input.include !== undefined) options.include = input.include;
 
@@ -227,7 +228,7 @@ server.registerTool(
     description: 'Updates an existing tag in Ghost CMS.',
     inputSchema: updateTagInputSchema,
   },
-  withErrorHandling('ghost_update_tag', updateTagInputSchema, 'Tag update', async (input) => {
+  withErrorHandling('ghost_update_tag', updateTagInputSchema, async (input) => {
     const { id, ...updateData } = input;
     const updatedTag = await ghostService.updateTag(id, updateData);
     console.error(`Tag updated successfully. Tag ID: ${updatedTag.id}`);
@@ -246,7 +247,7 @@ server.registerTool(
       'Deletes a tag from Ghost CMS by ID. This operation is permanent and cannot be undone.',
     inputSchema: deleteTagSchema,
   },
-  withErrorHandling('ghost_delete_tag', deleteTagSchema, 'Tag deletion', async (input) => {
+  withErrorHandling('ghost_delete_tag', deleteTagSchema, async (input) => {
     const { id } = input;
     await ghostService.deleteTag(id);
     console.error(`Tag deleted successfully. Tag ID: ${id}`);
@@ -395,7 +396,7 @@ server.registerTool(
     description: 'Creates a new post in Ghost CMS.',
     inputSchema: createPostSchema,
   },
-  withErrorHandling('ghost_create_post', createPostSchema, 'Post creation', async (input) => {
+  withErrorHandling('ghost_create_post', createPostSchema, async (input) => {
     const createdPost = await postService.createPostService(input);
     console.error(`Post created successfully. Post ID: ${createdPost.id}`);
 
@@ -413,7 +414,7 @@ server.registerTool(
       'Retrieves a list of posts from Ghost CMS with pagination, filtering, and sorting options.',
     inputSchema: getPostsSchema,
   },
-  withErrorHandling('ghost_get_posts', getPostsSchema, 'Posts retrieval', async (input) => {
+  withErrorHandling('ghost_get_posts', getPostsSchema, async (input) => {
     // Build options object with provided parameters
     const options = {};
     if (input.limit !== undefined) options.limit = input.limit;
@@ -441,7 +442,7 @@ server.registerTool(
     description: 'Retrieves a single post from Ghost CMS by ID or slug.',
     inputSchema: getPostSchema,
   },
-  withErrorHandling('ghost_get_post', getPostSchema, 'Post retrieval', async (input) => {
+  withErrorHandling('ghost_get_post', getPostSchema, async (input) => {
     // Build options object
     const options = {};
     if (input.include !== undefined) options.include = input.include;
@@ -465,7 +466,7 @@ server.registerTool(
     description: 'Search for posts in Ghost CMS by query string with optional status filtering.',
     inputSchema: searchPostsSchema,
   },
-  withErrorHandling('ghost_search_posts', searchPostsSchema, 'Post search', async (input) => {
+  withErrorHandling('ghost_search_posts', searchPostsSchema, async (input) => {
     // Build options object with provided parameters
     const options = {};
     if (input.status !== undefined) options.status = input.status;
@@ -488,7 +489,7 @@ server.registerTool(
       'Updates an existing post in Ghost CMS. Can update title, content, status, tags, images, and SEO fields. Only the provided fields are changed; omitted fields remain unchanged. Note: tags and authors arrays are fully replaced, not merged with existing values.',
     inputSchema: updatePostInputSchema,
   },
-  withErrorHandling('ghost_update_post', updatePostInputSchema, 'Post update', async (input) => {
+  withErrorHandling('ghost_update_post', updatePostInputSchema, async (input) => {
     // Extract ID from input and build update data
     const { id, ...updateData } = input;
 
@@ -509,7 +510,7 @@ server.registerTool(
       'Deletes a post from Ghost CMS by ID. This operation is permanent and cannot be undone.',
     inputSchema: deletePostSchema,
   },
-  withErrorHandling('ghost_delete_post', deletePostSchema, 'Post deletion', async (input) => {
+  withErrorHandling('ghost_delete_post', deletePostSchema, async (input) => {
     const { id } = input;
     await ghostService.deletePost(id);
     console.error(`Post deleted successfully. Post ID: ${id}`);
@@ -571,7 +572,7 @@ server.registerTool(
       'Retrieves a list of pages from Ghost CMS with pagination, filtering, and sorting options.',
     inputSchema: pageQuerySchema,
   },
-  withErrorHandling('ghost_get_pages', pageQuerySchema, 'Page query', async (input) => {
+  withErrorHandling('ghost_get_pages', pageQuerySchema, async (input) => {
     const options = {};
     if (input.limit !== undefined) options.limit = input.limit;
     if (input.page !== undefined) options.page = input.page;
@@ -597,7 +598,7 @@ server.registerTool(
     description: 'Retrieves a single page from Ghost CMS by ID or slug.',
     inputSchema: getPageSchema,
   },
-  withErrorHandling('ghost_get_page', getPageSchema, 'Get page', async (input) => {
+  withErrorHandling('ghost_get_page', getPageSchema, async (input) => {
     const options = {};
     if (input.include !== undefined) options.include = input.include;
 
@@ -620,7 +621,7 @@ server.registerTool(
       'Creates a new page in Ghost CMS. Note: Pages do NOT typically use tags (unlike posts).',
     inputSchema: createPageSchema,
   },
-  withErrorHandling('ghost_create_page', createPageSchema, 'Page creation', async (input) => {
+  withErrorHandling('ghost_create_page', createPageSchema, async (input) => {
     const createdPage = await pageService.createPageService(input);
     console.error(`Page created successfully. Page ID: ${createdPage.id}`);
 
@@ -638,7 +639,7 @@ server.registerTool(
       'Updates an existing page in Ghost CMS. Can update title, content, status, images, and SEO fields. Only the provided fields are changed; omitted fields remain unchanged.',
     inputSchema: updatePageInputSchema,
   },
-  withErrorHandling('ghost_update_page', updatePageInputSchema, 'Page update', async (input) => {
+  withErrorHandling('ghost_update_page', updatePageInputSchema, async (input) => {
     const { id, ...updateData } = input;
 
     const updatedPage = await ghostService.updatePage(id, updateData);
@@ -658,7 +659,7 @@ server.registerTool(
       'Deletes a page from Ghost CMS by ID. This operation is permanent and cannot be undone.',
     inputSchema: deletePageSchema,
   },
-  withErrorHandling('ghost_delete_page', deletePageSchema, 'Page deletion', async (input) => {
+  withErrorHandling('ghost_delete_page', deletePageSchema, async (input) => {
     const { id } = input;
     await ghostService.deletePage(id);
     console.error(`Page deleted successfully. Page ID: ${id}`);
@@ -676,7 +677,7 @@ server.registerTool(
     description: 'Search for pages in Ghost CMS by query string with optional status filtering.',
     inputSchema: searchPagesSchema,
   },
-  withErrorHandling('ghost_search_pages', searchPagesSchema, 'Page search', async (input) => {
+  withErrorHandling('ghost_search_pages', searchPagesSchema, async (input) => {
     const options = {};
     if (input.status !== undefined) options.status = input.status;
     if (input.limit !== undefined) options.limit = input.limit;
@@ -728,7 +729,7 @@ server.registerTool(
     description: 'Creates a new member (subscriber) in Ghost CMS.',
     inputSchema: createMemberSchema,
   },
-  withErrorHandling('ghost_create_member', createMemberSchema, 'Member creation', async (input) => {
+  withErrorHandling('ghost_create_member', createMemberSchema, async (input) => {
     const createdMember = await ghostService.createMember(input);
     console.error(`Member created successfully. Member ID: ${createdMember.id}`);
 
@@ -745,21 +746,16 @@ server.registerTool(
     description: 'Updates an existing member in Ghost CMS. All fields except id are optional.',
     inputSchema: updateMemberInputSchema,
   },
-  withErrorHandling(
-    'ghost_update_member',
-    updateMemberInputSchema,
-    'Member update',
-    async (input) => {
-      const { id, ...updateData } = input;
+  withErrorHandling('ghost_update_member', updateMemberInputSchema, async (input) => {
+    const { id, ...updateData } = input;
 
-      const updatedMember = await ghostService.updateMember(id, updateData);
-      console.error(`Member updated successfully. Member ID: ${updatedMember.id}`);
+    const updatedMember = await ghostService.updateMember(id, updateData);
+    console.error(`Member updated successfully. Member ID: ${updatedMember.id}`);
 
-      return {
-        content: [{ type: 'text', text: JSON.stringify(updatedMember, null, 2) }],
-      };
-    }
-  )
+    return {
+      content: [{ type: 'text', text: JSON.stringify(updatedMember, null, 2) }],
+    };
+  })
 );
 
 // Delete Member Tool
@@ -770,7 +766,7 @@ server.registerTool(
       'Deletes a member from Ghost CMS by ID. This operation is permanent and cannot be undone.',
     inputSchema: deleteMemberSchema,
   },
-  withErrorHandling('ghost_delete_member', deleteMemberSchema, 'Member deletion', async (input) => {
+  withErrorHandling('ghost_delete_member', deleteMemberSchema, async (input) => {
     const { id } = input;
     await ghostService.deleteMember(id);
     console.error(`Member deleted successfully. Member ID: ${id}`);
@@ -789,7 +785,7 @@ server.registerTool(
       'Retrieves a list of members (subscribers) from Ghost CMS with optional filtering, pagination, and includes.',
     inputSchema: getMembersSchema,
   },
-  withErrorHandling('ghost_get_members', getMembersSchema, 'Member query', async (input) => {
+  withErrorHandling('ghost_get_members', getMembersSchema, async (input) => {
     const options = {};
     if (input.limit !== undefined) options.limit = input.limit;
     if (input.page !== undefined) options.page = input.page;
@@ -814,7 +810,7 @@ server.registerTool(
       'Retrieves a single member from Ghost CMS by ID or email. Provide either id OR email.',
     inputSchema: getMemberSchema,
   },
-  withErrorHandling('ghost_get_member', getMemberSchema, 'Member lookup', async (input) => {
+  withErrorHandling('ghost_get_member', getMemberSchema, async (input) => {
     const { id, email } = input;
     const member = await ghostService.getMember({ id, email });
     console.error(`Retrieved member: ${member.email} (ID: ${member.id})`);
@@ -832,7 +828,7 @@ server.registerTool(
     description: 'Searches for members by name or email in Ghost CMS.',
     inputSchema: searchMembersSchema,
   },
-  withErrorHandling('ghost_search_members', searchMembersSchema, 'Member search', async (input) => {
+  withErrorHandling('ghost_search_members', searchMembersSchema, async (input) => {
     const { query, limit } = input;
     const options = {};
     if (limit !== undefined) options.limit = limit;
@@ -862,25 +858,20 @@ server.registerTool(
     description: 'Retrieves a list of newsletters from Ghost CMS with optional filtering.',
     inputSchema: newsletterQuerySchema,
   },
-  withErrorHandling(
-    'ghost_get_newsletters',
-    newsletterQuerySchema,
-    'Newsletter query',
-    async (input) => {
-      const options = {};
-      if (input.limit !== undefined) options.limit = input.limit;
-      if (input.page !== undefined) options.page = input.page;
-      if (input.filter !== undefined) options.filter = input.filter;
-      if (input.order !== undefined) options.order = input.order;
+  withErrorHandling('ghost_get_newsletters', newsletterQuerySchema, async (input) => {
+    const options = {};
+    if (input.limit !== undefined) options.limit = input.limit;
+    if (input.page !== undefined) options.page = input.page;
+    if (input.filter !== undefined) options.filter = input.filter;
+    if (input.order !== undefined) options.order = input.order;
 
-      const newsletters = await ghostService.getNewsletters(options);
-      console.error(`Retrieved ${newsletters.length} newsletters from Ghost.`);
+    const newsletters = await ghostService.getNewsletters(options);
+    console.error(`Retrieved ${newsletters.length} newsletters from Ghost.`);
 
-      return {
-        content: [{ type: 'text', text: JSON.stringify(newsletters, null, 2) }],
-      };
-    }
-  )
+    return {
+      content: [{ type: 'text', text: JSON.stringify(newsletters, null, 2) }],
+    };
+  })
 );
 
 // Get Newsletter Tool
@@ -890,20 +881,15 @@ server.registerTool(
     description: 'Retrieves a single newsletter from Ghost CMS by ID.',
     inputSchema: getNewsletterSchema,
   },
-  withErrorHandling(
-    'ghost_get_newsletter',
-    getNewsletterSchema,
-    'Newsletter retrieval',
-    async (input) => {
-      const { id } = input;
-      const newsletter = await ghostService.getNewsletter(id);
-      console.error(`Retrieved newsletter: ${newsletter.name} (ID: ${newsletter.id})`);
+  withErrorHandling('ghost_get_newsletter', getNewsletterSchema, async (input) => {
+    const { id } = input;
+    const newsletter = await ghostService.getNewsletter(id);
+    console.error(`Retrieved newsletter: ${newsletter.name} (ID: ${newsletter.id})`);
 
-      return {
-        content: [{ type: 'text', text: JSON.stringify(newsletter, null, 2) }],
-      };
-    }
-  )
+    return {
+      content: [{ type: 'text', text: JSON.stringify(newsletter, null, 2) }],
+    };
+  })
 );
 
 // Create Newsletter Tool
@@ -914,19 +900,14 @@ server.registerTool(
       'Creates a new newsletter in Ghost CMS with customizable sender settings and display options.',
     inputSchema: createNewsletterSchema,
   },
-  withErrorHandling(
-    'ghost_create_newsletter',
-    createNewsletterSchema,
-    'Newsletter creation',
-    async (input) => {
-      const createdNewsletter = await newsletterService.createNewsletterService(input);
-      console.error(`Newsletter created successfully. Newsletter ID: ${createdNewsletter.id}`);
+  withErrorHandling('ghost_create_newsletter', createNewsletterSchema, async (input) => {
+    const createdNewsletter = await newsletterService.createNewsletterService(input);
+    console.error(`Newsletter created successfully. Newsletter ID: ${createdNewsletter.id}`);
 
-      return {
-        content: [{ type: 'text', text: JSON.stringify(createdNewsletter, null, 2) }],
-      };
-    }
-  )
+    return {
+      content: [{ type: 'text', text: JSON.stringify(createdNewsletter, null, 2) }],
+    };
+  })
 );
 
 // Update Newsletter Tool
@@ -937,21 +918,16 @@ server.registerTool(
       'Updates an existing newsletter in Ghost CMS. Can update name, description, sender settings, and display options.',
     inputSchema: updateNewsletterInputSchema,
   },
-  withErrorHandling(
-    'ghost_update_newsletter',
-    updateNewsletterInputSchema,
-    'Newsletter update',
-    async (input) => {
-      const { id, ...updateData } = input;
+  withErrorHandling('ghost_update_newsletter', updateNewsletterInputSchema, async (input) => {
+    const { id, ...updateData } = input;
 
-      const updatedNewsletter = await ghostService.updateNewsletter(id, updateData);
-      console.error(`Newsletter updated successfully. Newsletter ID: ${updatedNewsletter.id}`);
+    const updatedNewsletter = await ghostService.updateNewsletter(id, updateData);
+    console.error(`Newsletter updated successfully. Newsletter ID: ${updatedNewsletter.id}`);
 
-      return {
-        content: [{ type: 'text', text: JSON.stringify(updatedNewsletter, null, 2) }],
-      };
-    }
-  )
+    return {
+      content: [{ type: 'text', text: JSON.stringify(updatedNewsletter, null, 2) }],
+    };
+  })
 );
 
 // Delete Newsletter Tool
@@ -962,20 +938,15 @@ server.registerTool(
       'Deletes a newsletter from Ghost CMS by ID. This operation is permanent and cannot be undone.',
     inputSchema: deleteNewsletterSchema,
   },
-  withErrorHandling(
-    'ghost_delete_newsletter',
-    deleteNewsletterSchema,
-    'Newsletter deletion',
-    async (input) => {
-      const { id } = input;
-      await ghostService.deleteNewsletter(id);
-      console.error(`Newsletter deleted successfully. Newsletter ID: ${id}`);
+  withErrorHandling('ghost_delete_newsletter', deleteNewsletterSchema, async (input) => {
+    const { id } = input;
+    await ghostService.deleteNewsletter(id);
+    console.error(`Newsletter deleted successfully. Newsletter ID: ${id}`);
 
-      return {
-        content: [{ type: 'text', text: `Newsletter ${id} has been successfully deleted.` }],
-      };
-    }
-  )
+    return {
+      content: [{ type: 'text', text: `Newsletter ${id} has been successfully deleted.` }],
+    };
+  })
 );
 
 // --- Tier Tools ---
@@ -993,7 +964,7 @@ server.registerTool(
       'Retrieves a list of tiers (membership levels) from Ghost CMS with optional filtering by type (free/paid).',
     inputSchema: tierQuerySchema,
   },
-  withErrorHandling('ghost_get_tiers', tierQuerySchema, 'Tier query', async (input) => {
+  withErrorHandling('ghost_get_tiers', tierQuerySchema, async (input) => {
     const tiers = await ghostService.getTiers(input);
     console.error(`Retrieved ${tiers.length} tiers`);
 
@@ -1010,7 +981,7 @@ server.registerTool(
     description: 'Retrieves a single tier (membership level) from Ghost CMS by ID.',
     inputSchema: getTierSchema,
   },
-  withErrorHandling('ghost_get_tier', getTierSchema, 'Tier retrieval', async (input) => {
+  withErrorHandling('ghost_get_tier', getTierSchema, async (input) => {
     const { id } = input;
     const tier = await ghostService.getTier(id);
     console.error(`Tier retrieved successfully. Tier ID: ${tier.id}`);
@@ -1028,7 +999,7 @@ server.registerTool(
     description: 'Creates a new tier (membership level) in Ghost CMS with pricing and benefits.',
     inputSchema: createTierSchema,
   },
-  withErrorHandling('ghost_create_tier', createTierSchema, 'Tier creation', async (input) => {
+  withErrorHandling('ghost_create_tier', createTierSchema, async (input) => {
     const tier = await ghostService.createTier(input);
     console.error(`Tier created successfully. Tier ID: ${tier.id}`);
 
@@ -1046,7 +1017,7 @@ server.registerTool(
       'Updates an existing tier (membership level) in Ghost CMS. Can update pricing, benefits, and other tier properties.',
     inputSchema: updateTierInputSchema,
   },
-  withErrorHandling('ghost_update_tier', updateTierInputSchema, 'Tier update', async (input) => {
+  withErrorHandling('ghost_update_tier', updateTierInputSchema, async (input) => {
     const { id, ...updateData } = input;
 
     const updatedTier = await ghostService.updateTier(id, updateData);
@@ -1066,7 +1037,7 @@ server.registerTool(
       'Deletes a tier (membership level) from Ghost CMS by ID. This operation is permanent and cannot be undone.',
     inputSchema: deleteTierSchema,
   },
-  withErrorHandling('ghost_delete_tier', deleteTierSchema, 'Tier deletion', async (input) => {
+  withErrorHandling('ghost_delete_tier', deleteTierSchema, async (input) => {
     const { id } = input;
     await ghostService.deleteTier(id);
     console.error(`Tier deleted successfully. Tier ID: ${id}`);
