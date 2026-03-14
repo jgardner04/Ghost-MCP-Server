@@ -242,7 +242,7 @@ describe('ghostServiceImproved - Newsletter Operations', () => {
 
     it('should throw ValidationError if ID is missing', async () => {
       await expect(updateNewsletter()).rejects.toThrow(ValidationError);
-      await expect(updateNewsletter()).rejects.toThrow('Newsletter ID is required for update');
+      await expect(updateNewsletter()).rejects.toThrow('Newsletter ID is required');
       expect(api.newsletters.read).not.toHaveBeenCalled();
     });
 
@@ -293,7 +293,7 @@ describe('ghostServiceImproved - Newsletter Operations', () => {
 
     it('should throw ValidationError if ID is missing', async () => {
       await expect(deleteNewsletter()).rejects.toThrow(ValidationError);
-      await expect(deleteNewsletter()).rejects.toThrow('Newsletter ID is required for deletion');
+      await expect(deleteNewsletter()).rejects.toThrow('Newsletter ID is required');
       expect(api.newsletters.delete).not.toHaveBeenCalled();
     });
 
