@@ -219,7 +219,7 @@ describe('mcp_server - ghost_get_pages tool', () => {
     const result = await tool.handler({});
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Error retrieving pages');
+    expect(result.content[0].text).toContain('Error in ghost_get_pages');
   });
 });
 
@@ -286,7 +286,7 @@ describe('mcp_server - ghost_get_page tool', () => {
     const result = await tool.handler({ id: '507f1f77bcf86cd799439099' });
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Error retrieving page');
+    expect(result.content[0].text).toContain('Error in ghost_get_page');
   });
 });
 
@@ -361,7 +361,7 @@ describe('mcp_server - ghost_create_page tool', () => {
     const result = await tool.handler({ title: 'Test', html: '<p>Content</p>' });
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Error creating page');
+    expect(result.content[0].text).toContain('Error in ghost_create_page');
   });
 });
 
@@ -433,7 +433,7 @@ describe('mcp_server - ghost_update_page tool', () => {
     const result = await tool.handler({ id: '507f1f77bcf86cd799439099', title: 'Test' });
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Error updating page');
+    expect(result.content[0].text).toContain('Error in ghost_update_page');
   });
 });
 
@@ -473,7 +473,7 @@ describe('mcp_server - ghost_delete_page tool', () => {
     const result = await tool.handler({ id: '507f1f77bcf86cd799439099' });
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Error deleting page');
+    expect(result.content[0].text).toContain('Error in ghost_delete_page');
   });
 });
 
@@ -548,6 +548,6 @@ describe('mcp_server - ghost_search_pages tool', () => {
     const result = await tool.handler({ query: 'test' });
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Error searching pages');
+    expect(result.content[0].text).toContain('Error in ghost_search_pages');
   });
 });
