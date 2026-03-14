@@ -369,8 +369,8 @@ describe('ghostServiceImproved - Pages', () => {
 
   describe('deletePage', () => {
     it('should throw error when page ID is missing', async () => {
-      await expect(deletePage(null)).rejects.toThrow('Page ID is required for deletion');
-      await expect(deletePage('')).rejects.toThrow('Page ID is required for deletion');
+      await expect(deletePage(null)).rejects.toThrow('Page ID is required');
+      await expect(deletePage('')).rejects.toThrow('Page ID is required');
     });
 
     it('should delete page successfully', async () => {

@@ -42,7 +42,18 @@ const ghostCircuitBreaker = new CircuitBreaker({
 });
 
 /**
- * Enhanced handler for Ghost Admin API requests with proper error handling
+ * Enhanced handler for Ghost Admin API requests with circuit breaker and retry logic.
+ * Routes requests to the appropriate Ghost API method based on the action type.
+ * @param {string} resource - Ghost API resource name (e.g., 'posts', 'pages', 'tags')
+ * @param {string} action - API action to perform ('add', 'edit', 'upload', 'browse', 'read', 'delete')
+ * @param {Object} [data={}] - Request payload data
+ * @param {Object} [options={}] - Additional options passed to the Ghost API (e.g., filters, includes)
+ * @param {Object} [config={}] - Execution configuration
+ * @param {number} [config.maxRetries=3] - Maximum number of retry attempts
+ * @param {boolean} [config.useCircuitBreaker=true] - Whether to use the circuit breaker
+ * @returns {Promise<Object>} The Ghost API response
+ * @throws {ValidationError} If the resource or action is invalid
+ * @throws {GhostAPIError} If the Ghost API returns an error after all retries
  */
 const handleApiRequest = async (resource, action, data = {}, options = {}, config = {}) => {
   // Validate inputs
@@ -122,6 +133,28 @@ const handleApiRequest = async (resource, action, data = {}, options = {}, confi
  * Input validation helpers
  */
 const validators = {
+  /**
+   * Validates that an ID is a non-empty string. Used by CRUD helpers to enforce
+   * consistent ID validation across all resource types.
+   * @param {string} id - The resource ID to validate
+   * @param {string} entityName - Human-readable resource name for error messages (e.g., 'Post', 'Tag')
+   * @throws {ValidationError} If the ID is falsy, not a string, or empty/whitespace
+   */
+  requireId(id, entityName) {
+    if (!id || typeof id !== 'string' || id.trim().length === 0) {
+      throw new ValidationError(`${entityName} ID is required`);
+    }
+  },
+
+  /**
+   * Validates scheduling fields for posts and pages. Ensures published_at is present
+   * when status is 'scheduled' and that the date is valid and in the future.
+   * @param {Object} data - The resource data containing status and/or published_at
+   * @param {string} [data.status] - Resource status ('draft', 'published', 'scheduled')
+   * @param {string} [data.published_at] - ISO 8601 date string for scheduling
+   * @param {string} [resourceLabel='Resource'] - Human-readable label for error messages
+   * @throws {ValidationError} If scheduling validation fails
+   */
   validateScheduledStatus(data, resourceLabel = 'Resource') {
     const errors = [];
 
@@ -146,6 +179,17 @@ const validators = {
     }
   },
 
+  /**
+   * Validates post creation data. Requires a title and either html or mobiledoc content.
+   * Also validates status values and delegates to validateScheduledStatus for scheduling.
+   * @param {Object} postData - The post data to validate
+   * @param {string} postData.title - Post title (required, non-empty)
+   * @param {string} [postData.html] - HTML content (required if mobiledoc not provided)
+   * @param {string} [postData.mobiledoc] - Mobiledoc content (required if html not provided)
+   * @param {string} [postData.status] - Post status ('draft', 'published', 'scheduled')
+   * @param {string} [postData.published_at] - ISO 8601 date for scheduled posts
+   * @throws {ValidationError} If validation fails
+   */
   validatePostData(postData) {
     const errors = [];
 
@@ -171,6 +215,13 @@ const validators = {
     this.validateScheduledStatus(postData, 'Post');
   },
 
+  /**
+   * Validates tag creation data. Requires a non-empty name and validates slug format.
+   * @param {Object} tagData - The tag data to validate
+   * @param {string} tagData.name - Tag name (required, non-empty)
+   * @param {string} [tagData.slug] - Tag slug (lowercase letters, numbers, hyphens only)
+   * @throws {ValidationError} If validation fails
+   */
   validateTagData(tagData) {
     const errors = [];
 
@@ -190,6 +241,14 @@ const validators = {
     }
   },
 
+  /**
+   * Validates tag update data. Name is optional but cannot be empty if provided.
+   * Validates slug format if provided.
+   * @param {Object} updateData - The tag update data to validate
+   * @param {string} [updateData.name] - Tag name (cannot be empty if provided)
+   * @param {string} [updateData.slug] - Tag slug (lowercase letters, numbers, hyphens only)
+   * @throws {ValidationError} If validation fails
+   */
   validateTagUpdateData(updateData) {
     const errors = [];
 
@@ -211,6 +270,13 @@ const validators = {
     }
   },
 
+  /**
+   * Validates that an image path is a non-empty string and that the file exists on disk.
+   * @param {string} imagePath - Absolute path to the image file
+   * @returns {Promise<void>}
+   * @throws {ValidationError} If imagePath is falsy or not a string
+   * @throws {NotFoundError} If the file does not exist at the given path
+   */
   async validateImagePath(imagePath) {
     if (!imagePath || typeof imagePath !== 'string') {
       throw new ValidationError('Image path is required and must be a string');
@@ -224,6 +290,17 @@ const validators = {
     }
   },
 
+  /**
+   * Validates page creation data. Requires a title and either html or mobiledoc content.
+   * Also validates status values and delegates to validateScheduledStatus for scheduling.
+   * @param {Object} pageData - The page data to validate
+   * @param {string} pageData.title - Page title (required, non-empty)
+   * @param {string} [pageData.html] - HTML content (required if mobiledoc not provided)
+   * @param {string} [pageData.mobiledoc] - Mobiledoc content (required if html not provided)
+   * @param {string} [pageData.status] - Page status ('draft', 'published', 'scheduled')
+   * @param {string} [pageData.published_at] - ISO 8601 date for scheduled pages
+   * @throws {ValidationError} If validation fails
+   */
   validatePageData(pageData) {
     const errors = [];
 
@@ -249,6 +326,12 @@ const validators = {
     this.validateScheduledStatus(pageData, 'Page');
   },
 
+  /**
+   * Validates newsletter creation data. Requires a non-empty name.
+   * @param {Object} newsletterData - The newsletter data to validate
+   * @param {string} newsletterData.name - Newsletter name (required, non-empty)
+   * @throws {ValidationError} If validation fails
+   */
   validateNewsletterData(newsletterData) {
     const errors = [];
 
@@ -263,10 +346,18 @@ const validators = {
 };
 
 /**
- * Shared CRUD helper: read a single resource by ID with 404→NotFoundError handling
+ * Reads a single resource by ID with 404-to-NotFoundError handling.
+ * @param {string} resource - Ghost API resource name (e.g., 'posts', 'tags')
+ * @param {string} id - The resource ID to read
+ * @param {string} label - Human-readable resource label for error messages
+ * @param {Object} [options={}] - Additional options passed to the Ghost API
+ * @returns {Promise<Object>} The resource object from Ghost
+ * @throws {ValidationError} If the ID is missing or invalid
+ * @throws {NotFoundError} If the resource is not found (404)
+ * @throws {GhostAPIError} If the API request fails for other reasons
  */
 async function readResource(resource, id, label, options = {}) {
-  if (!id) throw new ValidationError(`${label} ID is required`);
+  validators.requireId(id, label);
   try {
     return await handleApiRequest(resource, 'read', { id }, options);
   } catch (error) {
@@ -278,8 +369,17 @@ async function readResource(resource, id, label, options = {}) {
 }
 
 /**
- * Shared CRUD helper: update a resource with optimistic concurrency control (OCC)
- * Reads the current version, merges updated_at, then edits.
+ * Updates a resource using optimistic concurrency control (OCC).
+ * Reads the current version first to obtain updated_at, then merges it into the edit payload.
+ * @param {string} resource - Ghost API resource name (e.g., 'posts', 'tags')
+ * @param {string} id - The resource ID to update
+ * @param {Object} updateData - Fields to update on the resource
+ * @param {Object} [options={}] - Additional options passed to the Ghost API
+ * @param {string} [label=resource] - Human-readable resource label for error messages
+ * @returns {Promise<Object>} The updated resource object from Ghost
+ * @throws {ValidationError} If the ID is missing or invalid
+ * @throws {NotFoundError} If the resource is not found (404)
+ * @throws {GhostAPIError} If the API request fails for other reasons
  */
 async function updateWithOCC(resource, id, updateData, options = {}, label = resource) {
   const existing = await readResource(resource, id, label);
@@ -295,10 +395,17 @@ async function updateWithOCC(resource, id, updateData, options = {}, label = res
 }
 
 /**
- * Shared CRUD helper: delete a resource by ID with 404→NotFoundError handling
+ * Deletes a resource by ID with 404-to-NotFoundError handling.
+ * @param {string} resource - Ghost API resource name (e.g., 'posts', 'tags')
+ * @param {string} id - The resource ID to delete
+ * @param {string} label - Human-readable resource label for error messages
+ * @returns {Promise<Object>} The Ghost API deletion response
+ * @throws {ValidationError} If the ID is missing or invalid
+ * @throws {NotFoundError} If the resource is not found (404)
+ * @throws {GhostAPIError} If the API request fails for other reasons
  */
 async function deleteResource(resource, id, label) {
-  if (!id) throw new ValidationError(`${label} ID is required for deletion`);
+  validators.requireId(id, label);
   try {
     return await handleApiRequest(resource, 'delete', { id });
   } catch (error) {
@@ -313,10 +420,28 @@ async function deleteResource(resource, id, label) {
  * Service functions with enhanced error handling
  */
 
+/**
+ * Retrieves Ghost site metadata (title, version, URL).
+ * @returns {Promise<Object>} Site information object
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function getSiteInfo() {
   return handleApiRequest('site', 'read');
 }
 
+/**
+ * Creates a new post in Ghost CMS.
+ * @param {Object} postData - The post data
+ * @param {string} postData.title - Post title (required)
+ * @param {string} [postData.html] - HTML content (required if mobiledoc not provided)
+ * @param {string} [postData.mobiledoc] - Mobiledoc content (required if html not provided)
+ * @param {string} [postData.status='draft'] - Post status ('draft', 'published', 'scheduled')
+ * @param {string} [postData.published_at] - ISO 8601 date for scheduled posts
+ * @param {Object} [options={ source: 'html' }] - API request options
+ * @returns {Promise<Object>} The created post object
+ * @throws {ValidationError} If validation fails or Ghost returns a 422
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function createPost(postData, options = { source: 'html' }) {
   // Validate input
   validators.validatePostData(postData);
@@ -342,10 +467,19 @@ export async function createPost(postData, options = { source: 'html' }) {
   }
 }
 
+/**
+ * Updates an existing post with optimistic concurrency control.
+ * Validates scheduling fields when status or published_at is being changed.
+ * @param {string} postId - The post ID to update
+ * @param {Object} updateData - Fields to update on the post
+ * @param {Object} [options={}] - API request options
+ * @returns {Promise<Object>} The updated post object
+ * @throws {ValidationError} If the post ID is missing or scheduling validation fails
+ * @throws {NotFoundError} If the post is not found
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function updatePost(postId, updateData, options = {}) {
-  if (!postId) {
-    throw new ValidationError('Post ID is required for update');
-  }
+  validators.requireId(postId, 'Post');
 
   // Validate scheduled status when status or published_at is being updated
   if (updateData.status || updateData.published_at) {
@@ -361,14 +495,41 @@ export async function updatePost(postId, updateData, options = {}) {
   return updateWithOCC('posts', postId, updateData, options, 'Post');
 }
 
+/**
+ * Deletes a post by ID.
+ * @param {string} postId - The post ID to delete
+ * @returns {Promise<Object>} Deletion confirmation
+ * @throws {ValidationError} If the post ID is missing
+ * @throws {NotFoundError} If the post is not found
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function deletePost(postId) {
   return deleteResource('posts', postId, 'Post');
 }
 
+/**
+ * Retrieves a single post by ID.
+ * @param {string} postId - The post ID to retrieve
+ * @param {Object} [options={}] - API request options (e.g., includes)
+ * @returns {Promise<Object>} The post object
+ * @throws {ValidationError} If the post ID is missing
+ * @throws {NotFoundError} If the post is not found
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function getPost(postId, options = {}) {
   return readResource('posts', postId, 'Post', options);
 }
 
+/**
+ * Lists posts with optional filtering and pagination.
+ * @param {Object} [options={}] - Query options
+ * @param {number} [options.limit=15] - Number of posts to return
+ * @param {string} [options.include='tags,authors'] - Related resources to include
+ * @param {string} [options.filter] - NQL filter string
+ * @param {string} [options.order] - Order string (e.g., 'published_at desc')
+ * @returns {Promise<Array>} Array of post objects
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function getPosts(options = {}) {
   const defaultOptions = {
     limit: 15,
@@ -379,6 +540,16 @@ export async function getPosts(options = {}) {
   return handleApiRequest('posts', 'browse', {}, defaultOptions);
 }
 
+/**
+ * Searches posts by title using Ghost NQL fuzzy matching.
+ * @param {string} query - Search query string (required, non-empty)
+ * @param {Object} [options={}] - Additional search options
+ * @param {string} [options.status] - Filter by status ('draft', 'published', 'scheduled', or 'all')
+ * @param {number} [options.limit=15] - Maximum number of results
+ * @returns {Promise<Array>} Array of matching post objects
+ * @throws {ValidationError} If the query is empty
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function searchPosts(query, options = {}) {
   // Validate query
   if (!query || query.trim().length === 0) {
@@ -410,6 +581,19 @@ export async function searchPosts(query, options = {}) {
  * Pages are similar to posts but do NOT support tags
  */
 
+/**
+ * Creates a new page in Ghost CMS.
+ * @param {Object} pageData - The page data
+ * @param {string} pageData.title - Page title (required)
+ * @param {string} [pageData.html] - HTML content (required if mobiledoc not provided)
+ * @param {string} [pageData.mobiledoc] - Mobiledoc content (required if html not provided)
+ * @param {string} [pageData.status='draft'] - Page status ('draft', 'published', 'scheduled')
+ * @param {string} [pageData.published_at] - ISO 8601 date for scheduled pages
+ * @param {Object} [options={ source: 'html' }] - API request options
+ * @returns {Promise<Object>} The created page object
+ * @throws {ValidationError} If validation fails or Ghost returns a 422
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function createPage(pageData, options = { source: 'html' }) {
   // Validate input
   validators.validatePageData(pageData);
@@ -434,10 +618,19 @@ export async function createPage(pageData, options = { source: 'html' }) {
   }
 }
 
+/**
+ * Updates an existing page with optimistic concurrency control.
+ * Validates scheduling fields when status or published_at is being changed.
+ * @param {string} pageId - The page ID to update
+ * @param {Object} updateData - Fields to update on the page
+ * @param {Object} [options={}] - API request options
+ * @returns {Promise<Object>} The updated page object
+ * @throws {ValidationError} If the page ID is missing or scheduling validation fails
+ * @throws {NotFoundError} If the page is not found
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function updatePage(pageId, updateData, options = {}) {
-  if (!pageId) {
-    throw new ValidationError('Page ID is required for update');
-  }
+  validators.requireId(pageId, 'Page');
 
   // SECURITY: HTML must be sanitized before reaching this function. See htmlContentSchema in schemas/common.js
 
@@ -455,14 +648,41 @@ export async function updatePage(pageId, updateData, options = {}) {
   return updateWithOCC('pages', pageId, updateData, options, 'Page');
 }
 
+/**
+ * Deletes a page by ID.
+ * @param {string} pageId - The page ID to delete
+ * @returns {Promise<Object>} Deletion confirmation
+ * @throws {ValidationError} If the page ID is missing
+ * @throws {NotFoundError} If the page is not found
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function deletePage(pageId) {
   return deleteResource('pages', pageId, 'Page');
 }
 
+/**
+ * Retrieves a single page by ID.
+ * @param {string} pageId - The page ID to retrieve
+ * @param {Object} [options={}] - API request options (e.g., includes)
+ * @returns {Promise<Object>} The page object
+ * @throws {ValidationError} If the page ID is missing
+ * @throws {NotFoundError} If the page is not found
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function getPage(pageId, options = {}) {
   return readResource('pages', pageId, 'Page', options);
 }
 
+/**
+ * Lists pages with optional filtering and pagination.
+ * @param {Object} [options={}] - Query options
+ * @param {number} [options.limit=15] - Number of pages to return
+ * @param {string} [options.include='authors'] - Related resources to include
+ * @param {string} [options.filter] - NQL filter string
+ * @param {string} [options.order] - Order string
+ * @returns {Promise<Array>} Array of page objects
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function getPages(options = {}) {
   const defaultOptions = {
     limit: 15,
@@ -473,6 +693,16 @@ export async function getPages(options = {}) {
   return handleApiRequest('pages', 'browse', {}, defaultOptions);
 }
 
+/**
+ * Searches pages by title using Ghost NQL fuzzy matching.
+ * @param {string} query - Search query string (required, non-empty)
+ * @param {Object} [options={}] - Additional search options
+ * @param {string} [options.status] - Filter by status ('draft', 'published', 'scheduled', or 'all')
+ * @param {number} [options.limit=15] - Maximum number of results
+ * @returns {Promise<Array>} Array of matching page objects
+ * @throws {ValidationError} If the query is empty
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function searchPages(query, options = {}) {
   // Validate query
   if (!query || query.trim().length === 0) {
@@ -499,6 +729,14 @@ export async function searchPages(query, options = {}) {
   return handleApiRequest('pages', 'browse', {}, searchOptions);
 }
 
+/**
+ * Uploads an image to Ghost CMS from a local file path.
+ * @param {string} imagePath - Absolute path to the image file
+ * @returns {Promise<Object>} The uploaded image object with URL
+ * @throws {ValidationError} If the path is invalid or upload fails
+ * @throws {NotFoundError} If the file does not exist
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function uploadImage(imagePath) {
   // Validate input
   await validators.validateImagePath(imagePath);
@@ -515,6 +753,17 @@ export async function uploadImage(imagePath) {
   }
 }
 
+/**
+ * Creates a new tag in Ghost CMS. Auto-generates a slug from the name if not provided.
+ * If a tag with the same name already exists, returns the existing tag instead of failing.
+ * @param {Object} tagData - The tag data
+ * @param {string} tagData.name - Tag name (required)
+ * @param {string} [tagData.slug] - Tag slug (auto-generated from name if omitted)
+ * @param {string} [tagData.description] - Tag description
+ * @returns {Promise<Object>} The created (or existing) tag object
+ * @throws {ValidationError} If validation fails or Ghost returns a 422 (non-duplicate)
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function createTag(tagData) {
   // Validate input
   validators.validateTagData(tagData);
@@ -547,6 +796,15 @@ export async function createTag(tagData) {
   }
 }
 
+/**
+ * Lists tags with optional filtering and pagination.
+ * @param {Object} [options={}] - Query options
+ * @param {number} [options.limit=15] - Number of tags to return
+ * @param {string} [options.filter] - NQL filter string
+ * @param {string} [options.order] - Order string
+ * @returns {Promise<Array>} Array of tag objects (empty array if none found)
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function getTags(options = {}) {
   const tags = await handleApiRequest(
     'tags',
@@ -560,14 +818,33 @@ export async function getTags(options = {}) {
   return tags || [];
 }
 
+/**
+ * Retrieves a single tag by ID.
+ * @param {string} tagId - The tag ID to retrieve
+ * @param {Object} [options={}] - API request options
+ * @returns {Promise<Object>} The tag object
+ * @throws {ValidationError} If the tag ID is missing
+ * @throws {NotFoundError} If the tag is not found
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function getTag(tagId, options = {}) {
   return readResource('tags', tagId, 'Tag', options);
 }
 
+/**
+ * Updates an existing tag. Validates update data and checks that the tag exists first.
+ * @param {string} tagId - The tag ID to update
+ * @param {Object} updateData - Fields to update on the tag
+ * @param {string} [updateData.name] - Updated tag name
+ * @param {string} [updateData.slug] - Updated tag slug
+ * @param {string} [updateData.description] - Updated tag description
+ * @returns {Promise<Object>} The updated tag object
+ * @throws {ValidationError} If the tag ID is missing or update data is invalid
+ * @throws {NotFoundError} If the tag is not found
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function updateTag(tagId, updateData) {
-  if (!tagId) {
-    throw new ValidationError('Tag ID is required for update');
-  }
+  validators.requireId(tagId, 'Tag');
 
   validators.validateTagUpdateData(updateData);
 
@@ -587,6 +864,14 @@ export async function updateTag(tagId, updateData) {
   }
 }
 
+/**
+ * Deletes a tag by ID.
+ * @param {string} tagId - The tag ID to delete
+ * @returns {Promise<Object>} Deletion confirmation
+ * @throws {ValidationError} If the tag ID is missing
+ * @throws {NotFoundError} If the tag is not found
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function deleteTag(tagId) {
   return deleteResource('tags', tagId, 'Tag');
 }
@@ -642,9 +927,7 @@ export async function createMember(memberData, options = {}) {
  */
 export async function updateMember(memberId, updateData, options = {}) {
   // Input validation is performed at the MCP tool layer using Zod schemas
-  if (!memberId) {
-    throw new ValidationError('Member ID is required for update');
-  }
+  validators.requireId(memberId, 'Member');
 
   return updateWithOCC('members', memberId, updateData, options, 'Member');
 }
@@ -753,6 +1036,13 @@ export async function searchMembers(query, options = {}) {
  * Newsletter CRUD Operations
  */
 
+/**
+ * Lists all newsletters with optional filtering and pagination.
+ * @param {Object} [options={}] - Query options
+ * @param {string|number} [options.limit='all'] - Number of newsletters to return (default: 'all')
+ * @returns {Promise<Array>} Array of newsletter objects (empty array if none found)
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function getNewsletters(options = {}) {
   const defaultOptions = {
     limit: 'all',
@@ -763,10 +1053,29 @@ export async function getNewsletters(options = {}) {
   return newsletters || [];
 }
 
+/**
+ * Retrieves a single newsletter by ID.
+ * @param {string} newsletterId - The newsletter ID to retrieve
+ * @returns {Promise<Object>} The newsletter object
+ * @throws {ValidationError} If the newsletter ID is missing
+ * @throws {NotFoundError} If the newsletter is not found
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function getNewsletter(newsletterId) {
   return readResource('newsletters', newsletterId, 'Newsletter');
 }
 
+/**
+ * Creates a new newsletter in Ghost CMS.
+ * @param {Object} newsletterData - The newsletter data
+ * @param {string} newsletterData.name - Newsletter name (required)
+ * @param {string} [newsletterData.description] - Newsletter description
+ * @param {string} [newsletterData.sender_name] - Sender name
+ * @param {string} [newsletterData.sender_email] - Sender email
+ * @returns {Promise<Object>} The created newsletter object
+ * @throws {ValidationError} If validation fails or Ghost returns a 422
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function createNewsletter(newsletterData) {
   // Validate input
   validators.validateNewsletterData(newsletterData);
@@ -783,10 +1092,17 @@ export async function createNewsletter(newsletterData) {
   }
 }
 
+/**
+ * Updates an existing newsletter with optimistic concurrency control.
+ * @param {string} newsletterId - The newsletter ID to update
+ * @param {Object} updateData - Fields to update on the newsletter
+ * @returns {Promise<Object>} The updated newsletter object
+ * @throws {ValidationError} If the newsletter ID is missing or Ghost returns a 422
+ * @throws {NotFoundError} If the newsletter is not found
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function updateNewsletter(newsletterId, updateData) {
-  if (!newsletterId) {
-    throw new ValidationError('Newsletter ID is required for update');
-  }
+  validators.requireId(newsletterId, 'Newsletter');
 
   try {
     return await updateWithOCC('newsletters', newsletterId, updateData, {}, 'Newsletter');
@@ -800,6 +1116,14 @@ export async function updateNewsletter(newsletterId, updateData) {
   }
 }
 
+/**
+ * Deletes a newsletter by ID.
+ * @param {string} newsletterId - The newsletter ID to delete
+ * @returns {Promise<Object>} Deletion confirmation
+ * @throws {ValidationError} If the newsletter ID is missing
+ * @throws {NotFoundError} If the newsletter is not found
+ * @throws {GhostAPIError} If the API request fails
+ */
 export async function deleteNewsletter(newsletterId) {
   return deleteResource('newsletters', newsletterId, 'Newsletter');
 }
@@ -809,6 +1133,8 @@ export async function deleteNewsletter(newsletterId) {
  * @param {Object} tierData - Tier data
  * @param {Object} [options={}] - Options for the API request
  * @returns {Promise<Object>} Created tier
+ * @throws {ValidationError} If validation fails or Ghost returns a 422
+ * @throws {GhostAPIError} If the API request fails
  */
 export async function createTier(tierData, options = {}) {
   const { validateTierData } = await import('./tierService.js');
@@ -827,16 +1153,17 @@ export async function createTier(tierData, options = {}) {
 }
 
 /**
- * Update an existing tier
+ * Update an existing tier with optimistic concurrency control.
  * @param {string} id - Tier ID
  * @param {Object} updateData - Tier update data
  * @param {Object} [options={}] - Options for the API request
  * @returns {Promise<Object>} Updated tier
+ * @throws {ValidationError} If the tier ID is missing or update data is invalid
+ * @throws {NotFoundError} If the tier is not found
+ * @throws {GhostAPIError} If the API request fails
  */
 export async function updateTier(id, updateData, options = {}) {
-  if (!id || typeof id !== 'string' || id.trim().length === 0) {
-    throw new ValidationError('Tier ID is required for update');
-  }
+  validators.requireId(id, 'Tier');
 
   const { validateTierUpdateData } = await import('./tierService.js');
   validateTierUpdateData(updateData);
@@ -845,14 +1172,15 @@ export async function updateTier(id, updateData, options = {}) {
 }
 
 /**
- * Delete a tier
+ * Delete a tier by ID.
  * @param {string} id - Tier ID
  * @returns {Promise<Object>} Deletion result
+ * @throws {ValidationError} If the tier ID is missing
+ * @throws {NotFoundError} If the tier is not found
+ * @throws {GhostAPIError} If the API request fails
  */
 export async function deleteTier(id) {
-  if (!id || typeof id !== 'string' || id.trim().length === 0) {
-    throw new ValidationError('Tier ID is required for deletion');
-  }
+  validators.requireId(id, 'Tier');
 
   return deleteResource('tiers', id, 'Tier');
 }
@@ -866,6 +1194,7 @@ export async function deleteTier(id) {
  * @param {string} [options.order] - Order string
  * @param {string} [options.include] - Include string
  * @returns {Promise<Array>} Array of tiers
+ * @throws {GhostAPIError} If the API request fails
  */
 export async function getTiers(options = {}) {
   const { validateTierQueryOptions } = await import('./tierService.js');
@@ -881,20 +1210,22 @@ export async function getTiers(options = {}) {
 }
 
 /**
- * Get a single tier by ID
+ * Get a single tier by ID.
  * @param {string} id - Tier ID
  * @returns {Promise<Object>} Tier object
+ * @throws {ValidationError} If the tier ID is missing
+ * @throws {NotFoundError} If the tier is not found
+ * @throws {GhostAPIError} If the API request fails
  */
 export async function getTier(id) {
-  if (!id || typeof id !== 'string' || id.trim().length === 0) {
-    throw new ValidationError('Tier ID is required and must be a non-empty string');
-  }
+  validators.requireId(id, 'Tier');
 
   return readResource('tiers', id, 'Tier');
 }
 
 /**
- * Health check for Ghost API connection
+ * Checks the health of the Ghost API connection and circuit breaker state.
+ * @returns {Promise<Object>} Health status with site info, circuit breaker state, and timestamp
  */
 export async function checkHealth() {
   try {
@@ -922,7 +1253,7 @@ export async function checkHealth() {
 }
 
 // Export everything including the API client for backward compatibility
-export { api, handleApiRequest, ghostCircuitBreaker, validators };
+export { api, ghostCircuitBreaker, validators };
 
 export default {
   getSiteInfo,

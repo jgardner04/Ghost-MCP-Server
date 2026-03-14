@@ -86,12 +86,8 @@ describe('ghostServiceImproved - Posts (updatePost)', () => {
     });
 
     it('should throw error when post ID is missing', async () => {
-      await expect(updatePost(null, { title: 'Updated' })).rejects.toThrow(
-        'Post ID is required for update'
-      );
-      await expect(updatePost('', { title: 'Updated' })).rejects.toThrow(
-        'Post ID is required for update'
-      );
+      await expect(updatePost(null, { title: 'Updated' })).rejects.toThrow('Post ID is required');
+      await expect(updatePost('', { title: 'Updated' })).rejects.toThrow('Post ID is required');
     });
 
     it('should handle post not found (404)', async () => {

@@ -295,9 +295,7 @@ describe('ghostServiceImproved - Tiers', () => {
     });
 
     it('should throw ValidationError when ID is missing', async () => {
-      await expect(updateTier('', { name: 'Updated' })).rejects.toThrow(
-        'Tier ID is required for update'
-      );
+      await expect(updateTier('', { name: 'Updated' })).rejects.toThrow('Tier ID is required');
     });
 
     it('should throw ValidationError for invalid update data', async () => {
@@ -327,11 +325,11 @@ describe('ghostServiceImproved - Tiers', () => {
     });
 
     it('should throw ValidationError when ID is missing', async () => {
-      await expect(deleteTier()).rejects.toThrow('Tier ID is required for deletion');
+      await expect(deleteTier()).rejects.toThrow('Tier ID is required');
     });
 
     it('should throw ValidationError when ID is empty string', async () => {
-      await expect(deleteTier('')).rejects.toThrow('Tier ID is required for deletion');
+      await expect(deleteTier('')).rejects.toThrow('Tier ID is required');
     });
 
     it('should throw NotFoundError when tier does not exist', async () => {
