@@ -24,6 +24,7 @@ vi.mock('fs/promises', () => ({
 // Import after setting up mocks
 import { updatePost, api, validators } from '../ghostServiceImproved.js';
 import { updatePostSchema } from '../../schemas/postSchemas.js';
+import { GhostAPIError, NotFoundError } from '../../errors/index.js';
 
 describe('ghostServiceImproved - Posts (updatePost)', () => {
   beforeEach(() => {
@@ -86,22 +87,18 @@ describe('ghostServiceImproved - Posts (updatePost)', () => {
     });
 
     it('should throw error when post ID is missing', async () => {
-      await expect(updatePost(null, { title: 'Updated' })).rejects.toThrow(
-        'Post ID is required for update'
-      );
-      await expect(updatePost('', { title: 'Updated' })).rejects.toThrow(
-        'Post ID is required for update'
-      );
+      await expect(updatePost(null, { title: 'Updated' })).rejects.toThrow('Post ID is required');
+      await expect(updatePost('', { title: 'Updated' })).rejects.toThrow('Post ID is required');
     });
 
     it('should handle post not found (404)', async () => {
-      const error404 = new Error('Post not found');
+      const error404 = new GhostAPIError('posts.read', 'Post not found', 404);
       error404.response = { status: 404 };
       api.posts.read.mockRejectedValue(error404);
 
-      await expect(updatePost('nonexistent-id', { title: 'Updated' })).rejects.toThrow(
-        'Post not found'
-      );
+      const rejection = updatePost('nonexistent-id', { title: 'Updated' });
+      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
+      await expect(rejection).rejects.toThrow('Post not found');
     });
 
     it('should throw ValidationError when updating to scheduled without published_at', async () => {

@@ -31,6 +31,7 @@ import {
   api,
   ghostCircuitBreaker,
 } from '../ghostServiceImproved.js';
+import { GhostAPIError, NotFoundError } from '../../errors/index.js';
 
 describe('ghostServiceImproved - Tags', () => {
   beforeEach(() => {
@@ -250,12 +251,13 @@ describe('ghostServiceImproved - Tags', () => {
     });
 
     it('should throw not found error when tag does not exist', async () => {
-      api.tags.read.mockRejectedValue({
-        response: { status: 404 },
-        message: 'Tag not found',
-      });
+      const error404 = new GhostAPIError('tags.read', 'Tag not found', 404);
+      error404.response = { status: 404 };
+      api.tags.read.mockRejectedValue(error404);
 
-      await expect(getTag('non-existent')).rejects.toThrow();
+      const rejection = getTag('non-existent');
+      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
+      await expect(rejection).rejects.toThrow('Tag not found');
     });
   });
 
@@ -343,10 +345,9 @@ describe('ghostServiceImproved - Tags', () => {
       };
 
       // First call fails with duplicate error
-      api.tags.add.mockRejectedValue({
-        response: { status: 422 },
-        message: 'Tag already exists',
-      });
+      const error422 = new GhostAPIError('tags.add', 'Tag already exists', 422);
+      error422.response = { status: 422, data: { errors: [{ message: 'Tag already exists' }] } };
+      api.tags.add.mockRejectedValue(error422);
 
       // getTags returns existing tag when called with name filter
       api.tags.browse.mockResolvedValue([{ id: 'tag-1', name: 'JavaScript', slug: 'javascript' }]);
@@ -405,18 +406,17 @@ describe('ghostServiceImproved - Tags', () => {
     });
 
     it('should throw validation error for missing tag ID', async () => {
-      await expect(updateTag(null, { name: 'Test' })).rejects.toThrow(
-        'Tag ID is required for update'
-      );
+      await expect(updateTag(null, { name: 'Test' })).rejects.toThrow('Tag ID is required');
     });
 
     it('should throw not found error if tag does not exist', async () => {
-      api.tags.read.mockRejectedValue({
-        response: { status: 404 },
-        message: 'Tag not found',
-      });
+      const error404 = new GhostAPIError('tags.read', 'Tag not found', 404);
+      error404.response = { status: 404 };
+      api.tags.read.mockRejectedValue(error404);
 
-      await expect(updateTag('non-existent', { name: 'Test' })).rejects.toThrow();
+      const rejection = updateTag('non-existent', { name: 'Test' });
+      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
+      await expect(rejection).rejects.toThrow('Tag not found');
     });
   });
 
@@ -433,16 +433,17 @@ describe('ghostServiceImproved - Tags', () => {
     });
 
     it('should throw validation error for missing tag ID', async () => {
-      await expect(deleteTag(null)).rejects.toThrow('Tag ID is required for deletion');
+      await expect(deleteTag(null)).rejects.toThrow('Tag ID is required');
     });
 
     it('should throw not found error if tag does not exist', async () => {
-      api.tags.delete.mockRejectedValue({
-        response: { status: 404 },
-        message: 'Tag not found',
-      });
+      const error404 = new GhostAPIError('tags.delete', 'Tag not found', 404);
+      error404.response = { status: 404 };
+      api.tags.delete.mockRejectedValue(error404);
 
-      await expect(deleteTag('non-existent')).rejects.toThrow();
+      const rejection = deleteTag('non-existent');
+      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
+      await expect(rejection).rejects.toThrow('Tag not found');
     });
   });
 });
