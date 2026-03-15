@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Dual schema passing comment** - Added explanatory comment to `withErrorHandling` JSDoc clarifying why each `registerTool` call passes the schema twice (MCP protocol metadata vs. runtime validation). ([JON-83](https://linear.app/jonathangardner/issue/JON-83/add-comment-explaining-why-schema-is-passed-twice-in-registertool), [#142](https://github.com/jgardner04/Ghost-MCP-Server/pull/142))
 - **Standardized tool error handling** - Extracted `withErrorHandling` higher-order function to eliminate ~735 lines of duplicated try/catch blocks across 33 tool handlers. Error messages now use a consistent `Error in <tool_name>: <message>` format. ([JON-17](https://linear.app/jonathangardner/issue/JON-17/extract-error-handler-hof-in-mcp-serverjs-to-reduce-duplication), [#138](https://github.com/jgardner04/Ghost-MCP-Server/pull/138))
 - **JSDoc documentation, validation helper extraction, and export cleanup** - Added `@param`/`@returns`/`@throws` JSDoc to ~32 functions, extracted `validators.requireId()` shared helper replacing 10+ inline ID checks, and removed unused `handleApiRequest` backward-compat export. ([JON-18](https://linear.app/jonathangardner/issue/JON-18/jsdoc-gaps-unused-export-cleanup-and-validation-helper-extraction), [#141](https://github.com/jgardner04/Ghost-MCP-Server/pull/141))
 
