@@ -33,6 +33,7 @@ import {
   validators,
 } from '../ghostServiceImproved.js';
 import { createPageSchema, updatePageSchema } from '../../schemas/pageSchemas.js';
+import { GhostAPIError, NotFoundError, ValidationError } from '../../errors/index.js';
 
 describe('ghostServiceImproved - Pages', () => {
   beforeEach(() => {
@@ -205,13 +206,13 @@ describe('ghostServiceImproved - Pages', () => {
     });
 
     it('should handle Ghost API validation errors (422)', async () => {
-      const error422 = new Error('Validation failed');
+      const error422 = new GhostAPIError('pages.add', 'Validation failed', 422);
       error422.response = { status: 422 };
       api.pages.add.mockRejectedValue(error422);
 
-      await expect(createPage({ title: 'Test', html: '<p>Content</p>' })).rejects.toThrow(
-        'Page creation failed due to validation errors'
-      );
+      const rejection = createPage({ title: 'Test', html: '<p>Content</p>' });
+      await expect(rejection).rejects.toBeInstanceOf(ValidationError);
+      await expect(rejection).rejects.toThrow('Page creation failed due to validation errors');
     });
 
     it('should NOT include tags in page creation (pages do not support tags)', async () => {
@@ -272,13 +273,13 @@ describe('ghostServiceImproved - Pages', () => {
     });
 
     it('should handle page not found (404)', async () => {
-      const error404 = new Error('Page not found');
+      const error404 = new GhostAPIError('pages.read', 'Page not found', 404);
       error404.response = { status: 404 };
       api.pages.read.mockRejectedValue(error404);
 
-      await expect(updatePage('nonexistent-id', { title: 'Updated' })).rejects.toThrow(
-        'Page not found'
-      );
+      const rejection = updatePage('nonexistent-id', { title: 'Updated' });
+      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
+      await expect(rejection).rejects.toThrow('Page not found');
     });
 
     it('should preserve updated_at timestamp for conflict resolution', async () => {
@@ -369,8 +370,8 @@ describe('ghostServiceImproved - Pages', () => {
 
   describe('deletePage', () => {
     it('should throw error when page ID is missing', async () => {
-      await expect(deletePage(null)).rejects.toThrow('Page ID is required for deletion');
-      await expect(deletePage('')).rejects.toThrow('Page ID is required for deletion');
+      await expect(deletePage(null)).rejects.toThrow('Page ID is required');
+      await expect(deletePage('')).rejects.toThrow('Page ID is required');
     });
 
     it('should delete page successfully', async () => {
@@ -385,11 +386,13 @@ describe('ghostServiceImproved - Pages', () => {
     });
 
     it('should handle page not found (404)', async () => {
-      const error404 = new Error('Page not found');
+      const error404 = new GhostAPIError('pages.delete', 'Page not found', 404);
       error404.response = { status: 404 };
       api.pages.delete.mockRejectedValue(error404);
 
-      await expect(deletePage('nonexistent-id')).rejects.toThrow('Page not found');
+      const rejection = deletePage('nonexistent-id');
+      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
+      await expect(rejection).rejects.toThrow('Page not found');
     });
   });
 
@@ -433,11 +436,13 @@ describe('ghostServiceImproved - Pages', () => {
     });
 
     it('should handle page not found (404)', async () => {
-      const error404 = new Error('Page not found');
+      const error404 = new GhostAPIError('pages.read', 'Page not found', 404);
       error404.response = { status: 404 };
       api.pages.read.mockRejectedValue(error404);
 
-      await expect(getPage('nonexistent-id')).rejects.toThrow('Page not found');
+      const rejection = getPage('nonexistent-id');
+      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
+      await expect(rejection).rejects.toThrow('Page not found');
     });
   });
 

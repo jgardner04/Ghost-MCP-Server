@@ -31,6 +31,7 @@ import {
   searchMembers,
   api,
 } from '../ghostServiceImproved.js';
+import { GhostAPIError, NotFoundError } from '../../errors/index.js';
 
 describe('ghostServiceImproved - Members', () => {
   beforeEach(() => {
@@ -176,21 +177,20 @@ describe('ghostServiceImproved - Members', () => {
     });
 
     it('should throw validation error for missing member ID', async () => {
-      await expect(updateMember(null, { name: 'Test' })).rejects.toThrow(
-        'Member ID is required for update'
-      );
+      await expect(updateMember(null, { name: 'Test' })).rejects.toThrow('Member ID is required');
     });
 
     // NOTE: Input validation tests (invalid email in update) have been moved to
     // MCP layer tests. The service layer now relies on Zod schema validation.
 
     it('should throw not found error if member does not exist', async () => {
-      api.members.read.mockRejectedValue({
-        response: { status: 404 },
-        message: 'Member not found',
-      });
+      const error404 = new GhostAPIError('members.read', 'Member not found', 404);
+      error404.response = { status: 404 };
+      api.members.read.mockRejectedValue(error404);
 
-      await expect(updateMember('non-existent', { name: 'Test' })).rejects.toThrow();
+      const rejection = updateMember('non-existent', { name: 'Test' });
+      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
+      await expect(rejection).rejects.toThrow('Member not found');
     });
   });
 
@@ -207,16 +207,17 @@ describe('ghostServiceImproved - Members', () => {
     });
 
     it('should throw validation error for missing member ID', async () => {
-      await expect(deleteMember(null)).rejects.toThrow('Member ID is required for deletion');
+      await expect(deleteMember(null)).rejects.toThrow('Member ID is required');
     });
 
     it('should throw not found error if member does not exist', async () => {
-      api.members.delete.mockRejectedValue({
-        response: { status: 404 },
-        message: 'Member not found',
-      });
+      const error404 = new GhostAPIError('members.delete', 'Member not found', 404);
+      error404.response = { status: 404 };
+      api.members.delete.mockRejectedValue(error404);
 
-      await expect(deleteMember('non-existent')).rejects.toThrow();
+      const rejection = deleteMember('non-existent');
+      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
+      await expect(rejection).rejects.toThrow('Member not found');
     });
   });
 
@@ -358,12 +359,13 @@ describe('ghostServiceImproved - Members', () => {
     // moved to MCP layer tests. The service layer now relies on Zod schema validation.
 
     it('should throw not found error when member not found by ID', async () => {
-      api.members.read.mockRejectedValue({
-        response: { status: 404 },
-        message: 'Member not found',
-      });
+      const error404 = new GhostAPIError('members.read', 'Member not found', 404);
+      error404.response = { status: 404 };
+      api.members.read.mockRejectedValue(error404);
 
-      await expect(getMember({ id: 'non-existent' })).rejects.toThrow();
+      const rejection = getMember({ id: 'non-existent' });
+      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
+      await expect(rejection).rejects.toThrow('Member not found');
     });
 
     it('should throw not found error when member not found by email', async () => {
