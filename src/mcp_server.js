@@ -210,6 +210,9 @@ server.registerTool(
     const options = {};
     if (input.include !== undefined) options.include = input.include;
 
+    if (!input.id && !input.slug) {
+      throw new Error('Either id or slug is required');
+    }
     const identifier = input.id || `slug/${input.slug}`;
 
     const tag = await ghostService.getTag(identifier, options);
@@ -448,6 +451,9 @@ server.registerTool(
     if (input.include !== undefined) options.include = input.include;
 
     // Determine identifier (prefer ID over slug)
+    if (!input.id && !input.slug) {
+      throw new Error('Either id or slug is required');
+    }
     const identifier = input.id || `slug/${input.slug}`;
 
     const post = await ghostService.getPost(identifier, options);
@@ -602,6 +608,9 @@ server.registerTool(
     const options = {};
     if (input.include !== undefined) options.include = input.include;
 
+    if (!input.id && !input.slug) {
+      throw new Error('Either id or slug is required');
+    }
     const identifier = input.id || `slug/${input.slug}`;
 
     const page = await ghostService.getPage(identifier, options);

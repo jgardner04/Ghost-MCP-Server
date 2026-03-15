@@ -279,6 +279,14 @@ describe('mcp_server - ghost_get_page tool', () => {
     expect(() => tool.schema.parse({ slug: 'about-us' })).not.toThrow();
   });
 
+  it('should return validation error when neither id nor slug provided', async () => {
+    const tool = mockTools.get('ghost_get_page');
+    const result = await tool.handler({});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Either id or slug is required');
+  });
+
   it('should handle errors gracefully', async () => {
     mockGetPage.mockRejectedValue(new Error('Page not found'));
 
