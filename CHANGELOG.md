@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Defensive check for slug/undefined identifier pattern** - Added runtime assertions in `ghost_get_tag`, `ghost_get_post`, and `ghost_get_page` handlers to prevent `slug/undefined` identifier construction when neither `id` nor `slug` is provided. The Zod schema `.refine()` already validates at the schema layer; this adds belt-and-suspenders safety. ([JON-84](https://linear.app/jonathangardner/issue/JON-84/add-defensive-check-for-slugundefined-identifier-pattern), [#138](https://github.com/jgardner04/Ghost-MCP-Server/pull/138))
 - **Scheduled status validation on published_at-only updates** - `updatePost` and `updatePage` now validate scheduled-date constraints when only `published_at` changes (without `status` in the update payload). Previously, a scheduled post/page could have its publish date set to the past without triggering validation. ([JON-19](https://linear.app/jonathangardner/issue/JON-19/edge-case-validatescheduledstatus-skipped-when-only-published-at), [#136](https://github.com/jgardner04/Ghost-MCP-Server/pull/136))
 
 ### Breaking Changes
