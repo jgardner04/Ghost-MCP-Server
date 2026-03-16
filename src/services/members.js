@@ -1,7 +1,14 @@
-import { GhostAPIError, ValidationError, NotFoundError } from '../errors/index.js';
+import { GhostAPIError, NotFoundError } from '../errors/index.js';
 import { sanitizeNqlValue } from '../utils/nqlSanitizer.js';
-import { handleApiRequest, updateWithOCC, deleteResource } from './ghostApiClient.js';
-import { validators } from './validators.js';
+import { handleApiRequest } from './ghostApiClient.js';
+import { createResourceService } from './createResourceService.js';
+
+const service = createResourceService({
+  resource: 'members',
+  label: 'Member',
+  listDefaults: { limit: 15 },
+  // Input validation is performed at the MCP tool layer using Zod schemas
+});
 
 /**
  * Creates a new member (subscriber) in Ghost CMS
@@ -17,19 +24,7 @@ import { validators } from './validators.js';
  * @throws {ValidationError} If validation fails
  * @throws {GhostAPIError} If the API request fails
  */
-export async function createMember(memberData, options = {}) {
-  // Input validation is performed at the MCP tool layer using Zod schemas
-  try {
-    return await handleApiRequest('members', 'add', memberData, options);
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
-      throw new ValidationError('Member creation failed due to validation errors', [
-        { field: 'member', message: error.originalError },
-      ]);
-    }
-    throw error;
-  }
-}
+export const createMember = service.create;
 
 /**
  * Updates an existing member in Ghost CMS
@@ -47,12 +42,7 @@ export async function createMember(memberData, options = {}) {
  * @throws {NotFoundError} If the member is not found
  * @throws {GhostAPIError} If the API request fails
  */
-export async function updateMember(memberId, updateData, options = {}) {
-  // Input validation is performed at the MCP tool layer using Zod schemas
-  validators.requireId(memberId, 'Member');
-
-  return updateWithOCC('members', memberId, updateData, options, 'Member');
-}
+export const updateMember = service.update;
 
 /**
  * Deletes a member from Ghost CMS
@@ -62,9 +52,7 @@ export async function updateMember(memberId, updateData, options = {}) {
  * @throws {NotFoundError} If the member is not found
  * @throws {GhostAPIError} If the API request fails
  */
-export async function deleteMember(memberId) {
-  return deleteResource('members', memberId, 'Member');
-}
+export const deleteMember = service.remove;
 
 /**
  * List members from Ghost CMS with optional filtering and pagination
@@ -78,16 +66,7 @@ export async function deleteMember(memberId) {
  * @throws {ValidationError} If validation fails
  * @throws {GhostAPIError} If the API request fails
  */
-export async function getMembers(options = {}) {
-  // Input validation is performed at the MCP tool layer using Zod schemas
-  const defaultOptions = {
-    limit: 15,
-    ...options,
-  };
-
-  const members = await handleApiRequest('members', 'browse', {}, defaultOptions);
-  return members || [];
-}
+export const getMembers = service.getList;
 
 /**
  * Get a single member from Ghost CMS by ID or email
@@ -100,15 +79,12 @@ export async function getMembers(options = {}) {
  * @throws {GhostAPIError} If the API request fails
  */
 export async function getMember(params) {
-  // Input validation is performed at the MCP tool layer using Zod schemas
   const { id, email } = params;
 
   try {
     if (id) {
-      // Lookup by ID using read endpoint
       return await handleApiRequest('members', 'read', { id }, { id });
     } else {
-      // Lookup by email using browse with filter
       const sanitizedEmail = sanitizeNqlValue(email);
       const members = await handleApiRequest(
         'members',
@@ -141,13 +117,9 @@ export async function getMember(params) {
  * @throws {GhostAPIError} If the API request fails
  */
 export async function searchMembers(query, options = {}) {
-  // Input validation is performed at the MCP tool layer using Zod schemas
   const sanitizedQuery = sanitizeNqlValue(query.trim());
-
   const limit = options.limit || 15;
 
-  // Build NQL filter for name or email containing the query
-  // Ghost uses ~ for contains/like matching
   const filter = `name:~'${sanitizedQuery}',email:~'${sanitizedQuery}'`;
 
   const members = await handleApiRequest('members', 'browse', {}, { filter, limit });

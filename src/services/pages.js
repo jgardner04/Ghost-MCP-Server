@@ -1,7 +1,27 @@
-import { GhostAPIError, ValidationError } from '../errors/index.js';
+import { ValidationError } from '../errors/index.js';
 import { sanitizeNqlValue } from '../utils/nqlSanitizer.js';
-import { handleApiRequest, readResource, updateWithOCC, deleteResource } from './ghostApiClient.js';
+import { handleApiRequest, readResource } from './ghostApiClient.js';
+import { createResourceService } from './createResourceService.js';
 import { validators } from './validators.js';
+
+const service = createResourceService({
+  resource: 'pages',
+  label: 'Page',
+  createDefaults: { status: 'draft' },
+  createOptions: { source: 'html' },
+  listDefaults: { limit: 15, include: 'authors' },
+  validateCreate: (data) => validators.validatePageData(data),
+  validateUpdate: async (id, updateData) => {
+    if (updateData.status || updateData.published_at) {
+      let validationData = updateData;
+      if (!updateData.status && updateData.published_at) {
+        const existing = await readResource('pages', id, 'Page');
+        validationData = { ...updateData, status: existing.status };
+      }
+      validators.validateScheduledStatus(validationData, 'Page');
+    }
+  },
+});
 
 /**
  * Creates a new page in Ghost CMS.
@@ -16,29 +36,7 @@ import { validators } from './validators.js';
  * @throws {ValidationError} If validation fails or Ghost returns a 422
  * @throws {GhostAPIError} If the API request fails
  */
-export async function createPage(pageData, options = { source: 'html' }) {
-  // Validate input
-  validators.validatePageData(pageData);
-
-  // Add defaults
-  const dataWithDefaults = {
-    status: 'draft',
-    ...pageData,
-  };
-
-  // SECURITY: HTML must be sanitized before reaching this function. See htmlContentSchema in schemas/common.js
-
-  try {
-    return await handleApiRequest('pages', 'add', dataWithDefaults, options);
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
-      throw new ValidationError('Page creation failed due to validation errors', [
-        { field: 'page', message: error.originalError },
-      ]);
-    }
-    throw error;
-  }
-}
+export const createPage = service.create;
 
 /**
  * Updates an existing page with optimistic concurrency control.
@@ -51,24 +49,7 @@ export async function createPage(pageData, options = { source: 'html' }) {
  * @throws {NotFoundError} If the page is not found
  * @throws {GhostAPIError} If the API request fails
  */
-export async function updatePage(pageId, updateData, options = {}) {
-  validators.requireId(pageId, 'Page');
-
-  // SECURITY: HTML must be sanitized before reaching this function. See htmlContentSchema in schemas/common.js
-
-  // Validate scheduled status when status or published_at is being updated
-  if (updateData.status || updateData.published_at) {
-    let validationData = updateData;
-    // When only published_at changes, fetch existing status to check if page is scheduled
-    if (!updateData.status && updateData.published_at) {
-      const existing = await readResource('pages', pageId, 'Page');
-      validationData = { ...updateData, status: existing.status };
-    }
-    validators.validateScheduledStatus(validationData, 'Page');
-  }
-
-  return updateWithOCC('pages', pageId, updateData, options, 'Page');
-}
+export const updatePage = service.update;
 
 /**
  * Deletes a page by ID.
@@ -78,9 +59,7 @@ export async function updatePage(pageId, updateData, options = {}) {
  * @throws {NotFoundError} If the page is not found
  * @throws {GhostAPIError} If the API request fails
  */
-export async function deletePage(pageId) {
-  return deleteResource('pages', pageId, 'Page');
-}
+export const deletePage = service.remove;
 
 /**
  * Retrieves a single page by ID.
@@ -91,9 +70,7 @@ export async function deletePage(pageId) {
  * @throws {NotFoundError} If the page is not found
  * @throws {GhostAPIError} If the API request fails
  */
-export async function getPage(pageId, options = {}) {
-  return readResource('pages', pageId, 'Page', options);
-}
+export const getPage = service.getOne;
 
 /**
  * Lists pages with optional filtering and pagination.
@@ -105,15 +82,7 @@ export async function getPage(pageId, options = {}) {
  * @returns {Promise<Array>} Array of page objects
  * @throws {GhostAPIError} If the API request fails
  */
-export async function getPages(options = {}) {
-  const defaultOptions = {
-    limit: 15,
-    include: 'authors',
-    ...options,
-  };
-
-  return handleApiRequest('pages', 'browse', {}, defaultOptions);
-}
+export const getPages = service.getList;
 
 /**
  * Searches pages by title using Ghost NQL fuzzy matching.
@@ -126,18 +95,13 @@ export async function getPages(options = {}) {
  * @throws {GhostAPIError} If the API request fails
  */
 export async function searchPages(query, options = {}) {
-  // Validate query
   if (!query || query.trim().length === 0) {
     throw new ValidationError('Search query is required');
   }
 
-  // Sanitize query - escape special NQL characters to prevent injection
   const sanitizedQuery = sanitizeNqlValue(query);
 
-  // Build filter with fuzzy title match using Ghost NQL
   const filterParts = [`title:~'${sanitizedQuery}'`];
-
-  // Add status filter if provided and not 'all'
   if (options.status && options.status !== 'all') {
     filterParts.push(`status:${options.status}`);
   }
