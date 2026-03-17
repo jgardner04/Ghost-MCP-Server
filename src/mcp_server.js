@@ -87,6 +87,11 @@ const escapeNqlValue = (value) => {
  * Higher-order function that wraps a tool handler with standardized
  * input validation, service loading, and error handling.
  *
+ * Note: Each registerTool call passes the schema twice — once as `inputSchema`
+ * (MCP protocol metadata exposed to clients) and once here for runtime input
+ * validation via validateToolInput. These serve different purposes and both
+ * are required.
+ *
  * @param {string} toolName - The tool identifier (e.g., 'ghost_get_tags')
  * @param {object} schema - Zod schema for input validation
  * @param {Function} handler - Async function receiving validated input, returns MCP response
