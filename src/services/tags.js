@@ -1,4 +1,5 @@
 import { GhostAPIError, ValidationError, NotFoundError } from '../errors/index.js';
+import { sanitizeNqlValue } from '../utils/nqlSanitizer.js';
 import { handleApiRequest, readResource } from './ghostApiClient.js';
 import { createResourceService } from './createResourceService.js';
 import { validators } from './validators.js';
@@ -23,19 +24,22 @@ const service = createResourceService({
 export async function createTag(tagData) {
   validators.validateTagData(tagData);
 
-  if (!tagData.slug) {
-    tagData.slug = tagData.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-  }
+  const dataToCreate = tagData.slug
+    ? { ...tagData }
+    : {
+        ...tagData,
+        slug: tagData.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, ''),
+      };
 
   try {
-    return await handleApiRequest('tags', 'add', tagData);
+    return await handleApiRequest('tags', 'add', dataToCreate);
   } catch (error) {
     if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
       if (error.originalError.includes('already exists')) {
-        const existingTags = await getTags({ filter: `name:'${tagData.name}'` });
+        const existingTags = await getTags({ filter: `name:'${sanitizeNqlValue(tagData.name)}'` });
         if (existingTags.length > 0) {
           return existingTags[0];
         }

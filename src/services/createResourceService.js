@@ -20,7 +20,7 @@ import { validators } from './validators.js';
  * @param {Object} [config.listDefaults] - Default options for getList (e.g., { limit: 15, include: 'tags,authors' })
  * @param {Object} [config.createDefaults] - Default data merged into create payload (e.g., { status: 'draft' })
  * @param {Object} [config.createOptions] - Default options for create API call (e.g., { source: 'html' })
- * @param {Function} [config.validateCreate] - Validation function called before create: (data) => void
+ * @param {Function} [config.validateCreate] - Validation function called before create: (data) => void | Promise<void>
  * @param {Function} [config.validateUpdate] - Validation function called before update: (id, data) => void | Promise<void>
  * @param {boolean} [config.catch422OnUpdate=false] - Whether to catch 422 errors on update and wrap as ValidationError
  * @returns {Object} Object with { create, update, remove, getOne, getList } methods
@@ -45,7 +45,7 @@ export function createResourceService(config) {
    */
   async function create(data, options = {}) {
     if (validateCreate) {
-      validateCreate(data);
+      await validateCreate(data);
     }
 
     const dataWithDefaults = {
