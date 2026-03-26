@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **JSON Schema regression tests for MCP tool schemas** - Added tests verifying every registered tool produces non-empty JSON Schema `properties` via the same `zod/v4-mini` conversion path the MCP SDK uses. Includes targeted assertions that `ghost_create_post` and `ghost_create_page` declare `title` and `html` as required. Prevents a regression where empty schemas caused MCP clients to strip arguments. ([JON-103](https://linear.app/jonathangardner/issue/JON-103/declare-input-schema-for-ghost-create-post-tool))
+
 ### Changed
 
 - **Dual schema passing comment** - Added explanatory comment to `withErrorHandling` JSDoc clarifying why each `registerTool` call passes the schema twice (MCP protocol metadata vs. runtime validation). ([JON-83](https://linear.app/jonathangardner/issue/JON-83/add-comment-explaining-why-schema-is-passed-twice-in-registertool), [#142](https://github.com/jgardner04/Ghost-MCP-Server/pull/142))
