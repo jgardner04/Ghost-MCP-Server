@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as z4mini from 'zod/v4-mini';
 
 // Mock the McpServer to capture tool registrations
 const mockTools = new Map();
@@ -1642,5 +1643,57 @@ describe('ghost_delete_tag', () => {
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Failed to delete tag');
+  });
+});
+
+// --- JSON Schema regression tests (JON-103) ---
+// Verifies that every registered MCP tool exposes a non-empty JSON Schema
+// to clients. Uses zod/v4-mini's toJSONSchema — the same converter the
+// MCP SDK calls internally (see zod-json-schema-compat.js).
+describe('tool schema JSON Schema output', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    if (mockTools.size === 0) {
+      await import('../mcp_server.js');
+    }
+  });
+
+  it('should produce non-empty properties for every registered tool', () => {
+    expect(mockTools.size).toBeGreaterThan(0);
+
+    for (const [name, tool] of mockTools) {
+      const schema = tool.schema;
+
+      // Schema must be a Zod object with a shape
+      expect(schema.shape, `${name}: missing Zod shape`).toBeDefined();
+      expect(Object.keys(schema.shape).length, `${name}: shape has no keys`).toBeGreaterThan(0);
+
+      // Convert via the same path the MCP SDK uses
+      const jsonSchema = z4mini.toJSONSchema(schema, {
+        target: 'draft-7',
+        io: 'input',
+      });
+
+      expect(jsonSchema.type, `${name}: type should be 'object'`).toBe('object');
+      expect(
+        Object.keys(jsonSchema.properties || {}).length,
+        `${name}: JSON Schema properties is empty`
+      ).toBeGreaterThan(0);
+    }
+  });
+
+  it('should declare title and html as required for ghost_create_post and ghost_create_page', () => {
+    for (const toolName of ['ghost_create_post', 'ghost_create_page']) {
+      const tool = mockTools.get(toolName);
+      const jsonSchema = z4mini.toJSONSchema(tool.schema, {
+        target: 'draft-7',
+        io: 'input',
+      });
+
+      expect(jsonSchema.required, `${toolName}: title not required`).toContain('title');
+      expect(jsonSchema.required, `${toolName}: html not required`).toContain('html');
+      expect(jsonSchema.properties.title.type, `${toolName}: title type`).toBe('string');
+      expect(jsonSchema.properties.html.type, `${toolName}: html type`).toBe('string');
+    }
   });
 });

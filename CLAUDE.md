@@ -52,7 +52,7 @@ All code written for this project MUST follow OWASP security best practices to p
 - `express-rate-limit` - Rate limiting
 - `crypto` - Secure random generation and comparisons
 - `helmet` - HTTP security headers
-- `joi` - Legacy validation (used in some REST endpoints)
+- `joi` - Legacy validation (used in some REST endpoints; do not use for new code — prefer Zod schemas)
 
 ## Git Workflow (Required)
 
@@ -219,6 +219,7 @@ Follow these principles when writing code:
    - `tempFileManager.js`: Temp file tracking and cleanup with process exit handlers
    - `urlValidator.js`: SSRF-safe URL validation for image downloads
    - `logger.js`: Context-aware logging with request correlation
+   - `nqlSanitizer.js`: NQL query sanitization (consolidated from memberService and tierService)
 
 ### Environment Configuration
 
