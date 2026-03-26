@@ -1,6 +1,17 @@
-import { GhostAPIError, ValidationError } from '../errors/index.js';
-import { handleApiRequest, readResource, updateWithOCC, deleteResource } from './ghostApiClient.js';
-import { validators } from './validators.js';
+import { createResourceService } from './createResourceService.js';
+import {
+  validateTierData,
+  validateTierUpdateData,
+  validateTierQueryOptions,
+} from './tierService.js';
+
+const service = createResourceService({
+  resource: 'tiers',
+  label: 'Tier',
+  listDefaults: { limit: 15 },
+  validateCreate: (data) => validateTierData(data),
+  validateUpdate: (_id, data) => validateTierUpdateData(data),
+});
 
 /**
  * Create a new tier (membership level)
@@ -10,21 +21,7 @@ import { validators } from './validators.js';
  * @throws {ValidationError} If validation fails or Ghost returns a 422
  * @throws {GhostAPIError} If the API request fails
  */
-export async function createTier(tierData, options = {}) {
-  const { validateTierData } = await import('./tierService.js');
-  validateTierData(tierData);
-
-  try {
-    return await handleApiRequest('tiers', 'add', tierData, options);
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
-      throw new ValidationError('Tier creation failed due to validation errors', [
-        { field: 'tier', message: error.originalError },
-      ]);
-    }
-    throw error;
-  }
-}
+export const createTier = service.create;
 
 /**
  * Update an existing tier with optimistic concurrency control.
@@ -36,14 +33,7 @@ export async function createTier(tierData, options = {}) {
  * @throws {NotFoundError} If the tier is not found
  * @throws {GhostAPIError} If the API request fails
  */
-export async function updateTier(id, updateData, options = {}) {
-  validators.requireId(id, 'Tier');
-
-  const { validateTierUpdateData } = await import('./tierService.js');
-  validateTierUpdateData(updateData);
-
-  return updateWithOCC('tiers', id, updateData, options, 'Tier');
-}
+export const updateTier = service.update;
 
 /**
  * Delete a tier by ID.
@@ -53,11 +43,7 @@ export async function updateTier(id, updateData, options = {}) {
  * @throws {NotFoundError} If the tier is not found
  * @throws {GhostAPIError} If the API request fails
  */
-export async function deleteTier(id) {
-  validators.requireId(id, 'Tier');
-
-  return deleteResource('tiers', id, 'Tier');
-}
+export const deleteTier = service.remove;
 
 /**
  * Get all tiers with optional filtering
@@ -71,16 +57,8 @@ export async function deleteTier(id) {
  * @throws {GhostAPIError} If the API request fails
  */
 export async function getTiers(options = {}) {
-  const { validateTierQueryOptions } = await import('./tierService.js');
   validateTierQueryOptions(options);
-
-  const defaultOptions = {
-    limit: 15,
-    ...options,
-  };
-
-  const tiers = await handleApiRequest('tiers', 'browse', {}, defaultOptions);
-  return tiers || [];
+  return service.getList(options);
 }
 
 /**
@@ -91,8 +69,4 @@ export async function getTiers(options = {}) {
  * @throws {NotFoundError} If the tier is not found
  * @throws {GhostAPIError} If the API request fails
  */
-export async function getTier(id) {
-  validators.requireId(id, 'Tier');
-
-  return readResource('tiers', id, 'Tier');
-}
+export const getTier = service.getOne;

@@ -1,6 +1,14 @@
 import { GhostAPIError, ValidationError, NotFoundError } from '../errors/index.js';
-import { handleApiRequest, readResource, deleteResource } from './ghostApiClient.js';
+import { sanitizeNqlValue } from '../utils/nqlSanitizer.js';
+import { handleApiRequest, readResource } from './ghostApiClient.js';
+import { createResourceService } from './createResourceService.js';
 import { validators } from './validators.js';
+
+const service = createResourceService({
+  resource: 'tags',
+  label: 'Tag',
+  listDefaults: { limit: 15 },
+});
 
 /**
  * Creates a new tag in Ghost CMS. Auto-generates a slug from the name if not provided.
@@ -14,27 +22,26 @@ import { validators } from './validators.js';
  * @throws {GhostAPIError} If the API request fails
  */
 export async function createTag(tagData) {
-  // Validate input
   validators.validateTagData(tagData);
 
-  // Auto-generate slug if not provided
-  if (!tagData.slug) {
-    tagData.slug = tagData.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-  }
+  const dataToCreate = tagData.slug
+    ? { ...tagData }
+    : {
+        ...tagData,
+        slug: tagData.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, ''),
+      };
 
   try {
-    return await handleApiRequest('tags', 'add', tagData);
+    return await handleApiRequest('tags', 'add', dataToCreate);
   } catch (error) {
     if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
-      // Check if it's a duplicate tag error
       if (error.originalError.includes('already exists')) {
-        // Try to fetch the existing tag by name filter
-        const existingTags = await getTags({ filter: `name:'${tagData.name}'` });
+        const existingTags = await getTags({ filter: `name:'${sanitizeNqlValue(tagData.name)}'` });
         if (existingTags.length > 0) {
-          return existingTags[0]; // Return existing tag instead of failing
+          return existingTags[0];
         }
       }
       throw new ValidationError('Tag creation failed', [
@@ -54,18 +61,7 @@ export async function createTag(tagData) {
  * @returns {Promise<Array>} Array of tag objects (empty array if none found)
  * @throws {GhostAPIError} If the API request fails
  */
-export async function getTags(options = {}) {
-  const tags = await handleApiRequest(
-    'tags',
-    'browse',
-    {},
-    {
-      limit: 15,
-      ...options,
-    }
-  );
-  return tags || [];
-}
+export const getTags = service.getList;
 
 /**
  * Retrieves a single tag by ID.
@@ -76,12 +72,11 @@ export async function getTags(options = {}) {
  * @throws {NotFoundError} If the tag is not found
  * @throws {GhostAPIError} If the API request fails
  */
-export async function getTag(tagId, options = {}) {
-  return readResource('tags', tagId, 'Tag', options);
-}
+export const getTag = service.getOne;
 
 /**
  * Updates an existing tag. Validates update data and checks that the tag exists first.
+ * Tags use direct edit (not OCC) since they don't have concurrent editing concerns.
  * @param {string} tagId - The tag ID to update
  * @param {Object} updateData - Fields to update on the tag
  * @param {string} [updateData.name] - Updated tag name
@@ -94,7 +89,6 @@ export async function getTag(tagId, options = {}) {
  */
 export async function updateTag(tagId, updateData) {
   validators.requireId(tagId, 'Tag');
-
   validators.validateTagUpdateData(updateData);
 
   try {
@@ -121,6 +115,4 @@ export async function updateTag(tagId, updateData) {
  * @throws {NotFoundError} If the tag is not found
  * @throws {GhostAPIError} If the API request fails
  */
-export async function deleteTag(tagId) {
-  return deleteResource('tags', tagId, 'Tag');
-}
+export const deleteTag = service.remove;

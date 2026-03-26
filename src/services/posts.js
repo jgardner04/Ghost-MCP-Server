@@ -1,7 +1,27 @@
-import { GhostAPIError, ValidationError } from '../errors/index.js';
+import { ValidationError } from '../errors/index.js';
 import { sanitizeNqlValue } from '../utils/nqlSanitizer.js';
-import { handleApiRequest, readResource, updateWithOCC, deleteResource } from './ghostApiClient.js';
+import { handleApiRequest, readResource } from './ghostApiClient.js';
+import { createResourceService } from './createResourceService.js';
 import { validators } from './validators.js';
+
+const service = createResourceService({
+  resource: 'posts',
+  label: 'Post',
+  createDefaults: { status: 'draft' },
+  createOptions: { source: 'html' },
+  listDefaults: { limit: 15, include: 'tags,authors' },
+  validateCreate: (data) => validators.validatePostData(data),
+  validateUpdate: async (id, updateData) => {
+    if (updateData.status || updateData.published_at) {
+      let validationData = updateData;
+      if (!updateData.status && updateData.published_at) {
+        const existing = await readResource('posts', id, 'Post');
+        validationData = { ...updateData, status: existing.status };
+      }
+      validators.validateScheduledStatus(validationData, 'Post');
+    }
+  },
+});
 
 /**
  * Creates a new post in Ghost CMS.
@@ -16,30 +36,7 @@ import { validators } from './validators.js';
  * @throws {ValidationError} If validation fails or Ghost returns a 422
  * @throws {GhostAPIError} If the API request fails
  */
-export async function createPost(postData, options = { source: 'html' }) {
-  // Validate input
-  validators.validatePostData(postData);
-
-  // Add defaults
-  const dataWithDefaults = {
-    status: 'draft',
-    ...postData,
-  };
-
-  // SECURITY: HTML must be sanitized before reaching this function. See htmlContentSchema in schemas/common.js
-
-  try {
-    return await handleApiRequest('posts', 'add', dataWithDefaults, options);
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
-      // Transform Ghost validation errors into our format
-      throw new ValidationError('Post creation failed due to validation errors', [
-        { field: 'post', message: error.originalError },
-      ]);
-    }
-    throw error;
-  }
-}
+export const createPost = service.create;
 
 /**
  * Updates an existing post with optimistic concurrency control.
@@ -52,22 +49,7 @@ export async function createPost(postData, options = { source: 'html' }) {
  * @throws {NotFoundError} If the post is not found
  * @throws {GhostAPIError} If the API request fails
  */
-export async function updatePost(postId, updateData, options = {}) {
-  validators.requireId(postId, 'Post');
-
-  // Validate scheduled status when status or published_at is being updated
-  if (updateData.status || updateData.published_at) {
-    let validationData = updateData;
-    // When only published_at changes, fetch existing status to check if post is scheduled
-    if (!updateData.status && updateData.published_at) {
-      const existing = await readResource('posts', postId, 'Post');
-      validationData = { ...updateData, status: existing.status };
-    }
-    validators.validateScheduledStatus(validationData, 'Post');
-  }
-
-  return updateWithOCC('posts', postId, updateData, options, 'Post');
-}
+export const updatePost = service.update;
 
 /**
  * Deletes a post by ID.
@@ -77,9 +59,7 @@ export async function updatePost(postId, updateData, options = {}) {
  * @throws {NotFoundError} If the post is not found
  * @throws {GhostAPIError} If the API request fails
  */
-export async function deletePost(postId) {
-  return deleteResource('posts', postId, 'Post');
-}
+export const deletePost = service.remove;
 
 /**
  * Retrieves a single post by ID.
@@ -90,9 +70,7 @@ export async function deletePost(postId) {
  * @throws {NotFoundError} If the post is not found
  * @throws {GhostAPIError} If the API request fails
  */
-export async function getPost(postId, options = {}) {
-  return readResource('posts', postId, 'Post', options);
-}
+export const getPost = service.getOne;
 
 /**
  * Lists posts with optional filtering and pagination.
@@ -104,15 +82,7 @@ export async function getPost(postId, options = {}) {
  * @returns {Promise<Array>} Array of post objects
  * @throws {GhostAPIError} If the API request fails
  */
-export async function getPosts(options = {}) {
-  const defaultOptions = {
-    limit: 15,
-    include: 'tags,authors',
-    ...options,
-  };
-
-  return handleApiRequest('posts', 'browse', {}, defaultOptions);
-}
+export const getPosts = service.getList;
 
 /**
  * Searches posts by title using Ghost NQL fuzzy matching.
@@ -125,18 +95,13 @@ export async function getPosts(options = {}) {
  * @throws {GhostAPIError} If the API request fails
  */
 export async function searchPosts(query, options = {}) {
-  // Validate query
   if (!query || query.trim().length === 0) {
     throw new ValidationError('Search query is required');
   }
 
-  // Sanitize query - escape special NQL characters to prevent injection
   const sanitizedQuery = sanitizeNqlValue(query);
 
-  // Build filter with fuzzy title match using Ghost NQL
   const filterParts = [`title:~'${sanitizedQuery}'`];
-
-  // Add status filter if provided and not 'all'
   if (options.status && options.status !== 'all') {
     filterParts.push(`status:${options.status}`);
   }

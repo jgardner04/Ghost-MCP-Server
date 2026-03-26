@@ -1,6 +1,13 @@
-import { GhostAPIError, ValidationError } from '../errors/index.js';
-import { handleApiRequest, readResource, updateWithOCC, deleteResource } from './ghostApiClient.js';
+import { createResourceService } from './createResourceService.js';
 import { validators } from './validators.js';
+
+const service = createResourceService({
+  resource: 'newsletters',
+  label: 'Newsletter',
+  listDefaults: { limit: 'all' },
+  validateCreate: (data) => validators.validateNewsletterData(data),
+  catch422OnUpdate: true,
+});
 
 /**
  * Lists all newsletters with optional filtering and pagination.
@@ -9,15 +16,7 @@ import { validators } from './validators.js';
  * @returns {Promise<Array>} Array of newsletter objects (empty array if none found)
  * @throws {GhostAPIError} If the API request fails
  */
-export async function getNewsletters(options = {}) {
-  const defaultOptions = {
-    limit: 'all',
-    ...options,
-  };
-
-  const newsletters = await handleApiRequest('newsletters', 'browse', {}, defaultOptions);
-  return newsletters || [];
-}
+export const getNewsletters = service.getList;
 
 /**
  * Retrieves a single newsletter by ID.
@@ -27,9 +26,7 @@ export async function getNewsletters(options = {}) {
  * @throws {NotFoundError} If the newsletter is not found
  * @throws {GhostAPIError} If the API request fails
  */
-export async function getNewsletter(newsletterId) {
-  return readResource('newsletters', newsletterId, 'Newsletter');
-}
+export const getNewsletter = service.getOne;
 
 /**
  * Creates a new newsletter in Ghost CMS.
@@ -42,21 +39,7 @@ export async function getNewsletter(newsletterId) {
  * @throws {ValidationError} If validation fails or Ghost returns a 422
  * @throws {GhostAPIError} If the API request fails
  */
-export async function createNewsletter(newsletterData) {
-  // Validate input
-  validators.validateNewsletterData(newsletterData);
-
-  try {
-    return await handleApiRequest('newsletters', 'add', newsletterData);
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
-      throw new ValidationError('Newsletter creation failed', [
-        { field: 'newsletter', message: error.originalError },
-      ]);
-    }
-    throw error;
-  }
-}
+export const createNewsletter = service.create;
 
 /**
  * Updates an existing newsletter with optimistic concurrency control.
@@ -67,20 +50,7 @@ export async function createNewsletter(newsletterData) {
  * @throws {NotFoundError} If the newsletter is not found
  * @throws {GhostAPIError} If the API request fails
  */
-export async function updateNewsletter(newsletterId, updateData) {
-  validators.requireId(newsletterId, 'Newsletter');
-
-  try {
-    return await updateWithOCC('newsletters', newsletterId, updateData, {}, 'Newsletter');
-  } catch (error) {
-    if (error instanceof GhostAPIError && error.ghostStatusCode === 422) {
-      throw new ValidationError('Newsletter update failed', [
-        { field: 'newsletter', message: error.originalError },
-      ]);
-    }
-    throw error;
-  }
-}
+export const updateNewsletter = service.update;
 
 /**
  * Deletes a newsletter by ID.
@@ -90,6 +60,4 @@ export async function updateNewsletter(newsletterId, updateData) {
  * @throws {NotFoundError} If the newsletter is not found
  * @throws {GhostAPIError} If the API request fails
  */
-export async function deleteNewsletter(newsletterId) {
-  return deleteResource('newsletters', newsletterId, 'Newsletter');
-}
+export const deleteNewsletter = service.remove;
