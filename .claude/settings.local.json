@@ -43,7 +43,9 @@
       "mcp__plugin_linear_linear__list_issue_labels",
       "WebFetch(domain:zod.dev)",
       "Bash(npm info:*)",
-      "WebFetch(domain:docs.npmjs.com)"
+      "WebFetch(domain:docs.npmjs.com)",
+      "mcp__claude_ai_Linear__save_issue",
+      "Bash(rtk git:*)"
     ],
     "deny": [],
     "ask": []
