@@ -32,4 +32,5 @@ tasks/
 thoughts/
 
 # Test coverage
-coverage/ .serena/
+coverage/
+.serena/

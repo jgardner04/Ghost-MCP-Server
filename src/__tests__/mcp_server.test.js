@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import * as z4mini from 'zod/v4-mini';
 
 // Mock the McpServer to capture tool registrations
@@ -1651,8 +1651,7 @@ describe('ghost_delete_tag', () => {
 // to clients. Uses zod/v4-mini's toJSONSchema — the same converter the
 // MCP SDK calls internally (see zod-json-schema-compat.js).
 describe('tool schema JSON Schema output', () => {
-  beforeEach(async () => {
-    vi.clearAllMocks();
+  beforeAll(async () => {
     if (mockTools.size === 0) {
       await import('../mcp_server.js');
     }
@@ -1685,6 +1684,7 @@ describe('tool schema JSON Schema output', () => {
   it('should declare title and html as required for ghost_create_post and ghost_create_page', () => {
     for (const toolName of ['ghost_create_post', 'ghost_create_page']) {
       const tool = mockTools.get(toolName);
+      expect(tool, `${toolName}: tool not found in registry`).toBeDefined();
       const jsonSchema = z4mini.toJSONSchema(tool.schema, {
         target: 'draft-7',
         io: 'input',
