@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
+// zod/v4-mini is a subpath export of zod@^4 — used here because the MCP SDK's
+// internal JSON Schema converter (zod-json-schema-compat.js) uses this same module.
 import * as z4mini from 'zod/v4-mini';
 
 // Mock the McpServer to capture tool registrations
@@ -1687,6 +1689,7 @@ describe('tool schema JSON Schema output', () => {
       expect(tool, `${toolName}: tool not found in registry`).toBeDefined();
       const jsonSchema = z4mini.toJSONSchema(tool.schema, JSON_SCHEMA_OPTS);
 
+      expect(jsonSchema.properties, `${toolName}: properties missing`).toBeDefined();
       expect(jsonSchema.required, `${toolName}: title not required`).toContain('title');
       expect(jsonSchema.required, `${toolName}: html not required`).toContain('html');
       expect(jsonSchema.properties.title.type, `${toolName}: title type`).toBe('string');
