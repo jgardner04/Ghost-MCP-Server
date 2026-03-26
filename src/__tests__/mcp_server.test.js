@@ -1651,6 +1651,9 @@ describe('ghost_delete_tag', () => {
 // to clients. Uses zod/v4-mini's toJSONSchema — the same converter the
 // MCP SDK calls internally (see zod-json-schema-compat.js).
 describe('tool schema JSON Schema output', () => {
+  // Matches the MCP SDK's internal conversion options (see zod-json-schema-compat.js)
+  const JSON_SCHEMA_OPTS = { target: 'draft-7', io: 'input' };
+
   beforeAll(async () => {
     if (mockTools.size === 0) {
       await import('../mcp_server.js');
@@ -1668,10 +1671,7 @@ describe('tool schema JSON Schema output', () => {
       expect(Object.keys(schema.shape).length, `${name}: shape has no keys`).toBeGreaterThan(0);
 
       // Convert via the same path the MCP SDK uses
-      const jsonSchema = z4mini.toJSONSchema(schema, {
-        target: 'draft-7',
-        io: 'input',
-      });
+      const jsonSchema = z4mini.toJSONSchema(schema, JSON_SCHEMA_OPTS);
 
       expect(jsonSchema.type, `${name}: type should be 'object'`).toBe('object');
       expect(
@@ -1685,10 +1685,7 @@ describe('tool schema JSON Schema output', () => {
     for (const toolName of ['ghost_create_post', 'ghost_create_page']) {
       const tool = mockTools.get(toolName);
       expect(tool, `${toolName}: tool not found in registry`).toBeDefined();
-      const jsonSchema = z4mini.toJSONSchema(tool.schema, {
-        target: 'draft-7',
-        io: 'input',
-      });
+      const jsonSchema = z4mini.toJSONSchema(tool.schema, JSON_SCHEMA_OPTS);
 
       expect(jsonSchema.required, `${toolName}: title not required`).toContain('title');
       expect(jsonSchema.required, `${toolName}: html not required`).toContain('html');
