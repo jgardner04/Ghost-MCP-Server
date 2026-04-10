@@ -185,7 +185,6 @@ describe('ghostServiceImproved - Members', () => {
 
     it('should throw not found error if member does not exist', async () => {
       const error404 = new GhostAPIError('members.read', 'Member not found', 404);
-      error404.response = { status: 404 };
       api.members.read.mockRejectedValue(error404);
 
       const rejection = updateMember('non-existent', { name: 'Test' });
@@ -212,7 +211,6 @@ describe('ghostServiceImproved - Members', () => {
 
     it('should throw not found error if member does not exist', async () => {
       const error404 = new GhostAPIError('members.delete', 'Member not found', 404);
-      error404.response = { status: 404 };
       api.members.delete.mockRejectedValue(error404);
 
       const rejection = deleteMember('non-existent');
@@ -360,7 +358,6 @@ describe('ghostServiceImproved - Members', () => {
 
     it('should throw not found error when member not found by ID', async () => {
       const error404 = new GhostAPIError('members.read', 'Member not found', 404);
-      error404.response = { status: 404 };
       api.members.read.mockRejectedValue(error404);
 
       const rejection = getMember({ id: 'non-existent' });

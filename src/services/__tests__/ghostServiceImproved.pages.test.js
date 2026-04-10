@@ -274,7 +274,6 @@ describe('ghostServiceImproved - Pages', () => {
 
     it('should handle page not found (404)', async () => {
       const error404 = new GhostAPIError('pages.read', 'Page not found', 404);
-      error404.response = { status: 404 };
       api.pages.read.mockRejectedValue(error404);
 
       const rejection = updatePage('nonexistent-id', { title: 'Updated' });
@@ -387,7 +386,6 @@ describe('ghostServiceImproved - Pages', () => {
 
     it('should handle page not found (404)', async () => {
       const error404 = new GhostAPIError('pages.delete', 'Page not found', 404);
-      error404.response = { status: 404 };
       api.pages.delete.mockRejectedValue(error404);
 
       const rejection = deletePage('nonexistent-id');
@@ -437,7 +435,6 @@ describe('ghostServiceImproved - Pages', () => {
 
     it('should handle page not found (404)', async () => {
       const error404 = new GhostAPIError('pages.read', 'Page not found', 404);
-      error404.response = { status: 404 };
       api.pages.read.mockRejectedValue(error404);
 
       const rejection = getPage('nonexistent-id');
