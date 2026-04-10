@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **JSON Schema regression tests for MCP tool schemas** - Added tests verifying every registered tool produces non-empty JSON Schema `properties` via the same `zod/v4-mini` conversion path the MCP SDK uses. Includes targeted assertions that `ghost_create_post` and `ghost_create_page` declare `title` and `html` as required. Prevents a regression where empty schemas caused MCP clients to strip arguments. ([JON-103](https://linear.app/jonathangardner/issue/JON-103/declare-input-schema-for-ghost-create-post-tool))
 
+### Removed
+
+- **Redundant `.response` assignment on 404 GhostAPIError mocks** - Removed manual `error404.response = { status: 404 }` assignments from 4 test files (posts, pages, tags, members). `GhostAPIError` already sets `this.statusCode = 404`, and `fromGhostError` falls back to `error.statusCode` when `error.response?.status` is absent. ([JON-80](https://linear.app/jonathangardner/issue/JON-80/remove-redundant-response-assignment-on-404-ghostapierror-mocks))
+
 ### Changed
 
 - **Extract shared CRUD resource factory** - Introduced `createResourceService()` factory to eliminate duplicated CRUD patterns (create/update/delete/getOne/getList) across 6 domain service modules. Posts, Pages, Members, Newsletters, and Tiers now delegate common operations to the factory while preserving domain-specific logic as config hooks. ([JON-36](https://linear.app/jonathangardner/issue/JON-36/extract-shared-crud-resource-factory-to-eliminate-postpage-duplication), [#144](https://github.com/jgardner04/Ghost-MCP-Server/pull/144))

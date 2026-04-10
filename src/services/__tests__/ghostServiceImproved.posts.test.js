@@ -93,7 +93,6 @@ describe('ghostServiceImproved - Posts (updatePost)', () => {
 
     it('should handle post not found (404)', async () => {
       const error404 = new GhostAPIError('posts.read', 'Post not found', 404);
-      error404.response = { status: 404 };
       api.posts.read.mockRejectedValue(error404);
 
       const rejection = updatePost('nonexistent-id', { title: 'Updated' });

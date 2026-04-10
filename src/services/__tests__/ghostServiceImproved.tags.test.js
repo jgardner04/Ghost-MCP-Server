@@ -252,7 +252,6 @@ describe('ghostServiceImproved - Tags', () => {
 
     it('should throw not found error when tag does not exist', async () => {
       const error404 = new GhostAPIError('tags.read', 'Tag not found', 404);
-      error404.response = { status: 404 };
       api.tags.read.mockRejectedValue(error404);
 
       const rejection = getTag('non-existent');
@@ -411,7 +410,6 @@ describe('ghostServiceImproved - Tags', () => {
 
     it('should throw not found error if tag does not exist', async () => {
       const error404 = new GhostAPIError('tags.read', 'Tag not found', 404);
-      error404.response = { status: 404 };
       api.tags.read.mockRejectedValue(error404);
 
       const rejection = updateTag('non-existent', { name: 'Test' });
@@ -438,7 +436,6 @@ describe('ghostServiceImproved - Tags', () => {
 
     it('should throw not found error if tag does not exist', async () => {
       const error404 = new GhostAPIError('tags.delete', 'Tag not found', 404);
-      error404.response = { status: 404 };
       api.tags.delete.mockRejectedValue(error404);
 
       const rejection = deleteTag('non-existent');
