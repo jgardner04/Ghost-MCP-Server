@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Extracted `expectRejection` test helper** - Consolidated repeated double `.rejects` assertion pattern (`.toBeInstanceOf` + `.toThrow`) into a shared `expectRejection()` helper in `testUtils.js`, reducing verbosity across 4 test files (11 call sites). ([JON-82](https://linear.app/jonathangardner/issue/JON-82/extract-test-helper-for-double-rejects-assertion-pattern))
+
 - **Standardized tool error handling** - Extracted `withErrorHandling` higher-order function to eliminate ~735 lines of duplicated try/catch blocks across 33 tool handlers. Error messages now use a consistent `Error in <tool_name>: <message>` format. ([JON-17](https://linear.app/jonathangardner/issue/JON-17/extract-error-handler-hof-in-mcp-serverjs-to-reduce-duplication), [#138](https://github.com/jgardner04/Ghost-MCP-Server/pull/138))
 - **JSDoc documentation, validation helper extraction, and export cleanup** - Added `@param`/`@returns`/`@throws` JSDoc to ~32 functions, extracted `validators.requireId()` shared helper replacing 10+ inline ID checks, and removed unused `handleApiRequest` backward-compat export. ([JON-18](https://linear.app/jonathangardner/issue/JON-18/jsdoc-gaps-unused-export-cleanup-and-validation-helper-extraction), [#141](https://github.com/jgardner04/Ghost-MCP-Server/pull/141))
 

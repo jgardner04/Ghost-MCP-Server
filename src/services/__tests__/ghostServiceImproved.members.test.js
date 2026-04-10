@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createMockContextLogger } from '../../__tests__/helpers/mockLogger.js';
-import { mockDotenv } from '../../__tests__/helpers/testUtils.js';
+import { mockDotenv, expectRejection } from '../../__tests__/helpers/testUtils.js';
 import { mockGhostApiModule } from '../../__tests__/helpers/mockGhostApi.js';
 
 // Mock the Ghost Admin API using shared mock factory
@@ -188,9 +188,11 @@ describe('ghostServiceImproved - Members', () => {
       error404.response = { status: 404 };
       api.members.read.mockRejectedValue(error404);
 
-      const rejection = updateMember('non-existent', { name: 'Test' });
-      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
-      await expect(rejection).rejects.toThrow('Member not found');
+      await expectRejection(
+        updateMember('non-existent', { name: 'Test' }),
+        NotFoundError,
+        'Member not found'
+      );
     });
   });
 
@@ -215,9 +217,7 @@ describe('ghostServiceImproved - Members', () => {
       error404.response = { status: 404 };
       api.members.delete.mockRejectedValue(error404);
 
-      const rejection = deleteMember('non-existent');
-      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
-      await expect(rejection).rejects.toThrow('Member not found');
+      await expectRejection(deleteMember('non-existent'), NotFoundError, 'Member not found');
     });
   });
 
@@ -363,9 +363,7 @@ describe('ghostServiceImproved - Members', () => {
       error404.response = { status: 404 };
       api.members.read.mockRejectedValue(error404);
 
-      const rejection = getMember({ id: 'non-existent' });
-      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
-      await expect(rejection).rejects.toThrow('Member not found');
+      await expectRejection(getMember({ id: 'non-existent' }), NotFoundError, 'Member not found');
     });
 
     it('should throw not found error when member not found by email', async () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createMockContextLogger } from '../../__tests__/helpers/mockLogger.js';
-import { mockDotenv } from '../../__tests__/helpers/testUtils.js';
+import { mockDotenv, expectRejection } from '../../__tests__/helpers/testUtils.js';
 import { mockGhostApiModule } from '../../__tests__/helpers/mockGhostApi.js';
 
 // Mock the Ghost Admin API using shared mock factory
@@ -210,9 +210,11 @@ describe('ghostServiceImproved - Pages', () => {
       error422.response = { status: 422 };
       api.pages.add.mockRejectedValue(error422);
 
-      const rejection = createPage({ title: 'Test', html: '<p>Content</p>' });
-      await expect(rejection).rejects.toBeInstanceOf(ValidationError);
-      await expect(rejection).rejects.toThrow('Page creation failed due to validation errors');
+      await expectRejection(
+        createPage({ title: 'Test', html: '<p>Content</p>' }),
+        ValidationError,
+        'Page creation failed due to validation errors'
+      );
     });
 
     it('should NOT include tags in page creation (pages do not support tags)', async () => {
@@ -277,9 +279,11 @@ describe('ghostServiceImproved - Pages', () => {
       error404.response = { status: 404 };
       api.pages.read.mockRejectedValue(error404);
 
-      const rejection = updatePage('nonexistent-id', { title: 'Updated' });
-      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
-      await expect(rejection).rejects.toThrow('Page not found');
+      await expectRejection(
+        updatePage('nonexistent-id', { title: 'Updated' }),
+        NotFoundError,
+        'Page not found'
+      );
     });
 
     it('should preserve updated_at timestamp for conflict resolution', async () => {
@@ -390,9 +394,7 @@ describe('ghostServiceImproved - Pages', () => {
       error404.response = { status: 404 };
       api.pages.delete.mockRejectedValue(error404);
 
-      const rejection = deletePage('nonexistent-id');
-      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
-      await expect(rejection).rejects.toThrow('Page not found');
+      await expectRejection(deletePage('nonexistent-id'), NotFoundError, 'Page not found');
     });
   });
 
@@ -440,9 +442,7 @@ describe('ghostServiceImproved - Pages', () => {
       error404.response = { status: 404 };
       api.pages.read.mockRejectedValue(error404);
 
-      const rejection = getPage('nonexistent-id');
-      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
-      await expect(rejection).rejects.toThrow('Page not found');
+      await expectRejection(getPage('nonexistent-id'), NotFoundError, 'Page not found');
     });
   });
 

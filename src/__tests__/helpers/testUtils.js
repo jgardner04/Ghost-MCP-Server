@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { expect, vi } from 'vitest';
 
 /**
  * Creates a mock environment variable configuration.
@@ -102,4 +102,26 @@ export async function waitFor(condition, timeout = 5000, interval = 100) {
  */
 export function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Asserts that a promise rejects with a specific error type and message.
+ * Combines the common double `.rejects` pattern into a single call.
+ *
+ * @param {Promise} promise - The promise expected to reject
+ * @param {Function} ErrorClass - The expected error constructor (e.g., NotFoundError)
+ * @param {string|RegExp} message - The expected error message (string or regex)
+ *
+ * @example
+ * import { expectRejection } from '../helpers/testUtils.js';
+ *
+ * await expectRejection(
+ *   updateMember('non-existent', { name: 'Test' }),
+ *   NotFoundError,
+ *   'Member not found'
+ * );
+ */
+export async function expectRejection(promise, ErrorClass, message) {
+  await expect(promise).rejects.toBeInstanceOf(ErrorClass);
+  await expect(promise).rejects.toThrow(message);
 }
