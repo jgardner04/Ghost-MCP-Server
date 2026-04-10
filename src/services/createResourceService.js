@@ -24,6 +24,9 @@ import { validators } from './validators.js';
  * @param {Function} [config.validateUpdate] - Validation function called before update: (id, data) => void | Promise<void>
  * @param {boolean} [config.catch422OnUpdate=false] - Whether to catch 422 errors on update and wrap as ValidationError
  * @returns {Object} Object with { create, update, remove, getOne, getList } methods
+ *
+ * SECURITY: HTML content must be sanitized before reaching this function.
+ * See htmlContentSchema in schemas/common.js for the validation gate.
  */
 export function createResourceService(config) {
   const {

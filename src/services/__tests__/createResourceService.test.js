@@ -135,6 +135,23 @@ describe('createResourceService', () => {
       expect(validateCreate).toHaveBeenCalledBefore(api.posts.add);
     });
 
+    it('should support async validateCreate', async () => {
+      const validateCreate = vi.fn().mockResolvedValue(undefined);
+      const service = createResourceService({
+        resource: 'posts',
+        label: 'Post',
+        validateCreate,
+      });
+
+      const data = { title: 'Test' };
+      api.posts.add.mockResolvedValue({ id: '1', ...data });
+
+      await service.create(data);
+
+      expect(validateCreate).toHaveBeenCalledWith(data);
+      expect(api.posts.add).toHaveBeenCalled();
+    });
+
     it('should not call API if validateCreate throws', async () => {
       const validateCreate = vi.fn(() => {
         throw new ValidationError('Invalid data');
@@ -159,7 +176,7 @@ describe('createResourceService', () => {
       ghostError.response = { status: 422 };
       api.posts.add.mockRejectedValue(ghostError);
 
-      await expect(service.create({ title: 'Test' })).rejects.toThrow();
+      await expect(service.create({ title: 'Test' })).rejects.toThrow(ValidationError);
     });
 
     it('should re-throw non-422 errors', async () => {
