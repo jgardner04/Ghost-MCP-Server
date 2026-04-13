@@ -2,17 +2,30 @@
 /**
  * Pre-flight spike for the image-upload plan.
  *
- * Verifies two things the plan depends on:
- *   1. Whether @tryghost/admin-api forwards `purpose` and `ref` on images.upload.
- *   2. Ghost's actual limits on posts.feature_image_alt and feature_image_caption.
+ * Runs real probes against a real Ghost instance and prints a
+ * pass/fail report. Exits 0 if every probe resolved (not necessarily
+ * passed — read the report), 1 if env is missing or something crashed.
+ *
+ * What it checks:
+ *   1. Does @tryghost/admin-api forward `purpose` and `ref` on
+ *      images.upload, or does it silently drop unknown fields?
+ *   2. What are Ghost's actual max lengths for
+ *      posts.feature_image_alt and posts.feature_image_caption?
  *
  * Usage:
- *   cp .env.example .env   # set GHOST_ADMIN_API_URL + GHOST_ADMIN_API_KEY
+ *   # Option A — use repo .env
+ *   cp .env.example .env  # set GHOST_ADMIN_API_URL + GHOST_ADMIN_API_KEY
  *   node scripts/spike-image-upload.js
  *
- * Reports results to stdout. Nothing is written to Ghost permanently except:
- *   - one uploaded test image (orphaned; Ghost has no delete endpoint)
- *   - one draft post that the script attempts to delete at the end
+ *   # Option B — inline, from any console with creds
+ *   GHOST_ADMIN_API_URL=https://your-site.ghost.io \
+ *   GHOST_ADMIN_API_KEY=YOUR_KEY \
+ *     node scripts/spike-image-upload.js
+ *
+ * Side effects on the target Ghost:
+ *   - uploads one 64x64 PNG (orphaned; Ghost has no delete-image endpoint)
+ *   - creates and immediately deletes ~26 draft posts during the
+ *     binary-search for alt/caption length limits
  */
 import 'dotenv/config';
 import GhostAdminAPI from '@tryghost/admin-api';
@@ -21,11 +34,25 @@ import os from 'os';
 import path from 'path';
 import sharp from 'sharp';
 
-const api = new GhostAdminAPI({
-  url: process.env.GHOST_ADMIN_API_URL,
-  key: process.env.GHOST_ADMIN_API_KEY,
-  version: 'v5.0',
-});
+const REF = `spike-ref-${Date.now()}`;
+
+function pass(label, detail = '') {
+  console.log(`  ✓ ${label}${detail ? ` — ${detail}` : ''}`);
+}
+function fail(label, detail = '') {
+  console.log(`  ✗ ${label}${detail ? ` — ${detail}` : ''}`);
+}
+function info(label, detail = '') {
+  console.log(`  · ${label}${detail ? ` — ${detail}` : ''}`);
+}
+
+function refDidRoundTrip(result, expected) {
+  if (!result) return false;
+  if (result.ref === expected) return true;
+  if (Array.isArray(result) && result[0]?.ref === expected) return true;
+  if (Array.isArray(result?.images) && result.images[0]?.ref === expected) return true;
+  return false;
+}
 
 async function makeSquarePng() {
   const p = path.join(os.tmpdir(), `spike-${Date.now()}.png`);
@@ -37,69 +64,126 @@ async function makeSquarePng() {
   return p;
 }
 
-async function testPurposeAndRef() {
-  console.log('\n=== Test 1: purpose + ref forwarding ===');
+async function probePurposeAndRef(api) {
+  console.log('\n── Probe 1: purpose + ref forwarding ──');
   const file = await makeSquarePng();
   try {
-    const result = await api.images.upload({ file, purpose: 'icon', ref: 'spike-ref-123' });
-    console.log('Raw result:', JSON.stringify(result, null, 2));
-    const refEchoed = result?.ref === 'spike-ref-123' || result?.[0]?.ref === 'spike-ref-123';
-    console.log(
-      refEchoed ? 'RESULT: ref round-trips ✓' : 'RESULT: ref NOT echoed — SDK drops it ✗'
-    );
-    console.log('-> If ref came back, purpose is probably forwarded too. Proceed via SDK.');
-    console.log('-> If ref missing, fall back to raw multipart POST in src/services/images.js.');
+    const result = await api.images.upload({ file, purpose: 'icon', ref: REF });
+    info('SDK accepted the call');
+    console.log('  raw response:', JSON.stringify(result));
+    if (refDidRoundTrip(result, REF)) {
+      pass('ref round-trips', 'proceed via SDK for both purpose and ref');
+      return 'sdk-ok';
+    }
+    fail('ref not echoed', 'SDK likely drops unknown fields — fall back to raw multipart POST');
+    return 'sdk-drops-fields';
   } catch (err) {
-    console.log('Upload failed:', err.message);
-    console.log('If error mentions "icon requires square" → purpose IS forwarded (good).');
-    console.log('If error is generic validation → purpose likely ignored.');
+    const msg = err?.message ?? String(err);
+    console.log('  error:', msg);
+    if (/icon/i.test(msg) && /(square|size|dimension|format)/i.test(msg)) {
+      pass('server-side icon validation fired', 'purpose IS forwarded; ref support still unknown');
+      return 'purpose-only';
+    }
+    fail('generic failure', 'cannot confirm purpose/ref support from this response');
+    return 'unknown';
   } finally {
     fs.unlink(file, () => {});
   }
 }
 
-async function testAltCaptionLimits() {
-  console.log('\n=== Test 2: alt / caption length limits ===');
-  const tryLength = async (field, len) => {
-    const post = await api.posts.add(
-      {
-        title: `spike-${field}-${len}`,
-        status: 'draft',
-        html: '<p>spike</p>',
-        [field]: 'x'.repeat(len),
-        feature_image: 'https://static.ghost.org/v5.0.0/images/publication-cover.jpg',
-      },
-      { source: 'html' }
-    );
-    await api.posts.delete({ id: post.id });
-    return true;
-  };
-  for (const field of ['feature_image_alt', 'feature_image_caption']) {
-    let lo = 0,
-      hi = 5000,
-      maxOk = 0;
-    while (lo <= hi) {
-      const mid = Math.floor((lo + hi) / 2);
-      try {
-        await tryLength(field, mid);
-        maxOk = mid;
-        lo = mid + 1;
-      } catch {
-        hi = mid - 1;
-      }
+async function measureMaxLength(probe, { lo = 0, hi = 5000 } = {}) {
+  let maxOk = -1;
+  let probes = 0;
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    probes += 1;
+
+    const accepted = await probe(mid);
+    if (accepted) {
+      maxOk = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
     }
-    console.log(`${field}: max accepted length = ${maxOk}`);
+  }
+  return { maxOk, probes };
+}
+
+function makePostFieldProbe(api, field) {
+  return async (len) => {
+    try {
+      const post = await api.posts.add(
+        {
+          title: `spike-${field}-${len}`,
+          status: 'draft',
+          html: '<p>spike</p>',
+          [field]: 'x'.repeat(len),
+          feature_image: 'https://static.ghost.org/v5.0.0/images/publication-cover.jpg',
+        },
+        { source: 'html' }
+      );
+      await api.posts.delete({ id: post.id });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+}
+
+async function probeFieldLimits(api) {
+  console.log('\n── Probe 2: feature_image_alt / _caption max length ──');
+  for (const field of ['feature_image_alt', 'feature_image_caption']) {
+    const { maxOk, probes } = await measureMaxLength(makePostFieldProbe(api, field));
+    if (maxOk > 0) {
+      pass(`${field}`, `max accepted = ${maxOk} chars (${probes} probes)`);
+    } else {
+      fail(`${field}`, 'Ghost rejected every length — check creds / permissions');
+    }
   }
 }
 
-(async () => {
-  if (!process.env.GHOST_ADMIN_API_URL || !process.env.GHOST_ADMIN_API_KEY) {
-    console.error('Set GHOST_ADMIN_API_URL and GHOST_ADMIN_API_KEY in .env first.');
+function assertEnv() {
+  const missing = ['GHOST_ADMIN_API_URL', 'GHOST_ADMIN_API_KEY'].filter((k) => !process.env[k]);
+  if (missing.length) {
+    console.error(`Missing env vars: ${missing.join(', ')}`);
+    console.error('Set them via .env or inline before `node scripts/spike-image-upload.js`.');
     process.exit(1);
   }
-  await testPurposeAndRef();
-  await testAltCaptionLimits();
-})().catch((e) => {
-  console.error('Spike failed:', e);
+}
+
+async function main() {
+  assertEnv();
+  console.log(`Target: ${process.env.GHOST_ADMIN_API_URL}`);
+
+  const api = new GhostAdminAPI({
+    url: process.env.GHOST_ADMIN_API_URL,
+    key: process.env.GHOST_ADMIN_API_KEY,
+    version: 'v5.0',
+  });
+
+  const purposeResult = await probePurposeAndRef(api);
+  await probeFieldLimits(api);
+
+  console.log('\n── Summary ──');
+  switch (purposeResult) {
+    case 'sdk-ok':
+      console.log('PR 2 path: use SDK — api.images.upload({file, purpose, ref})');
+      break;
+    case 'purpose-only':
+      console.log('PR 2 path: SDK forwards purpose but drops ref — either');
+      console.log('  (a) accept ref loss and rely on purpose, or');
+      console.log('  (b) fall back to raw multipart in src/services/images.js');
+      break;
+    case 'sdk-drops-fields':
+    case 'unknown':
+    default:
+      console.log('PR 2 path: raw multipart POST to /ghost/api/admin/images/upload/');
+      console.log('  (reuse auth helper in src/services/ghostApiClient.js)');
+  }
+  console.log('\nFeed the _alt / _caption numbers into src/schemas/common.js (PR 3).');
+}
+
+main().catch((e) => {
+  console.error('\nSpike crashed:', e);
   process.exit(1);
 });
