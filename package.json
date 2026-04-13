@@ -43,7 +43,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,json,md}\"",
     "format:check": "prettier --check \"**/*.{js,json,md}\"",
-    "prepare": "husky"
+    "prepare": "husky",
+    "prepublishOnly": "chmod +x src/mcp_server.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.2",

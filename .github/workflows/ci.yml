@@ -14,6 +14,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify bin is executable in git index
+        run: |
+          mode=$(git ls-files --stage src/mcp_server.js | awk '{print $1}')
+          test "$mode" = "100755" || { echo "src/mcp_server.js must be tracked as 100755 (current: $mode)"; exit 1; }
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
