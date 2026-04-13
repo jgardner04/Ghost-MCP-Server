@@ -1,204 +1,175 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mockDotenv } from '../../__tests__/helpers/testUtils.js';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import sharp from 'sharp';
+import fs from 'fs/promises';
+import path from 'path';
+import os from 'os';
+
 import { createMockContextLogger } from '../../__tests__/helpers/mockLogger.js';
-
-// Mock dotenv
-vi.mock('dotenv', () => mockDotenv());
-
-// Mock logger
 vi.mock('../../utils/logger.js', () => ({
   createContextLogger: createMockContextLogger(),
 }));
 
-// Mock sharp with chainable API
-const mockMetadata = vi.fn();
-const mockResize = vi.fn();
-const mockJpeg = vi.fn();
-const mockToFile = vi.fn();
+// Import under test (real sharp, real filesystem)
+const { processImage } = await import('../imageProcessingService.js');
 
-const createMockSharp = () => {
-  const instance = {
-    metadata: mockMetadata,
-    resize: mockResize,
-    jpeg: mockJpeg,
-  };
+const tmpRoot = path.join(os.tmpdir(), `ghost-mcp-img-test-${Date.now()}`);
+const fixtures = {};
 
-  // Make methods chainable
-  mockResize.mockReturnValue(instance);
-  mockJpeg.mockReturnValue(instance);
-  instance.toFile = mockToFile;
+async function makeRasterFixture(format, width, height = width) {
+  const file = path.join(tmpRoot, `in-${format}-${width}.${format === 'jpeg' ? 'jpg' : format}`);
+  await sharp({
+    create: {
+      width,
+      height,
+      channels: format === 'png' ? 4 : 3,
+      background: { r: 10, g: 50, b: 150, alpha: 1 },
+    },
+  })
+    [format]()
+    .toFile(file);
+  return file;
+}
 
-  return instance;
-};
+beforeAll(async () => {
+  await fs.mkdir(tmpRoot, { recursive: true });
 
-vi.mock('sharp', () => ({
-  default: vi.fn(() => createMockSharp()),
-}));
+  fixtures.pngSmall = await makeRasterFixture('png', 800);
+  fixtures.pngLarge = await makeRasterFixture('png', 2000);
+  fixtures.jpegSmall = await makeRasterFixture('jpeg', 800);
+  fixtures.jpegLarge = await makeRasterFixture('jpeg', 2000);
+  fixtures.webpSmall = await makeRasterFixture('webp', 800);
+  fixtures.webpLarge = await makeRasterFixture('webp', 2000);
 
-// Mock fs
-vi.mock('fs', () => ({
-  default: {
-    existsSync: vi.fn(),
-  },
-}));
+  // SVG: write minimal vector source
+  fixtures.svg = path.join(tmpRoot, 'in.svg');
+  await fs.writeFile(
+    fixtures.svg,
+    '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#39f"/></svg>'
+  );
 
-// Mock path - use actual implementation but allow spying
-vi.mock('path', async () => {
-  const actual = await vi.importActual('path');
-  return {
-    default: actual.default,
-    ...actual,
-  };
+  // GIF: sharp cannot reliably create animated GIFs across versions; use a
+  // known-valid 1x1 transparent GIF89a byte sequence for a deterministic fixture.
+  fixtures.gif = path.join(tmpRoot, 'in.gif');
+  await fs.writeFile(
+    fixtures.gif,
+    Buffer.from(
+      '47494638396101000100800000ffffff00000021f90401000001002c00000000010001000002024401003b',
+      'hex'
+    )
+  );
+
+  // ICO: minimal 1x1 ICO header (used only for passthrough byte comparison).
+  fixtures.ico = path.join(tmpRoot, 'in.ico');
+  await fs.writeFile(
+    fixtures.ico,
+    Buffer.from(
+      '00000100010001010000010020003000000016000000280000000100000002000000010020000000000004000000000000000000000000000000000000000000000000000000000000000000000000',
+      'hex'
+    )
+  );
 });
 
-// Import after mocks are set up
-import { processImage } from '../imageProcessingService.js';
-import sharp from 'sharp';
-import fs from 'fs';
+afterAll(async () => {
+  await fs.rm(tmpRoot, { recursive: true, force: true });
+});
 
-describe('imageProcessingService', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    // Reset mock implementations
-    mockMetadata.mockResolvedValue({ width: 800, size: 100000 });
-    mockToFile.mockResolvedValue();
-    fs.existsSync.mockReturnValue(true);
+async function metaOf(file) {
+  return sharp(file).metadata();
+}
+
+describe('processImage — format passthrough', () => {
+  it('PNG <= 1200: preserves format and passes through unmodified', async () => {
+    const out = await processImage(fixtures.pngSmall, tmpRoot);
+    expect(path.extname(out).toLowerCase()).toBe('.png');
+    const m = await metaOf(out);
+    expect(m.format).toBe('png');
+    expect(m.width).toBe(800);
   });
 
-  describe('Input Validation', () => {
-    it('should accept valid inputPath and outputDir', async () => {
-      const inputPath = '/tmp/test-image.jpg';
-      const outputDir = '/tmp/output';
-
-      await processImage(inputPath, outputDir);
-
-      expect(sharp).toHaveBeenCalledWith(inputPath);
-      expect(mockToFile).toHaveBeenCalled();
-    });
-
-    it('should reject missing inputPath', async () => {
-      await expect(processImage(undefined, '/tmp/output')).rejects.toThrow(
-        'Invalid processing parameters'
-      );
-      expect(sharp).not.toHaveBeenCalled();
-    });
-
-    it('should reject missing outputDir', async () => {
-      await expect(processImage('/tmp/test.jpg', undefined)).rejects.toThrow(
-        'Invalid processing parameters'
-      );
-      expect(sharp).not.toHaveBeenCalled();
-    });
+  it('PNG > 1200: resized but still PNG (no JPEG conversion)', async () => {
+    const out = await processImage(fixtures.pngLarge, tmpRoot);
+    expect(path.extname(out).toLowerCase()).toBe('.png');
+    const m = await metaOf(out);
+    expect(m.format).toBe('png');
+    expect(m.width).toBe(1200);
   });
 
-  describe('Path Security', () => {
-    it('should resolve paths correctly', async () => {
-      const inputPath = './relative/path/image.jpg';
-      const outputDir = './output';
-
-      await processImage(inputPath, outputDir);
-
-      expect(fs.existsSync).toHaveBeenCalledWith(expect.stringContaining('image.jpg'));
-      expect(mockToFile).toHaveBeenCalledWith(expect.stringContaining('output'));
-    });
-
-    it('should throw error when input file does not exist', async () => {
-      fs.existsSync.mockReturnValue(false);
-
-      await expect(processImage('/tmp/nonexistent.jpg', '/tmp/output')).rejects.toThrow(
-        'Input file does not exist'
-      );
-      expect(sharp).not.toHaveBeenCalled();
-    });
+  it('JPEG <= 1200: passes through as JPEG', async () => {
+    const out = await processImage(fixtures.jpegSmall, tmpRoot);
+    expect(path.extname(out).toLowerCase()).toMatch(/\.jpe?g$/);
+    const m = await metaOf(out);
+    expect(m.format).toBe('jpeg');
+    expect(m.width).toBe(800);
   });
 
-  describe('Image Processing', () => {
-    it('should not resize image when width <= MAX_WIDTH (1200)', async () => {
-      mockMetadata.mockResolvedValue({ width: 1000, size: 100000 });
-
-      await processImage('/tmp/small-image.jpg', '/tmp/output');
-
-      expect(mockResize).not.toHaveBeenCalled();
-      expect(mockJpeg).toHaveBeenCalledWith({ quality: 80 });
-      expect(mockToFile).toHaveBeenCalled();
-    });
-
-    it('should resize image when width > MAX_WIDTH (1200)', async () => {
-      mockMetadata.mockResolvedValue({ width: 2000, size: 200000 });
-
-      await processImage('/tmp/large-image.jpg', '/tmp/output');
-
-      expect(mockResize).toHaveBeenCalledWith({ width: 1200 });
-      expect(mockJpeg).toHaveBeenCalledWith({ quality: 80 });
-      expect(mockToFile).toHaveBeenCalled();
-    });
-
-    it('should generate output filename with timestamp and processed prefix', async () => {
-      const inputPath = '/tmp/test-photo.jpg';
-      const outputDir = '/tmp/output';
-
-      // Mock Date.now to get predictable filename
-      const mockTimestamp = 1234567890;
-      vi.spyOn(Date, 'now').mockReturnValue(mockTimestamp);
-
-      await processImage(inputPath, outputDir);
-
-      expect(mockToFile).toHaveBeenCalledWith(
-        expect.stringMatching(/processed-1234567890-test-photo\.jpg$/)
-      );
-
-      vi.restoreAllMocks();
-    });
-
-    it('should convert image to JPEG with quality setting of 80', async () => {
-      await processImage('/tmp/image.png', '/tmp/output');
-
-      expect(mockJpeg).toHaveBeenCalledWith({ quality: 80 });
-      expect(mockToFile).toHaveBeenCalled();
-    });
-
-    it('should handle images with multiple dots in filename', async () => {
-      const inputPath = '/tmp/my.test.image.png';
-      const outputDir = '/tmp/output';
-      const mockTimestamp = 9999999999;
-      vi.spyOn(Date, 'now').mockReturnValue(mockTimestamp);
-
-      await processImage(inputPath, outputDir);
-
-      expect(mockToFile).toHaveBeenCalledWith(
-        expect.stringMatching(/processed-9999999999-my\.test\.image\.jpg$/)
-      );
-
-      vi.restoreAllMocks();
-    });
+  it('JPEG > 1200: resized as JPEG', async () => {
+    const out = await processImage(fixtures.jpegLarge, tmpRoot);
+    const m = await metaOf(out);
+    expect(m.format).toBe('jpeg');
+    expect(m.width).toBe(1200);
   });
 
-  describe('Error Handling', () => {
-    it('should catch and re-throw sharp processing failures', async () => {
-      const processingError = new Error('Sharp processing failed');
-      mockMetadata.mockRejectedValue(processingError);
+  it('WEBP <= 1200: passes through as WEBP', async () => {
+    const out = await processImage(fixtures.webpSmall, tmpRoot);
+    const m = await metaOf(out);
+    expect(m.format).toBe('webp');
+    expect(m.width).toBe(800);
+  });
 
-      await expect(processImage('/tmp/corrupt.jpg', '/tmp/output')).rejects.toThrow(
-        'Image processing failed: Sharp processing failed'
-      );
-    });
+  it('WEBP > 1200: resized as WEBP', async () => {
+    const out = await processImage(fixtures.webpLarge, tmpRoot);
+    const m = await metaOf(out);
+    expect(m.format).toBe('webp');
+    expect(m.width).toBe(1200);
+  });
 
-    it('should include original error message in re-thrown error', async () => {
-      const originalMessage = 'Input buffer contains unsupported image format';
-      mockToFile.mockRejectedValue(new Error(originalMessage));
+  it('SVG: passthrough — output bytes identical to input (never touched by sharp)', async () => {
+    const out = await processImage(fixtures.svg, tmpRoot);
+    expect(path.extname(out).toLowerCase()).toBe('.svg');
+    const [a, b] = await Promise.all([fs.readFile(fixtures.svg), fs.readFile(out)]);
+    expect(a.equals(b)).toBe(true);
+  });
 
-      await expect(processImage('/tmp/bad-format.dat', '/tmp/output')).rejects.toThrow(
-        `Image processing failed: ${originalMessage}`
-      );
-    });
+  it('GIF: passthrough — output bytes identical to input (animation-safe)', async () => {
+    const out = await processImage(fixtures.gif, tmpRoot);
+    expect(path.extname(out).toLowerCase()).toBe('.gif');
+    const [a, b] = await Promise.all([fs.readFile(fixtures.gif), fs.readFile(out)]);
+    expect(a.equals(b)).toBe(true);
+  });
 
-    it('should handle errors during JPEG conversion', async () => {
-      const conversionError = new Error('JPEG conversion failed');
-      mockToFile.mockRejectedValue(conversionError);
+  it('ICO: passthrough — output bytes identical to input', async () => {
+    const out = await processImage(fixtures.ico, tmpRoot, { purpose: 'icon' });
+    expect(path.extname(out).toLowerCase()).toBe('.ico');
+    const [a, b] = await Promise.all([fs.readFile(fixtures.ico), fs.readFile(out)]);
+    expect(a.equals(b)).toBe(true);
+  });
 
-      await expect(processImage('/tmp/image.jpg', '/tmp/output')).rejects.toThrow(
-        'Image processing failed: JPEG conversion failed'
-      );
-    });
+  it('output path is distinct from input path', async () => {
+    const out = await processImage(fixtures.pngSmall, tmpRoot);
+    expect(out).not.toBe(fixtures.pngSmall);
+  });
+});
+
+describe('processImage — validation & errors', () => {
+  it('rejects missing inputPath', async () => {
+    await expect(processImage(undefined, tmpRoot)).rejects.toThrow(/Invalid processing parameters/);
+  });
+
+  it('rejects missing outputDir', async () => {
+    await expect(processImage(fixtures.pngSmall, undefined)).rejects.toThrow(
+      /Invalid processing parameters/
+    );
+  });
+
+  it('throws when input file does not exist', async () => {
+    await expect(processImage('/nonexistent/xyz.png', tmpRoot)).rejects.toThrow(
+      /Input file does not exist/
+    );
+  });
+
+  it('wraps sharp failures with context', async () => {
+    const bogus = path.join(tmpRoot, 'bogus.png');
+    await fs.writeFile(bogus, 'not an image');
+    await expect(processImage(bogus, tmpRoot)).rejects.toThrow(/Image processing failed/);
   });
 });
