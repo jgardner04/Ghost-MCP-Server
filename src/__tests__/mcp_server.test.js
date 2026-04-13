@@ -2,16 +2,7 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 // zod/v4-mini is a subpath export of zod@^4 — used here because the MCP SDK's
 // internal JSON Schema converter (zod-json-schema-compat.js) uses this same module.
 import * as z4mini from 'zod/v4-mini';
-
-/**
- * Asserts that a Zod schema has a .shape property (i.e., is a ZodObject).
- * Throws a clear error instead of an opaque TypeError on Object.keys(undefined).
- */
-function assertZodShape(schema, toolName) {
-  if (!schema.shape) {
-    throw new Error(`${toolName}: schema is not a ZodObject (missing .shape)`);
-  }
-}
+import { assertZodShape } from './helpers/testUtils.js';
 
 // Mock the McpServer to capture tool registrations
 const mockTools = new Map();

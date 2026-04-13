@@ -1,14 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-/**
- * Asserts that a Zod schema has a .shape property (i.e., is a ZodObject).
- * Throws a clear error instead of an opaque TypeError on Object.keys(undefined).
- */
-function assertZodShape(schema, toolName) {
-  if (!schema.shape) {
-    throw new Error(`${toolName}: schema is not a ZodObject (missing .shape)`);
-  }
-}
+import { assertZodShape } from './helpers/testUtils.js';
 
 // Mock the McpServer to capture tool registrations
 const mockTools = new Map();

@@ -1,4 +1,18 @@
-import { vi } from 'vitest';
+import { expect, vi } from 'vitest';
+
+/**
+ * Asserts that a value is a ZodObject exposing a `.shape` property.
+ *
+ * Uses `expect` so Vitest reports a clean named assertion failure, and
+ * `schema?.shape` so a null/undefined `schema` is handled without a secondary
+ * TypeError — the exact opaque failure mode this helper eliminates.
+ *
+ * @param {unknown} schema - Value expected to be a ZodObject
+ * @param {string} toolName - Tool name included in the failure message
+ */
+export function assertZodShape(schema, toolName) {
+  expect(schema?.shape, `${toolName}: schema is not a ZodObject (missing .shape)`).toBeDefined();
+}
 
 /**
  * Creates a mock environment variable configuration.
