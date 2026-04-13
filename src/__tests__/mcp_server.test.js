@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 // zod/v4-mini is a subpath export of zod@^4 — used here because the MCP SDK's
 // internal JSON Schema converter (zod-json-schema-compat.js) uses this same module.
 import * as z4mini from 'zod/v4-mini';
+import { assertZodShape } from './helpers/testUtils.js';
 
 // Mock the McpServer to capture tool registrations
 const mockTools = new Map();
@@ -215,6 +216,7 @@ describe('mcp_server - ghost_get_posts tool', () => {
     expect(tool.description).toContain('posts');
     expect(tool.schema).toBeDefined();
     // Zod schemas store field definitions in schema.shape
+    assertZodShape(tool.schema, 'ghost_get_posts');
     expect(tool.schema.shape.limit).toBeDefined();
     expect(tool.schema.shape.page).toBeDefined();
     expect(tool.schema.shape.status).toBeDefined();
@@ -253,6 +255,7 @@ describe('mcp_server - ghost_get_posts tool', () => {
   it('should validate limit is between 1 and 100', () => {
     const tool = mockTools.get('ghost_get_posts');
     // Zod schemas store field definitions in schema.shape
+    assertZodShape(tool.schema, 'ghost_get_posts');
     const shape = tool.schema.shape;
 
     // Test that limit schema exists and has proper validation
@@ -265,6 +268,7 @@ describe('mcp_server - ghost_get_posts tool', () => {
   it('should validate page is at least 1', () => {
     const tool = mockTools.get('ghost_get_posts');
     // Zod schemas store field definitions in schema.shape
+    assertZodShape(tool.schema, 'ghost_get_posts');
     const shape = tool.schema.shape;
 
     expect(shape.page).toBeDefined();
@@ -285,6 +289,7 @@ describe('mcp_server - ghost_get_posts tool', () => {
   it('should validate status enum values', () => {
     const tool = mockTools.get('ghost_get_posts');
     // Zod schemas store field definitions in schema.shape
+    assertZodShape(tool.schema, 'ghost_get_posts');
     const shape = tool.schema.shape;
 
     expect(shape.status).toBeDefined();
@@ -452,6 +457,7 @@ describe('mcp_server - ghost_get_tags tool', () => {
     expect(tool.description).toContain('tags');
     expect(tool.schema).toBeDefined();
     // Zod schemas store field definitions in schema.shape
+    assertZodShape(tool.schema, 'ghost_get_tags');
     expect(tool.schema.shape.limit).toBeDefined();
     expect(tool.schema.shape.page).toBeDefined();
     expect(tool.schema.shape.order).toBeDefined();
@@ -686,6 +692,7 @@ describe('mcp_server - ghost_get_post tool', () => {
     expect(tool.description).toContain('post');
     expect(tool.schema).toBeDefined();
     // In Zod v4, refined schemas expose .shape directly
+    assertZodShape(tool.schema, 'ghost_get_post');
     const shape = tool.schema.shape;
     expect(shape.id).toBeDefined();
     expect(shape.slug).toBeDefined();
@@ -852,6 +859,7 @@ describe('mcp_server - ghost_update_post tool', () => {
     expect(tool.description).toContain('Updates an existing post');
     expect(tool.schema).toBeDefined();
     // Zod schemas store field definitions in schema.shape
+    assertZodShape(tool.schema, 'ghost_update_post');
     expect(tool.schema.shape.id).toBeDefined();
     expect(tool.schema.shape.title).toBeDefined();
     expect(tool.schema.shape.html).toBeDefined();
@@ -1123,6 +1131,7 @@ describe('mcp_server - ghost_delete_post tool', () => {
     expect(tool.description).toContain('permanent');
     expect(tool.schema).toBeDefined();
     // Zod schemas store field definitions in schema.shape
+    assertZodShape(tool.schema, 'ghost_delete_post');
     expect(tool.schema.shape.id).toBeDefined();
   });
 
@@ -1202,6 +1211,7 @@ describe('mcp_server - ghost_search_posts tool', () => {
     expect(tool.description).toContain('Search');
     expect(tool.schema).toBeDefined();
     // Zod schemas store field definitions in schema.shape
+    assertZodShape(tool.schema, 'ghost_search_posts');
     expect(tool.schema.shape.query).toBeDefined();
     expect(tool.schema.shape.status).toBeDefined();
     expect(tool.schema.shape.limit).toBeDefined();
@@ -1250,6 +1260,7 @@ describe('mcp_server - ghost_search_posts tool', () => {
   it('should validate limit is between 1 and 50', () => {
     const tool = mockTools.get('ghost_search_posts');
     // Zod schemas store field definitions in schema.shape
+    assertZodShape(tool.schema, 'ghost_search_posts');
     const shape = tool.schema.shape;
 
     expect(shape.limit).toBeDefined();
@@ -1261,6 +1272,7 @@ describe('mcp_server - ghost_search_posts tool', () => {
   it('should validate status enum values', () => {
     const tool = mockTools.get('ghost_search_posts');
     // Zod schemas store field definitions in schema.shape
+    assertZodShape(tool.schema, 'ghost_search_posts');
     const shape = tool.schema.shape;
 
     expect(shape.status).toBeDefined();
@@ -1359,6 +1371,7 @@ describe('ghost_get_tag', () => {
   it('should have correct schema with id and slug as optional', () => {
     const tool = mockTools.get('ghost_get_tag');
     // In Zod v4, refined schemas expose .shape directly
+    assertZodShape(tool.schema, 'ghost_get_tag');
     const shape = tool.schema.shape;
     expect(shape.id).toBeDefined();
     expect(shape.slug).toBeDefined();
@@ -1459,6 +1472,7 @@ describe('ghost_update_tag', () => {
   it('should have correct schema with all update fields', () => {
     const tool = mockTools.get('ghost_update_tag');
     // Zod schemas store field definitions in schema.shape
+    assertZodShape(tool.schema, 'ghost_update_tag');
     expect(tool.schema.shape.id).toBeDefined();
     expect(tool.schema.shape.name).toBeDefined();
     expect(tool.schema.shape.slug).toBeDefined();
@@ -1605,6 +1619,7 @@ describe('ghost_delete_tag', () => {
   it('should have correct schema with id field', () => {
     const tool = mockTools.get('ghost_delete_tag');
     // Zod schemas store field definitions in schema.shape
+    assertZodShape(tool.schema, 'ghost_delete_tag');
     expect(tool.schema.shape.id).toBeDefined();
   });
 
@@ -1669,7 +1684,7 @@ describe('tool schema JSON Schema output', () => {
       const schema = tool.schema;
 
       // Schema must be a Zod object with a shape
-      expect(schema.shape, `${name}: missing Zod shape`).toBeDefined();
+      assertZodShape(schema, name);
       expect(Object.keys(schema.shape).length, `${name}: shape has no keys`).toBeGreaterThan(0);
 
       // Convert via the same path the MCP SDK uses

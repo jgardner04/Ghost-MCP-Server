@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { assertZodShape } from './helpers/testUtils.js';
 
 // Mock the McpServer to capture tool registrations
 const mockTools = new Map();
@@ -158,6 +159,7 @@ describe('mcp_server - ghost_get_pages tool', () => {
     expect(tool).toBeDefined();
     expect(tool.description).toContain('pages');
     expect(tool.schema).toBeDefined();
+    assertZodShape(tool.schema, 'ghost_get_pages');
     expect(tool.schema.shape.limit).toBeDefined();
     expect(tool.schema.shape.page).toBeDefined();
     expect(tool.schema.shape.include).toBeDefined();
@@ -194,6 +196,7 @@ describe('mcp_server - ghost_get_pages tool', () => {
     const tool = mockTools.get('ghost_get_pages');
     const schema = tool.schema;
 
+    assertZodShape(schema, 'ghost_get_pages');
     expect(schema.shape.limit).toBeDefined();
     expect(() => schema.shape.limit.parse(0)).toThrow();
     expect(() => schema.shape.limit.parse(101)).toThrow();
@@ -239,6 +242,7 @@ describe('mcp_server - ghost_get_page tool', () => {
     const tool = mockTools.get('ghost_get_page');
     expect(tool).toBeDefined();
     // In Zod v4, refined schemas expose .shape directly
+    assertZodShape(tool.schema, 'ghost_get_page');
     const shape = tool.schema.shape;
     expect(shape.id).toBeDefined();
     expect(shape.slug).toBeDefined();
@@ -314,6 +318,7 @@ describe('mcp_server - ghost_create_page tool', () => {
     const tool = mockTools.get('ghost_create_page');
     expect(tool).toBeDefined();
     expect(tool.description).toContain('page');
+    assertZodShape(tool.schema, 'ghost_create_page');
     expect(tool.schema.shape.title).toBeDefined();
     expect(tool.schema.shape.html).toBeDefined();
     expect(tool.schema.shape.status).toBeDefined();
@@ -389,6 +394,7 @@ describe('mcp_server - ghost_update_page tool', () => {
     const tool = mockTools.get('ghost_update_page');
     expect(tool).toBeDefined();
     expect(tool.description).toContain('page');
+    assertZodShape(tool.schema, 'ghost_update_page');
     expect(tool.schema.shape.id).toBeDefined();
     expect(tool.schema.shape.title).toBeDefined();
     expect(tool.schema.shape.html).toBeDefined();
@@ -460,6 +466,7 @@ describe('mcp_server - ghost_delete_page tool', () => {
   it('should have correct schema with id required', () => {
     const tool = mockTools.get('ghost_delete_page');
     expect(tool).toBeDefined();
+    assertZodShape(tool.schema, 'ghost_delete_page');
     expect(tool.schema.shape.id).toBeDefined();
     expect(tool.description).toContain('permanent');
   });
@@ -500,6 +507,7 @@ describe('mcp_server - ghost_search_pages tool', () => {
   it('should have correct schema with query required', () => {
     const tool = mockTools.get('ghost_search_pages');
     expect(tool).toBeDefined();
+    assertZodShape(tool.schema, 'ghost_search_pages');
     expect(tool.schema.shape.query).toBeDefined();
     expect(tool.schema.shape.status).toBeDefined();
     expect(tool.schema.shape.limit).toBeDefined();
@@ -543,6 +551,7 @@ describe('mcp_server - ghost_search_pages tool', () => {
     const tool = mockTools.get('ghost_search_pages');
     const schema = tool.schema;
 
+    assertZodShape(schema, 'ghost_search_pages');
     expect(schema.shape.limit).toBeDefined();
     expect(() => schema.shape.limit.parse(0)).toThrow();
     expect(() => schema.shape.limit.parse(51)).toThrow();
