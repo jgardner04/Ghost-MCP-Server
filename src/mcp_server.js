@@ -11,6 +11,7 @@ import crypto from 'crypto';
 import { ValidationError } from './errors/index.js';
 import { validateToolInput } from './utils/validation.js';
 import { trackTempFile, cleanupTempFiles } from './utils/tempFileManager.js';
+import { resolveLocalImagePath, decodeBase64ToTempFile } from './utils/imageInputResolver.js';
 import {
   createTagSchema,
   updateTagSchema,
@@ -359,13 +360,11 @@ async function acquireImageForUpload({ imageUrl, imagePath: localPath, imageBase
   }
 
   if (localPath) {
-    const { resolveLocalImagePath } = await import('./utils/imageInputResolver.js');
     const resolved = await resolveLocalImagePath(localPath);
     return { acquiredPath: resolved, filenameHint: path.basename(resolved), source: 'path' };
   }
 
   if (imageBase64) {
-    const { decodeBase64ToTempFile } = await import('./utils/imageInputResolver.js');
     const decodedPath = await decodeBase64ToTempFile(imageBase64, mimeType);
     return {
       acquiredPath: decodedPath,
@@ -410,10 +409,29 @@ async function performImageUpload(data) {
 
     return { uploadResult, filenameHint: acquired.filenameHint, finalAltText };
   } finally {
-    const toClean = [processedPath];
-    if (acquiredPath && !data.imagePath) toClean.unshift(acquiredPath);
-    await cleanupTempFiles(toClean, console);
+    const toClean = [];
+    if (acquiredPath && !data.imagePath) toClean.push(acquiredPath);
+    if (processedPath && processedPath !== acquiredPath) toClean.push(processedPath);
+    if (toClean.length > 0) await cleanupTempFiles(toClean, console);
   }
+}
+
+/**
+ * Runs the standard tool-input validation then the XOR image-input check.
+ * Returns { success: true, data } or { success: false, errorResponse }
+ * so both image tools can collapse their validation prelude to one call.
+ */
+function validateAndXorImageInput(schema, rawInput, toolName) {
+  const validation = validateToolInput(schema, rawInput, toolName);
+  if (!validation.success) return validation;
+  const xorError = validateImageInputXor(validation.data);
+  if (xorError) {
+    return {
+      success: false,
+      errorResponse: { content: [{ type: 'text', text: xorError }], isError: true },
+    };
+  }
+  return validation;
 }
 
 // Upload Image Tool
@@ -425,12 +443,8 @@ server.registerTool(
     inputSchema: uploadImageSchema,
   },
   async (rawInput) => {
-    const validation = validateToolInput(uploadImageSchema, rawInput, 'ghost_upload_image');
+    const validation = validateAndXorImageInput(uploadImageSchema, rawInput, 'ghost_upload_image');
     if (!validation.success) return validation.errorResponse;
-    const xorError = validateImageInputXor(validation.data);
-    if (xorError) {
-      return { content: [{ type: 'text', text: xorError }], isError: true };
-    }
 
     try {
       const { uploadResult, finalAltText } = await performImageUpload(validation.data);
@@ -452,8 +466,7 @@ server.registerTool(
 // so when the post/page update fails after a successful upload, the
 // image is orphaned in Ghost's storage — we surface its URL in the
 // error response so the caller can reuse or record it.
-const setFeatureImageSchema = z.object({
-  ...imageInputFields,
+const setFeatureImageSchema = uploadImageSchema.extend({
   type: z.enum(['post', 'page']).meta({
     description: 'Which resource to attach the feature image to.',
   }),
@@ -471,16 +484,12 @@ server.registerTool(
     inputSchema: setFeatureImageSchema,
   },
   async (rawInput) => {
-    const validation = validateToolInput(
+    const validation = validateAndXorImageInput(
       setFeatureImageSchema,
       rawInput,
       'ghost_set_feature_image'
     );
     if (!validation.success) return validation.errorResponse;
-    const xorError = validateImageInputXor(validation.data);
-    if (xorError) {
-      return { content: [{ type: 'text', text: xorError }], isError: true };
-    }
 
     const { type, id, caption } = validation.data;
 

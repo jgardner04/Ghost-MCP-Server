@@ -1,6 +1,5 @@
 import sharp from 'sharp';
 import path from 'path';
-import fs from 'fs';
 import fsp from 'fs/promises';
 import { z } from 'zod';
 import { createContextLogger } from '../utils/logger.js';
@@ -59,7 +58,9 @@ export async function processImage(inputPath, outputDir, opts = {}) {
   const resolvedInput = path.resolve(inputPath);
   const resolvedOutputDir = path.resolve(outputDir);
 
-  if (!fs.existsSync(resolvedInput)) {
+  try {
+    await fsp.access(resolvedInput);
+  } catch {
     throw new Error('Input file does not exist');
   }
 
@@ -115,10 +116,11 @@ export async function processImage(inputPath, outputDir, opts = {}) {
       inputFile: path.basename(inputPath),
     });
 
+    // sharp picks the encoder from outputPath extension (EXT_BY_FORMAT),
+    // so only JPEG needs the explicit call here to set quality. PNG/WEBP
+    // would be redundant.
     let pipeline = image.resize({ width: MAX_WIDTH });
     if (format === 'jpeg') pipeline = pipeline.jpeg({ quality: JPEG_QUALITY });
-    else if (format === 'png') pipeline = pipeline.png();
-    else if (format === 'webp') pipeline = pipeline.webp();
 
     await pipeline.toFile(outputPath);
     return outputPath;
