@@ -222,6 +222,8 @@ Follow these principles when writing code:
    - `logger.js`: Context-aware logging with request correlation
    - `nqlSanitizer.js`: NQL query sanitization (consolidated from memberService and tierService)
    - `imageInputResolver.js`: Resolves image input from URL, local file path (with containment check against `GHOST_MCP_IMAGE_ROOT`), or base64 data
+   - `formatErrorResponse.js`: Builds a consistent `{error, ghost?}` envelope for all MCP tool error responses. **MUST be used for every new MCP error path** — it is the only route through `sanitizeErrorPayload` and therefore the only way error text is guaranteed to be redacted before reaching MCP clients.
+   - `sanitizeErrorPayload.js`: Secret-redaction chokepoint; deep-walks an error envelope and redacts `GHOST_ADMIN_API_KEY`, Ghost-shaped admin key patterns, URL key/token query params, and `Authorization` headers before the payload reaches MCP clients. Called internally by `formatErrorResponse` — do not call directly.
 
 ### Environment Configuration
 

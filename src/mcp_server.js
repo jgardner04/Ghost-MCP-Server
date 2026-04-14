@@ -8,8 +8,8 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
-import { ValidationError } from './errors/index.js';
 import { validateToolInput } from './utils/validation.js';
+import { formatErrorResponse } from './utils/formatErrorResponse.js';
 import { trackTempFile, cleanupTempFiles } from './utils/tempFileManager.js';
 import { resolveLocalImagePath, decodeBase64ToTempFile } from './utils/imageInputResolver.js';
 import {
@@ -99,7 +99,6 @@ const escapeNqlValue = (value) => {
  * @returns {Function} Wrapped async handler for server.registerTool
  */
 const withErrorHandling = (toolName, schema, handler) => {
-  const zodContext = toolName.replace('ghost_', '').replace(/_/g, ' ');
   return async (rawInput) => {
     console.error(`Executing tool: ${toolName}`);
     const validation = validateToolInput(schema, rawInput, toolName);
@@ -112,17 +111,7 @@ const withErrorHandling = (toolName, schema, handler) => {
       return await handler(validation.data);
     } catch (error) {
       console.error(`Error in ${toolName}:`, error);
-      if (error.name === 'ZodError') {
-        const validationError = ValidationError.fromZod(error, zodContext);
-        return {
-          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
-          isError: true,
-        };
-      }
-      return {
-        content: [{ type: 'text', text: `Error in ${toolName}: ${error.message}` }],
-        isError: true,
-      };
+      return formatErrorResponse(error, toolName);
     }
   };
 };
@@ -453,10 +442,7 @@ server.registerTool(
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (error) {
       console.error(`Error in ghost_upload_image:`, error);
-      return {
-        content: [{ type: 'text', text: `Error uploading image: ${error.message}` }],
-        isError: true,
-      };
+      return formatErrorResponse(error, 'ghost_upload_image');
     }
   }
 );
@@ -503,10 +489,7 @@ server.registerTool(
       altText = finalAltText;
     } catch (error) {
       console.error(`ghost_set_feature_image: upload failed`, error);
-      return {
-        content: [{ type: 'text', text: `Upload failed: ${error.message}` }],
-        isError: true,
-      };
+      return formatErrorResponse(error, 'ghost_set_feature_image');
     }
 
     const updatePayload = {
@@ -535,23 +518,17 @@ server.registerTool(
       };
     } catch (error) {
       console.error(`ghost_set_feature_image: update failed (orphaned ${uploadedUrl})`, error);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(
-              {
-                error: `Upload succeeded but ${type} update failed: ${error.message}`,
-                orphanedImage: { url: uploadedUrl, ref: uploadedRef, alt: altText },
-                hint: 'Ghost does not expose a delete-image endpoint; reuse this URL or leave it orphaned.',
-              },
-              null,
-              2
-            ),
-          },
-        ],
-        isError: true,
-      };
+      const response = formatErrorResponse(error, 'ghost_set_feature_image');
+      const orphanInfo = JSON.stringify(
+        {
+          orphanedImage: { url: uploadedUrl, ref: uploadedRef, alt: altText },
+          hint: 'Ghost does not expose a delete-image endpoint; reuse this URL or leave it orphaned.',
+        },
+        null,
+        2
+      );
+      response.content[0].text += `\n\n${orphanInfo}`;
+      return response;
     }
   }
 );
