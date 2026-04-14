@@ -11,24 +11,6 @@ import crypto from 'crypto';
 import { validateToolInput } from './utils/validation.js';
 import { formatErrorResponse } from './utils/formatErrorResponse.js';
 import { createContextLogger } from './utils/logger.js';
-
-const mcpLogger = createContextLogger('mcp-server');
-
-/**
- * Emit structured log fields for a caught error. Never passes the raw error
- * object to the logger — Ghost SDK errors carry request headers/URLs that
- * include credentials.
- */
-const logToolError = (toolName, error, extra = {}) => {
-  mcpLogger.error(`Tool ${toolName} failed`, {
-    tool: toolName,
-    errorName: error?.name,
-    errorMessage: error?.message,
-    errorCode: error?.code,
-    ghostStatusCode: error?.ghostStatusCode,
-    ...extra,
-  });
-};
 import { trackTempFile, cleanupTempFiles } from './utils/tempFileManager.js';
 import { resolveLocalImagePath, decodeBase64ToTempFile } from './utils/imageInputResolver.js';
 import {
@@ -56,6 +38,24 @@ import {
 
 // Load environment variables
 dotenv.config({ quiet: true });
+
+const mcpLogger = createContextLogger('mcp-server');
+
+/**
+ * Emit structured log fields for a caught error. Never passes the raw error
+ * object to the logger — Ghost SDK errors carry request headers/URLs that
+ * include credentials.
+ */
+const logToolError = (toolName, error, extra = {}) => {
+  mcpLogger.error(`Tool ${toolName} failed`, {
+    tool: toolName,
+    errorName: error?.name,
+    errorMessage: error?.message,
+    errorCode: error?.code,
+    ghostStatusCode: error?.ghostStatusCode,
+    ...extra,
+  });
+};
 
 // Lazy-loaded modules (to avoid Node.js v25 Buffer compatibility issues at startup)
 let ghostService = null;
