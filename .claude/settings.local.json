@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rtk grep:*)",
+      "Bash(npm view:*)",
+      "Bash(rtk ls:*)",
+      "Bash(rtk read:*)",
+      "Bash(rtk git:*)",
+      "Bash(/bin/ls -la ~/.npm/)",
+      "Bash(/bin/ls -la ~/.npm/_cacache/)",
+      "Bash(/bin/ls -la ~/.npm/_cacache/content-v2/sha512/05/e1/)",
+      "mcp__claude_ai_Context7__resolve-library-id",
+      "mcp__claude_ai_Context7__query-docs",
+      "Bash(rtk npx:*)",
+      "Bash(./node_modules/.bin/vitest run:*)",
+      "Bash(rtk npm:*)"
+    ]
+  }
+}

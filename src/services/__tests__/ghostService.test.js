@@ -225,6 +225,43 @@ describe('ghostService', () => {
       expect(result).toEqual(expectedResult);
       expect(api.images.upload).toHaveBeenCalledWith({ file: imagePath });
     });
+
+    it('should forward purpose and ref to the SDK when provided', async () => {
+      const imagePath = '/path/to/icon.png';
+      const expectedResult = { url: 'https://example.com/icon.png', ref: 'my-icon' };
+      api.images.upload.mockResolvedValue(expectedResult);
+
+      const result = await uploadImage(imagePath, { purpose: 'icon', ref: 'my-icon' });
+
+      expect(result).toEqual(expectedResult);
+      expect(api.images.upload).toHaveBeenCalledWith({
+        file: imagePath,
+        purpose: 'icon',
+        ref: 'my-icon',
+      });
+    });
+
+    it('should omit purpose/ref keys when not provided (backwards compatible)', async () => {
+      api.images.upload.mockResolvedValue({ url: 'https://example.com/x.jpg' });
+      await uploadImage('/path/to/x.jpg');
+      expect(api.images.upload).toHaveBeenCalledWith({ file: '/path/to/x.jpg' });
+    });
+
+    it('should reject an unknown purpose', async () => {
+      await expect(uploadImage('/p/x.jpg', { purpose: 'banner' })).rejects.toThrow(
+        /Invalid purpose/
+      );
+    });
+
+    it('should reject a ref longer than 200 characters', async () => {
+      await expect(uploadImage('/p/x.jpg', { ref: 'x'.repeat(201) })).rejects.toThrow(
+        /cannot exceed 200/
+      );
+    });
+
+    it('should reject a non-string ref', async () => {
+      await expect(uploadImage('/p/x.jpg', { ref: 123 })).rejects.toThrow(/must be a string/);
+    });
   });
 
   describe('createPost', () => {
