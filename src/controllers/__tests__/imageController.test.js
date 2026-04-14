@@ -167,7 +167,7 @@ describe('imageController', () => {
             path: '/tmp/mcp-upload-123-abc.jpg',
           },
           body: {
-            alt: 'a'.repeat(501), // exceeds 500 char limit
+            alt: 'a'.repeat(192), // exceeds 191 char limit (Ghost varchar(191))
           },
         });
         const res = createMockResponse();

@@ -195,7 +195,9 @@ const handleImageUpload = async (req, res, next) => {
 
     // --- Handle Alt Text ---
     // Validate and sanitize alt text from the request body
-    const altSchema = Joi.string().max(500).allow('').optional();
+    // Ghost's posts.feature_image_alt is varchar(191); cap here to match
+    // what will ultimately be accepted when the alt is applied to a post.
+    const altSchema = Joi.string().max(191).allow('').optional();
     const { error, value: sanitizedAlt } = altSchema.validate(req.body.alt);
 
     if (error) {
