@@ -5,8 +5,9 @@ import os from 'os'; // Import the os module
 import Joi from 'joi';
 import crypto from 'crypto';
 import { createContextLogger } from '../utils/logger.js';
-import { uploadImage as uploadGhostImage } from '../services/ghostService.js'; // Assuming uploadImage is in ghostService
-import { processImage } from '../services/imageProcessingService.js'; // Import the processing service
+import { uploadImage as uploadGhostImage } from '../services/images.js';
+import { processImage } from '../services/imageProcessingService.js';
+import { featureImageAltSchema } from '../schemas/common.js';
 
 // --- Use OS temporary directory for uploads ---
 const uploadDir = os.tmpdir(); // Use the OS default temp directory
@@ -194,17 +195,15 @@ const handleImageUpload = async (req, res, next) => {
     processedPath = await processImage(originalPath, uploadDir);
 
     // --- Handle Alt Text ---
-    // Validate and sanitize alt text from the request body
-    // Ghost's posts.feature_image_alt is varchar(191); cap here to match
-    // what will ultimately be accepted when the alt is applied to a post.
-    const altSchema = Joi.string().max(191).allow('').optional();
-    const { error, value: sanitizedAlt } = altSchema.validate(req.body.alt);
-
-    if (error) {
-      return res.status(400).json({ message: `Invalid alt text: ${error.details[0].message}` });
+    // Validate via the canonical schema shared with the MCP tool.
+    // Ghost's posts.feature_image_alt is varchar(191).
+    const altParse = featureImageAltSchema.safeParse(req.body.alt ?? undefined);
+    if (!altParse.success) {
+      return res
+        .status(400)
+        .json({ message: `Invalid alt text: ${altParse.error.issues[0].message}` });
     }
-
-    const providedAlt = sanitizedAlt;
+    const providedAlt = altParse.data;
     // Generate a default alt text from the original filename if none provided
     const defaultAlt = getDefaultAltText(req.file.originalname);
     const altText = providedAlt || defaultAlt;

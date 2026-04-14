@@ -25,7 +25,7 @@ vi.mock('crypto', () => ({
 const mockUploadGhostImage = vi.fn();
 const mockProcessImage = vi.fn();
 
-vi.mock('../../services/ghostService.js', () => ({
+vi.mock('../../services/images.js', () => ({
   uploadImage: (...args) => mockUploadGhostImage(...args),
 }));
 

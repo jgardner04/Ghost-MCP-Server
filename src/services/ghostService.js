@@ -149,39 +149,6 @@ const createPost = async (postData, options = { source: 'html' }) => {
 };
 
 /**
- * Uploads an image to Ghost.
- * Requires the image file path.
- * @param {string} imagePath - The local path to the image file.
- * @returns {Promise<object>} The result from the image upload API call, typically includes the URL of the uploaded image.
- */
-const ALLOWED_PURPOSES = new Set(['image', 'profile_image', 'icon']);
-const REF_MAX_LENGTH = 200;
-
-const uploadImage = async (imagePath, opts = {}) => {
-  if (!imagePath) {
-    throw new Error('Image path is required for upload.');
-  }
-  const { purpose, ref } = opts;
-  if (purpose !== undefined && !ALLOWED_PURPOSES.has(purpose)) {
-    throw new Error(
-      `Invalid purpose "${purpose}". Must be one of: ${[...ALLOWED_PURPOSES].join(', ')}`
-    );
-  }
-  if (ref !== undefined) {
-    if (typeof ref !== 'string') throw new Error('ref must be a string');
-    if (ref.length > REF_MAX_LENGTH) {
-      throw new Error(`ref cannot exceed ${REF_MAX_LENGTH} characters`);
-    }
-  }
-
-  const imageData = { file: imagePath };
-  if (purpose !== undefined) imageData.purpose = purpose;
-  if (ref !== undefined) imageData.ref = ref;
-
-  return handleApiRequest('images', 'upload', imageData);
-};
-
-/**
  * Creates a new tag in Ghost.
  * @param {object} tagData - Data for the new tag (e.g., { name: 'New Tag', slug: 'new-tag' }).
  * @returns {Promise<object>} The created tag object.
@@ -224,4 +191,4 @@ const getTags = async (options = {}) => {
 // Add other content management functions here (createTag, etc.)
 
 // Export the API client instance and any service functions
-export { api, getSiteInfo, handleApiRequest, createPost, uploadImage, createTag, getTags };
+export { api, getSiteInfo, handleApiRequest, createPost, createTag, getTags };
