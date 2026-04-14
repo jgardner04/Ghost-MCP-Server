@@ -14,7 +14,10 @@
       "Bash(rtk npx:*)",
       "Bash(./node_modules/.bin/vitest run:*)",
       "Bash(rtk npm:*)",
-      "Bash(rtk wc:*)"
+      "Bash(rtk wc:*)",
+      "mcp__plugin_linear_linear__list_teams",
+      "mcp__plugin_linear_linear__list_issue_labels",
+      "mcp__plugin_linear_linear__save_issue"
     ]
   }
 }
