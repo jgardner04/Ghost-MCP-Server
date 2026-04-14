@@ -1,40 +1,52 @@
-import { BaseError, GhostAPIError } from '../errors/index.js';
+import { BaseError, GhostAPIError, ValidationError } from '../errors/index.js';
 import { sanitizeErrorPayload } from './sanitizeErrorPayload.js';
 
 /**
  * Builds an MCP tool error response with a consistent envelope shape.
  * All errors produce `{ error: {...} }`; GhostAPIError additionally includes
- * a gated `ghost` sub-object with Ghost-specific diagnostic fields.
- * The envelope is passed through sanitizeErrorPayload before emission.
+ * a gated `ghost` sub-object with Ghost-specific diagnostic fields. Callers
+ * may pass an optional `extra` object whose contents will be merged into the
+ * envelope under an `extra` key and sanitized alongside the rest.
  *
  * @param {Error} error - The caught error.
  * @param {string} toolName - MCP tool name for the human-readable summary line.
+ * @param {object} [extra] - Optional caller-supplied context; sanitized with the envelope.
  * @returns {{content: {type: string, text: string}[], isError: true}}
  */
-export function formatErrorResponse(error, toolName) {
+export function formatErrorResponse(error, toolName, extra) {
+  // Duck-type ZodError so we don't couple this module to the zod runtime.
+  const normalized =
+    error?.name === 'ZodError' && Array.isArray(error.issues)
+      ? ValidationError.fromZod(error, toolName)
+      : error;
+
   const base =
-    error instanceof BaseError
-      ? error.toJSON()
+    normalized instanceof BaseError
+      ? normalized.toJSON()
       : {
-          name: error?.name || 'Error',
-          message: error?.message || String(error),
+          name: normalized?.name || 'Error',
+          message: normalized?.message || String(normalized),
           code: 'UNKNOWN',
           statusCode: 500,
         };
 
   const envelope = { error: base };
 
-  if (error instanceof GhostAPIError) {
+  if (normalized instanceof GhostAPIError) {
     envelope.ghost = {
-      operation: error.operation,
-      statusCode: error.ghostStatusCode,
-      // error.originalError is already a string (coerced by ExternalServiceError constructor);
+      operation: normalized.operation,
+      statusCode: normalized.ghostStatusCode,
+      // normalized.originalError is already a string (coerced by ExternalServiceError constructor);
       // coerce again defensively so the sanitizer always receives a string, not an Error object.
       originalMessage:
-        typeof error.originalError === 'string'
-          ? error.originalError
-          : (error.originalError?.message ?? String(error.originalError)),
+        typeof normalized.originalError === 'string'
+          ? normalized.originalError
+          : (normalized.originalError?.message ?? String(normalized.originalError)),
     };
+  }
+
+  if (extra && typeof extra === 'object' && Object.keys(extra).length > 0) {
+    envelope.extra = extra;
   }
 
   const sanitized = sanitizeErrorPayload(envelope);

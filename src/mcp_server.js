@@ -518,17 +518,10 @@ server.registerTool(
       };
     } catch (error) {
       console.error(`ghost_set_feature_image: update failed (orphaned ${uploadedUrl})`, error);
-      const response = formatErrorResponse(error, 'ghost_set_feature_image');
-      const orphanInfo = JSON.stringify(
-        {
-          orphanedImage: { url: uploadedUrl, ref: uploadedRef, alt: altText },
-          hint: 'Ghost does not expose a delete-image endpoint; reuse this URL or leave it orphaned.',
-        },
-        null,
-        2
-      );
-      response.content[0].text += `\n\n${orphanInfo}`;
-      return response;
+      return formatErrorResponse(error, 'ghost_set_feature_image', {
+        orphanedImage: { url: uploadedUrl, ref: uploadedRef, alt: altText },
+        hint: 'Ghost does not expose a delete-image endpoint; reuse this URL or leave it orphaned.',
+      });
     }
   }
 );

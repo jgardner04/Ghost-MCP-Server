@@ -321,7 +321,7 @@ const data = validation.data;
 
 ### 3. MCP Error Response Format
 
-All MCP tool catch blocks must call `formatErrorResponse(error, toolName)` from `src/utils/formatErrorResponse.js`. This is the **only** path through the `sanitizeErrorPayload` redaction layer, so bypassing it means secrets can leak to MCP clients.
+All MCP tool catch blocks must call `formatErrorResponse(error, toolName, extra?)` from `src/utils/formatErrorResponse.js`. This is the **only** path through the `sanitizeErrorPayload` redaction layer, so bypassing it means secrets can leak to MCP clients. The optional third arg `extra` is an arbitrary caller-supplied context object (e.g. orphaned-resource details); if provided and non-empty, it is merged into the envelope under a top-level `extra` key and sanitized alongside `error`/`ghost`. A `ZodError` thrown from inside a handler is auto-coerced to a `ValidationError` so the envelope carries the correct `VALIDATION_ERROR` / `400` shape.
 
 **Envelope shape**
 
