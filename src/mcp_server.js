@@ -267,20 +267,92 @@ server.registerTool(
 );
 
 // --- Image Schema ---
-const uploadImageSchema = z.object({
-  imageUrl: z.string().meta({ description: 'The publicly accessible URL of the image to upload.' }),
-  alt: z.string().optional().meta({
-    description:
-      'Alt text for the image. If omitted, a default will be generated from the filename.',
-  }),
-});
+// Exactly one of imageUrl / imagePath / imageBase64 must be supplied.
+const uploadImageSchema = z
+  .object({
+    imageUrl: z.string().optional().meta({
+      description: 'The publicly accessible URL of the image to download and upload.',
+    }),
+    imagePath: z.string().optional().meta({
+      description:
+        'Absolute path to a local image file. Only accepted when the GHOST_MCP_IMAGE_ROOT env var is set; paths must resolve inside that root.',
+    }),
+    imageBase64: z.string().optional().meta({
+      description:
+        'Base64-encoded image bytes (with or without data: URI prefix). Decoded size capped at 5MB to respect MCP transport limits. Requires mimeType.',
+    }),
+    mimeType: z.string().optional().meta({
+      description:
+        'MIME type for imageBase64 input (e.g. image/png, image/jpeg, image/svg+xml). Required when imageBase64 is used.',
+    }),
+    alt: z.string().optional().meta({
+      description:
+        'Alt text for the image. If omitted, a default will be generated from the filename.',
+    }),
+    purpose: z.enum(['image', 'profile_image', 'icon']).optional().meta({
+      description:
+        'Intended use. Ghost validates format/size per purpose (icon/profile_image must be square; icon also accepts ICO).',
+    }),
+    ref: z.string().max(200).optional().meta({
+      description:
+        'Caller-supplied identifier (e.g. original filename). Ghost echoes it back in the response.',
+    }),
+  })
+  .refine((v) => Number(!!v.imageUrl) + Number(!!v.imagePath) + Number(!!v.imageBase64) === 1, {
+    message: 'Provide exactly one of imageUrl, imagePath, or imageBase64.',
+  })
+  .refine((v) => !v.imageBase64 || !!v.mimeType, {
+    message: 'mimeType is required when imageBase64 is provided.',
+  });
+
+async function acquireImageForUpload({ imageUrl, imagePath: localPath, imageBase64, mimeType }) {
+  const tempDir = os.tmpdir();
+
+  if (imageUrl) {
+    const urlValidation = urlValidator.validateImageUrl(imageUrl);
+    if (!urlValidation.isValid) {
+      throw new Error(`Invalid image URL: ${urlValidation.error}`);
+    }
+    const axiosConfig = urlValidator.createSecureAxiosConfig(urlValidation.sanitizedUrl);
+    const response = await axios(axiosConfig);
+    const extension = path.extname(imageUrl.split('?')[0]) || '.tmp';
+    const filenameHint =
+      path.basename(imageUrl.split('?')[0]) || `image-${generateUuid()}${extension}`;
+    const downloadedPath = path.join(tempDir, `mcp-download-${generateUuid()}${extension}`);
+    const writer = fs.createWriteStream(downloadedPath);
+    response.data.pipe(writer);
+    await new Promise((resolve, reject) => {
+      writer.on('finish', resolve);
+      writer.on('error', reject);
+    });
+    return { acquiredPath: downloadedPath, filenameHint, source: 'url' };
+  }
+
+  if (localPath) {
+    const { resolveLocalImagePath } = await import('./utils/imageInputResolver.js');
+    const resolved = await resolveLocalImagePath(localPath);
+    return { acquiredPath: resolved, filenameHint: path.basename(resolved), source: 'path' };
+  }
+
+  if (imageBase64) {
+    const { decodeBase64ToTempFile } = await import('./utils/imageInputResolver.js');
+    const decodedPath = await decodeBase64ToTempFile(imageBase64, mimeType);
+    return {
+      acquiredPath: decodedPath,
+      filenameHint: path.basename(decodedPath),
+      source: 'base64',
+    };
+  }
+
+  throw new Error('No image input provided'); // unreachable — schema enforces one
+}
 
 // Upload Image Tool — unique handler with finally-clause cleanup
 server.registerTool(
   'ghost_upload_image',
   {
     description:
-      'Downloads an image from a URL, processes it, uploads it to Ghost CMS, and returns the final Ghost image URL and alt text.',
+      'Uploads an image to Ghost CMS. Accepts a remote URL, a local file path (when GHOST_MCP_IMAGE_ROOT is configured), or a base64 payload. Returns the Ghost image URL, alt text, and ref (when Ghost echoes it).',
     inputSchema: uploadImageSchema,
   },
   async (rawInput) => {
@@ -288,63 +360,44 @@ server.registerTool(
     if (!validation.success) {
       return validation.errorResponse;
     }
-    const { imageUrl, alt } = validation.data;
+    const { alt, purpose, ref } = validation.data;
 
-    console.error(`Executing tool: ghost_upload_image for URL: ${imageUrl}`);
-    let downloadedPath = null;
+    let acquiredPath = null;
     let processedPath = null;
 
     try {
       await loadServices();
 
-      // 1. Validate URL for SSRF protection
-      const urlValidation = urlValidator.validateImageUrl(imageUrl);
-      if (!urlValidation.isValid) {
-        throw new Error(`Invalid image URL: ${urlValidation.error}`);
+      const acquired = await acquireImageForUpload(validation.data);
+      acquiredPath = acquired.acquiredPath;
+      // Only URL and base64 sources produce temp files we own — never try
+      // to delete the caller's real local file.
+      if (acquired.source !== 'path') {
+        trackTempFile(acquiredPath);
       }
+      console.error(`ghost_upload_image: acquired via ${acquired.source} -> ${acquiredPath}`);
 
-      // 2. Download the image with security controls
-      const axiosConfig = urlValidator.createSecureAxiosConfig(urlValidation.sanitizedUrl);
-      const response = await axios(axiosConfig);
-      const tempDir = os.tmpdir();
-      const extension = path.extname(imageUrl.split('?')[0]) || '.tmp';
-      const originalFilenameHint =
-        path.basename(imageUrl.split('?')[0]) || `image-${generateUuid()}${extension}`;
-      downloadedPath = path.join(tempDir, `mcp-download-${generateUuid()}${extension}`);
-
-      const writer = fs.createWriteStream(downloadedPath);
-      response.data.pipe(writer);
-
-      await new Promise((resolve, reject) => {
-        writer.on('finish', resolve);
-        writer.on('error', reject);
-      });
-      // Track temp file for cleanup on process exit
-      trackTempFile(downloadedPath);
-      console.error(`Downloaded image to temporary path: ${downloadedPath}`);
-
-      // 3. Process the image
-      processedPath = await imageProcessingService.processImage(downloadedPath, tempDir);
-      // Track processed file for cleanup on process exit
-      if (processedPath !== downloadedPath) {
+      processedPath = await imageProcessingService.processImage(
+        acquiredPath,
+        os.tmpdir(),
+        purpose ? { purpose } : {}
+      );
+      if (processedPath !== acquiredPath) {
         trackTempFile(processedPath);
       }
-      console.error(`Processed image path: ${processedPath}`);
 
-      // 4. Determine Alt Text
-      const defaultAlt = getDefaultAltText(originalFilenameHint);
-      const finalAltText = alt || defaultAlt;
-      console.error(`Using alt text: "${finalAltText}"`);
+      const finalAltText = alt || getDefaultAltText(acquired.filenameHint);
 
-      // 5. Upload processed image to Ghost
-      const uploadResult = await ghostService.uploadImage(processedPath);
-      console.error(`Uploaded processed image to Ghost: ${uploadResult.url}`);
+      const uploadOpts = {};
+      if (purpose) uploadOpts.purpose = purpose;
+      if (ref) uploadOpts.ref = ref;
+      else if (acquired.filenameHint) uploadOpts.ref = acquired.filenameHint.slice(0, 200);
 
-      // 6. Return result
-      const result = {
-        url: uploadResult.url,
-        alt: finalAltText,
-      };
+      const uploadResult = await ghostService.uploadImage(processedPath, uploadOpts);
+      console.error(`ghost_upload_image: uploaded to ${uploadResult.url}`);
+
+      const result = { url: uploadResult.url, alt: finalAltText };
+      if (uploadResult.ref) result.ref = uploadResult.ref;
 
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
@@ -356,8 +409,12 @@ server.registerTool(
         isError: true,
       };
     } finally {
-      // Cleanup temporary files with proper async/await
-      await cleanupTempFiles([downloadedPath, processedPath], console);
+      // Never pass the caller's own local path to cleanup.
+      const toClean = [processedPath];
+      if (acquiredPath && !validation.data.imagePath) {
+        toClean.unshift(acquiredPath);
+      }
+      await cleanupTempFiles(toClean, console);
     }
   }
 );
