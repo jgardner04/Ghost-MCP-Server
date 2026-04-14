@@ -166,7 +166,7 @@ Follow these principles when writing code:
 
 1. **MCP Server** (`src/mcp_server.js`):
    - Implements Model Context Protocol specification with Zod validation
-   - Exposes Ghost CMS functionality as 34 MCP tools across 7 domain types
+   - Exposes Ghost CMS functionality as 35 MCP tools across 7 domain types
    - Domain types: Posts, Pages, Tags, Members, Newsletters, Tiers, Images
    - **Note:** This server provides tools only, not MCP protocol resources
    - Tools by domain:
@@ -176,7 +176,7 @@ Follow these principles when writing code:
      - **Members** (6): `ghost_create_member`, `ghost_get_members`, `ghost_get_member`, `ghost_search_members`, `ghost_update_member`, `ghost_delete_member`
      - **Newsletters** (5): `ghost_create_newsletter`, `ghost_get_newsletters`, `ghost_get_newsletter`, `ghost_update_newsletter`, `ghost_delete_newsletter`
      - **Tiers** (5): `ghost_create_tier`, `ghost_get_tiers`, `ghost_get_tier`, `ghost_update_tier`, `ghost_delete_tier`
-     - **Images** (1): `ghost_upload_image`
+     - **Images** (2): `ghost_upload_image`, `ghost_set_feature_image`
 
 2. **Enhanced MCP Server** (`src/mcp_server_enhanced.js`):
    - Alternative server with MCP resource support (not tools-only)
@@ -196,7 +196,7 @@ Follow these principles when writing code:
    - `memberService.js`: Member/subscriber management
    - `tierService.js`: Membership tier management
    - `newsletterService.js`: Newsletter management
-   - `imageProcessingService.js`: Image optimization and processing
+   - `imageProcessingService.js`: Image optimization and processing (preserves original format; does not convert to JPEG)
 
    **Service Import Pattern:** Services in the MCP server use lazy loading to avoid Node.js ESM compatibility issues. Always use the lazy-loaded service variables from `loadServices()`. Never add inline dynamic imports. See [docs/SERVICE_PATTERNS.md](docs/SERVICE_PATTERNS.md) for detailed guidelines.
 
@@ -220,6 +220,7 @@ Follow these principles when writing code:
    - `urlValidator.js`: SSRF-safe URL validation for image downloads
    - `logger.js`: Context-aware logging with request correlation
    - `nqlSanitizer.js`: NQL query sanitization (consolidated from memberService and tierService)
+   - `imageInputResolver.js`: Resolves image input from URL, local file path (with containment check against `GHOST_MCP_IMAGE_ROOT`), or base64 data
 
 ### Environment Configuration
 
@@ -233,8 +234,9 @@ GHOST_ADMIN_API_KEY=your_admin_api_key
 Optional:
 
 ```
-PORT=3000                 # Express REST API port
-MCP_PORT=3001            # MCP server port
+PORT=3000                    # Express REST API port
+MCP_PORT=3001               # MCP server port
+GHOST_MCP_IMAGE_ROOT=/path  # When set, enables local file uploads via imagePath in ghost_upload_image
 ```
 
 ## Documentation
@@ -249,7 +251,7 @@ This project maintains detailed documentation in the `docs/` directory:
 | [docs/MCP_TRANSPORT.md](docs/MCP_TRANSPORT.md)         | Transport configuration (stdio, HTTP/SSE, WebSocket), use cases, security considerations       |
 | [docs/RESOURCE_FETCHING.md](docs/RESOURCE_FETCHING.md) | Resource URI patterns, caching strategies (LRU/TTL), real-time subscriptions, batch operations |
 | [docs/TESTING.md](docs/TESTING.md)                     | Manual testing setup with Ghost CMS, MCP Inspector usage, debugging tips                       |
-| [docs/TOOLS_REFERENCE.md](docs/TOOLS_REFERENCE.md)     | Comprehensive reference for all 34 MCP tools with schemas and examples                         |
+| [docs/TOOLS_REFERENCE.md](docs/TOOLS_REFERENCE.md)     | Comprehensive reference for all 35 MCP tools with schemas and examples                         |
 | [docs/SCHEMA_VALIDATION.md](docs/SCHEMA_VALIDATION.md) | Zod schema architecture, validators, HTML sanitization, and usage patterns                     |
 | [docs/SERVICE_PATTERNS.md](docs/SERVICE_PATTERNS.md)   | Service import patterns, lazy loading guidelines, and adding new services                      |
 
@@ -337,8 +339,8 @@ Create files as `docs/tasks/issue-XX-brief-description.md`:
 When implementing Ghost CMS operations via MCP:
 
 1. **Image Upload Flow**:
-   - First call `ghost_upload_image` with imageUrl
-   - Use returned URL for `feature_image` in post/page creation
+   - Call `ghost_upload_image` to upload an image; accepted input modes: `imageUrl` (remote URL), `imagePath` (local file path — requires `GHOST_MCP_IMAGE_ROOT` env var), or `imageBase64` + `mimeType` (base64-encoded data). Optional params: `purpose` (`image` | `profile_image` | `icon`), `ref`.
+   - Use the returned URL for `feature_image` in post/page creation, or call `ghost_set_feature_image` to upload an image and set it as the feature image on an existing post or page in a single step.
 
 2. **Tag Management**:
    - Use `ghost_get_tags` to list existing tags
