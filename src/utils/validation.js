@@ -3,6 +3,7 @@
  * Provides explicit Zod validation to ensure input is validated at handler entry points.
  */
 import { ValidationError } from '../errors/index.js';
+import { formatErrorResponse } from './formatErrorResponse.js';
 
 /**
  * Validates tool input against a Zod schema and returns a structured result.
@@ -18,10 +19,7 @@ export const validateToolInput = (schema, input, toolName) => {
     const error = ValidationError.fromZod(result.error, toolName);
     return {
       success: false,
-      errorResponse: {
-        content: [{ type: 'text', text: JSON.stringify(error.toJSON(), null, 2) }],
-        isError: true,
-      },
+      errorResponse: formatErrorResponse(error, toolName),
     };
   }
   return { success: true, data: result.data };

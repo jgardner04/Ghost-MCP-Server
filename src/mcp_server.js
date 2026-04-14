@@ -8,8 +8,9 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
-import { ValidationError } from './errors/index.js';
 import { validateToolInput } from './utils/validation.js';
+import { formatErrorResponse } from './utils/formatErrorResponse.js';
+import { createContextLogger } from './utils/logger.js';
 import { trackTempFile, cleanupTempFiles } from './utils/tempFileManager.js';
 import { resolveLocalImagePath, decodeBase64ToTempFile } from './utils/imageInputResolver.js';
 import {
@@ -37,6 +38,24 @@ import {
 
 // Load environment variables
 dotenv.config({ quiet: true });
+
+const mcpLogger = createContextLogger('mcp-server');
+
+/**
+ * Emit structured log fields for a caught error. Never passes the raw error
+ * object to the logger — Ghost SDK errors carry request headers/URLs that
+ * include credentials.
+ */
+const logToolError = (toolName, error, extra = {}) => {
+  mcpLogger.error(`Tool ${toolName} failed`, {
+    tool: toolName,
+    errorName: error?.name,
+    errorMessage: error?.message,
+    errorCode: error?.code,
+    ghostStatusCode: error?.ghostStatusCode,
+    ...extra,
+  });
+};
 
 // Lazy-loaded modules (to avoid Node.js v25 Buffer compatibility issues at startup)
 let ghostService = null;
@@ -99,7 +118,6 @@ const escapeNqlValue = (value) => {
  * @returns {Function} Wrapped async handler for server.registerTool
  */
 const withErrorHandling = (toolName, schema, handler) => {
-  const zodContext = toolName.replace('ghost_', '').replace(/_/g, ' ');
   return async (rawInput) => {
     console.error(`Executing tool: ${toolName}`);
     const validation = validateToolInput(schema, rawInput, toolName);
@@ -111,18 +129,8 @@ const withErrorHandling = (toolName, schema, handler) => {
       await loadServices();
       return await handler(validation.data);
     } catch (error) {
-      console.error(`Error in ${toolName}:`, error);
-      if (error.name === 'ZodError') {
-        const validationError = ValidationError.fromZod(error, zodContext);
-        return {
-          content: [{ type: 'text', text: JSON.stringify(validationError.toJSON(), null, 2) }],
-          isError: true,
-        };
-      }
-      return {
-        content: [{ type: 'text', text: `Error in ${toolName}: ${error.message}` }],
-        isError: true,
-      };
+      logToolError(toolName, error);
+      return formatErrorResponse(error, toolName);
     }
   };
 };
@@ -452,11 +460,8 @@ server.registerTool(
       if (uploadResult.ref) result.ref = uploadResult.ref;
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (error) {
-      console.error(`Error in ghost_upload_image:`, error);
-      return {
-        content: [{ type: 'text', text: `Error uploading image: ${error.message}` }],
-        isError: true,
-      };
+      logToolError('ghost_upload_image', error);
+      return formatErrorResponse(error, 'ghost_upload_image');
     }
   }
 );
@@ -502,11 +507,8 @@ server.registerTool(
       uploadedRef = uploadResult.ref;
       altText = finalAltText;
     } catch (error) {
-      console.error(`ghost_set_feature_image: upload failed`, error);
-      return {
-        content: [{ type: 'text', text: `Upload failed: ${error.message}` }],
-        isError: true,
-      };
+      logToolError('ghost_set_feature_image', error, { phase: 'upload' });
+      return formatErrorResponse(error, 'ghost_set_feature_image');
     }
 
     const updatePayload = {
@@ -534,24 +536,14 @@ server.registerTool(
         ],
       };
     } catch (error) {
-      console.error(`ghost_set_feature_image: update failed (orphaned ${uploadedUrl})`, error);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(
-              {
-                error: `Upload succeeded but ${type} update failed: ${error.message}`,
-                orphanedImage: { url: uploadedUrl, ref: uploadedRef, alt: altText },
-                hint: 'Ghost does not expose a delete-image endpoint; reuse this URL or leave it orphaned.',
-              },
-              null,
-              2
-            ),
-          },
-        ],
-        isError: true,
-      };
+      logToolError('ghost_set_feature_image', error, {
+        phase: 'update',
+        orphanedUrl: uploadedUrl,
+      });
+      return formatErrorResponse(error, 'ghost_set_feature_image', {
+        orphanedImage: { url: uploadedUrl, ref: uploadedRef, alt: altText },
+        hint: 'Ghost does not expose a delete-image endpoint; reuse this URL or leave it orphaned.',
+      });
     }
   }
 );

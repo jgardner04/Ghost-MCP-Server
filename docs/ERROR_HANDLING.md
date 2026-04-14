@@ -172,17 +172,22 @@ router.post(
 ### MCP Tool with Error Handling
 
 ```javascript
-const tool = new Tool({
-  name: 'create_post',
-  implementation: async (input) => {
+import { formatErrorResponse } from './utils/formatErrorResponse.js';
+
+server.registerTool(
+  'ghost_create_post',
+  { description: '...', inputSchema: createPostSchema },
+  async (input) => {
     try {
       return await createPost(input);
     } catch (error) {
-      return ErrorHandler.formatMCPError(error, 'create_post');
+      return formatErrorResponse(error, 'ghost_create_post');
     }
-  },
-});
+  }
+);
 ```
+
+See the "MCP Error Response Format" section below for the envelope shape and redaction guarantees.
 
 ## Configuration
 
@@ -307,19 +312,73 @@ const data = validation.data;
 
 **Zod Error Response Format:**
 
+Zod validation errors are surfaced via `formatErrorResponse`, which emits a human-readable summary line followed by a fenced JSON block with the canonical envelope. See "MCP Error Response Format" below for the full shape. For a Zod failure, the JSON block looks like:
+
 ```json
 {
-  "content": [
-    {
-      "type": "text",
-      "text": "{\"error\":\"ValidationError\",\"message\":\"Invalid input for ghost_create_post\",\"details\":[{\"field\":\"title\",\"message\":\"Title cannot be empty\"},{\"field\":\"html\",\"message\":\"HTML content cannot be empty\"}]}"
-    }
-  ],
-  "isError": true
+  "error": {
+    "name": "ValidationError",
+    "code": "VALIDATION_ERROR",
+    "message": "ghost_create_post: Validation failed",
+    "statusCode": 400,
+    "errors": [
+      { "field": "title", "message": "Title cannot be empty", "type": "too_small" },
+      { "field": "html", "message": "HTML content cannot be empty", "type": "too_small" }
+    ]
+  }
 }
 ```
 
-### 3. XSS Prevention
+### 3. MCP Error Response Format
+
+All MCP tool catch blocks must call `formatErrorResponse(error, toolName, extra?)` from `src/utils/formatErrorResponse.js`. This is the **only** path through the `sanitizeErrorPayload` redaction layer, so bypassing it means secrets can leak to MCP clients. The optional third arg `extra` is an arbitrary caller-supplied context object (e.g. orphaned-resource details); if provided and non-empty, it is merged into the envelope under a top-level `extra` key and sanitized alongside `error`/`ghost`. A `ZodError` thrown from inside a handler is auto-coerced to a `ValidationError` so the envelope carries the correct `VALIDATION_ERROR` / `400` shape.
+
+**Envelope shape**
+
+```json
+{
+  "error": {
+    "name": "GhostAPIError",
+    "code": "GHOST_API_ERROR",
+    "message": "Ghost API request failed",
+    "statusCode": 422
+  },
+  "ghost": {
+    "operation": "ghost_create_post",
+    "statusCode": 422,
+    "originalMessage": "Validation failed for field 'title' ..."
+  }
+}
+```
+
+- `error` is always present and contains the normalised error properties (`name`, `code`, `message`, `statusCode`).
+- `ghost` is only present when the thrown error is a `GhostAPIError`; it surfaces Ghost Admin API detail that would otherwise be swallowed.
+- `ghost.originalMessage` is the raw message from the Ghost API response, truncated at **2048 bytes** to prevent oversized payloads.
+
+**Secret redaction**
+
+Before the envelope reaches any MCP client, `sanitizeErrorPayload` deep-walks every string value and redacts:
+
+- The value of `GHOST_ADMIN_API_KEY` (if present in the process environment)
+- Ghost-shaped admin key patterns (`<id>:<secret>` hex strings)
+- `key` and `token` query parameters in URLs
+- `Authorization` header values
+
+`sanitizeErrorPayload` is called internally by `formatErrorResponse`. Do not call it directly or construct your own error envelope — always use `formatErrorResponse`.
+
+**Usage in MCP tool handlers**
+
+```javascript
+import { formatErrorResponse } from './utils/formatErrorResponse.js';
+
+try {
+  return await performOperation(input);
+} catch (error) {
+  return formatErrorResponse(error, 'ghost_create_post');
+}
+```
+
+### 5. XSS Prevention
 
 HTML sanitization is integrated into the Zod schema layer for defense-in-depth:
 
@@ -333,7 +392,7 @@ const sanitizedHtml = htmlContentSchema.parse(userProvidedHtml);
 
 The `htmlContentSchema` uses `sanitize-html` with a strict allowlist of safe tags and attributes. See [Schema Validation](./SCHEMA_VALIDATION.md) for details.
 
-### 4. Rate Limiting
+### 6. Rate Limiting
 
 Prevents abuse and DOS attacks:
 

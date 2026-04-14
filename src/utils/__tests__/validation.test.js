@@ -54,11 +54,14 @@ describe('validateToolInput', () => {
       const result = validateToolInput(testSchema, { name: '' }, 'test_tool');
 
       expect(result.success).toBe(false);
-      const errorObj = JSON.parse(result.errorResponse.content[0].text);
-      expect(errorObj.name).toBe('ValidationError');
-      expect(errorObj.code).toBe('VALIDATION_ERROR');
-      expect(errorObj.statusCode).toBe(400);
-      expect(errorObj.message).toContain('Validation failed');
+      const text = result.errorResponse.content[0].text;
+      const jsonMatch = text.match(/```json\n([\s\S]+?)\n```/);
+      expect(jsonMatch).toBeTruthy();
+      const envelope = JSON.parse(jsonMatch[1]);
+      expect(envelope.error.name).toBe('ValidationError');
+      expect(envelope.error.code).toBe('VALIDATION_ERROR');
+      expect(envelope.error.statusCode).toBe(400);
+      expect(envelope.error.message).toContain('Validation failed');
     });
   });
 
@@ -141,8 +144,11 @@ describe('validateToolInput', () => {
 
       expect(result.success).toBe(false);
       expect(result.errorResponse.isError).toBe(true);
-      const errorObj = JSON.parse(result.errorResponse.content[0].text);
-      expect(errorObj.code).toBe('VALIDATION_ERROR');
+      const text = result.errorResponse.content[0].text;
+      const jsonMatch = text.match(/```json\n([\s\S]+?)\n```/);
+      expect(jsonMatch).toBeTruthy();
+      const envelope = JSON.parse(jsonMatch[1]);
+      expect(envelope.error.code).toBe('VALIDATION_ERROR');
     });
 
     it('should pass validation when refinement is satisfied', () => {
