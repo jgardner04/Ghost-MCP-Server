@@ -41,8 +41,8 @@ vi.mock('../../services/imageProcessingService.js', () => ({
   processImage: vi.fn().mockResolvedValue('/tmp/processed-image.jpg'),
 }));
 
-// Mock the ghost service
-vi.mock('../../services/ghostService.js', () => ({
+// Mock the image upload service (now in images.js, re-exported via ghostServiceImproved.js)
+vi.mock('../../services/images.js', () => ({
   uploadImage: vi.fn().mockResolvedValue({ url: 'https://ghost.com/image.jpg' }),
 }));
 

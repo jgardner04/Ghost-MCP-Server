@@ -149,24 +149,6 @@ const createPost = async (postData, options = { source: 'html' }) => {
 };
 
 /**
- * Uploads an image to Ghost.
- * Requires the image file path.
- * @param {string} imagePath - The local path to the image file.
- * @returns {Promise<object>} The result from the image upload API call, typically includes the URL of the uploaded image.
- */
-const uploadImage = async (imagePath) => {
-  if (!imagePath) {
-    throw new Error('Image path is required for upload.');
-  }
-
-  // The Ghost Admin API expects an object with a 'file' property containing the path
-  const imageData = { file: imagePath };
-
-  // Use the handleApiRequest function for consistency
-  return handleApiRequest('images', 'upload', imageData);
-};
-
-/**
  * Creates a new tag in Ghost.
  * @param {object} tagData - Data for the new tag (e.g., { name: 'New Tag', slug: 'new-tag' }).
  * @returns {Promise<object>} The created tag object.
@@ -209,4 +191,4 @@ const getTags = async (options = {}) => {
 // Add other content management functions here (createTag, etc.)
 
 // Export the API client instance and any service functions
-export { api, getSiteInfo, handleApiRequest, createPost, uploadImage, createTag, getTags };
+export { api, getSiteInfo, handleApiRequest, createPost, createTag, getTags };

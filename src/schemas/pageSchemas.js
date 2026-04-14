@@ -44,7 +44,7 @@ export const createPageSchema = z.object({
   featured: featuredSchema,
   feature_image: featureImageSchema,
   feature_image_alt: featureImageAltSchema,
-  feature_image_caption: z.string().max(500, 'Caption cannot exceed 500 characters').optional(),
+  feature_image_caption: z.string().max(5000, 'Caption cannot exceed 5000 characters').optional(),
   excerpt: excerptSchema,
   custom_excerpt: customExcerptSchema,
   meta_title: metaTitleSchema,

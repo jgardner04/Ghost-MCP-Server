@@ -205,11 +205,12 @@ export const featureImageSchema = z.string().url('Invalid feature image URL').op
 
 /**
  * Feature image alt text validation schema
- * Optional alt text for accessibility
+ * Optional alt text for accessibility. Ghost's posts.feature_image_alt
+ * column is varchar(191); anything longer is rejected server-side.
  */
 export const featureImageAltSchema = z
   .string()
-  .max(125, 'Feature image alt text cannot exceed 125 characters')
+  .max(191, 'Feature image alt text cannot exceed 191 characters')
   .optional();
 
 /**

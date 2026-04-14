@@ -1712,3 +1712,86 @@ describe('tool schema JSON Schema output', () => {
     }
   });
 });
+
+// Regression tests for PR B — download size cap enforcement in ghost_upload_image.
+// axios does NOT enforce maxContentLength for responseType: 'stream', so the tool
+// must cap bytes itself via Content-Length pre-check and mid-stream byte tracking.
+describe('mcp_server - ghost_upload_image download size cap', () => {
+  const CAP = 50 * 1024 * 1024;
+  let handler;
+
+  beforeAll(async () => {
+    if (mockTools.size === 0) await import('../mcp_server.js');
+    handler = mockTools.get('ghost_upload_image').handler;
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockValidateImageUrl.mockReturnValue({
+      isValid: true,
+      sanitizedUrl: 'https://imgur.com/x.jpg',
+    });
+    mockCreateSecureAxiosConfig.mockReturnValue({ url: 'https://imgur.com/x.jpg' });
+  });
+
+  it('rejects up front when Content-Length header exceeds the cap', async () => {
+    const destroy = vi.fn();
+    mockAxios.mockResolvedValue({
+      headers: { 'content-length': String(CAP + 1) },
+      data: { destroy, on: vi.fn(), pipe: vi.fn() },
+    });
+
+    const result = await handler({ imageUrl: 'https://imgur.com/huge.jpg' });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/exceeds .* byte limit/);
+    expect(destroy).toHaveBeenCalled();
+  });
+
+  it('aborts mid-stream when bytes exceed the cap', async () => {
+    // Build a controllable fake stream that the tool's `.on('data', ...)` hook
+    // can drive past the cap without allocating 50MB.
+    const listeners = {};
+    const destroyCalls = [];
+    const dataStream = {
+      on: (event, cb) => {
+        (listeners[event] ||= []).push(cb);
+        return dataStream;
+      },
+      pipe: vi.fn(),
+      destroy: (err) => {
+        destroyCalls.push(err);
+        (listeners.error || []).forEach((cb) => cb(err));
+      },
+    };
+    const writer = {
+      on: (event, cb) => {
+        // Resolve the finish/error promise via the writer path.
+        if (event === 'error' && destroyCalls.length > 0) {
+          cb(destroyCalls[0]);
+        }
+        return writer;
+      },
+    };
+    mockCreateWriteStream.mockReturnValue(writer);
+    mockAxios.mockResolvedValue({
+      headers: {},
+      data: dataStream,
+    });
+
+    // Kick off the handler, then simulate a single >cap chunk landing.
+    const promise = handler({ imageUrl: 'https://imgur.com/x.jpg' });
+    // Let all the handler's awaits resolve (loadServices, axios, Promise
+    // construction with listener attachments) before emitting the chunk.
+    await new Promise((r) => setTimeout(r, 20));
+    const dataCbs = listeners.data || [];
+    expect(dataCbs.length).toBeGreaterThan(0);
+    dataCbs.forEach((cb) => cb({ length: CAP + 1 }));
+
+    const result = await promise;
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/exceeds .* byte limit|Error uploading image/);
+    expect(destroyCalls.length).toBeGreaterThan(0);
+    expect(destroyCalls[0]).toBeInstanceOf(Error);
+  });
+});

@@ -11,6 +11,7 @@ import crypto from 'crypto';
 import { ValidationError } from './errors/index.js';
 import { validateToolInput } from './utils/validation.js';
 import { trackTempFile, cleanupTempFiles } from './utils/tempFileManager.js';
+import { resolveLocalImagePath, decodeBase64ToTempFile } from './utils/imageInputResolver.js';
 import {
   createTagSchema,
   updateTagSchema,
@@ -267,97 +268,290 @@ server.registerTool(
 );
 
 // --- Image Schema ---
-const uploadImageSchema = z.object({
-  imageUrl: z.string().meta({ description: 'The publicly accessible URL of the image to upload.' }),
+// Base object (plain ZodObject — keeps `.shape` available for MCP schema
+// introspection). Runtime XOR validation is applied at the tool level
+// via a manual check so we never wrap with ZodEffects.
+const imageInputFields = {
+  imageUrl: z.string().optional().meta({
+    description: 'The publicly accessible URL of the image to download and upload.',
+  }),
+  imagePath: z.string().optional().meta({
+    description:
+      'Absolute path to a local image file. Only accepted when the GHOST_MCP_IMAGE_ROOT env var is set; paths must resolve inside that root.',
+  }),
+  imageBase64: z.string().optional().meta({
+    description:
+      'Base64-encoded image bytes (with or without data: URI prefix). Decoded size capped at 5MB to respect MCP transport limits. Requires mimeType.',
+  }),
+  mimeType: z.string().optional().meta({
+    description:
+      'MIME type for imageBase64 input (e.g. image/png, image/jpeg, image/svg+xml). Required when imageBase64 is used.',
+  }),
   alt: z.string().optional().meta({
     description:
       'Alt text for the image. If omitted, a default will be generated from the filename.',
   }),
-});
+  purpose: z.enum(['image', 'profile_image', 'icon']).optional().meta({
+    description:
+      'Intended use. Ghost validates format/size per purpose (icon/profile_image must be square; icon also accepts ICO).',
+  }),
+  ref: z.string().max(200).optional().meta({
+    description:
+      'Caller-supplied identifier (e.g. original filename). Ghost echoes it back in the response.',
+  }),
+};
 
-// Upload Image Tool — unique handler with finally-clause cleanup
+const uploadImageSchema = z.object(imageInputFields);
+
+function validateImageInputXor(data) {
+  const count = Number(!!data.imageUrl) + Number(!!data.imagePath) + Number(!!data.imageBase64);
+  if (count !== 1) return 'Provide exactly one of imageUrl, imagePath, or imageBase64.';
+  if (data.imageBase64 && !data.mimeType) {
+    return 'mimeType is required when imageBase64 is provided.';
+  }
+  return null;
+}
+
+// Axios does not enforce `maxContentLength` for responseType: 'stream',
+// so we cap downloads here by watching bytes on the response stream and
+// destroying it on overflow. Mirrors the config value in urlValidator.js.
+const DOWNLOAD_CAP_BYTES = 50 * 1024 * 1024;
+
+async function acquireImageForUpload({ imageUrl, imagePath: localPath, imageBase64, mimeType }) {
+  const tempDir = os.tmpdir();
+
+  if (imageUrl) {
+    const urlValidation = urlValidator.validateImageUrl(imageUrl);
+    if (!urlValidation.isValid) {
+      throw new Error(`Invalid image URL: ${urlValidation.error}`);
+    }
+    const axiosConfig = urlValidator.createSecureAxiosConfig(urlValidation.sanitizedUrl);
+    const response = await axios(axiosConfig);
+
+    const declared = Number(response.headers['content-length']);
+    if (Number.isFinite(declared) && declared > DOWNLOAD_CAP_BYTES) {
+      response.data.destroy();
+      throw new Error(
+        `Image exceeds ${DOWNLOAD_CAP_BYTES} byte limit (server declared ${declared})`
+      );
+    }
+
+    const extension = path.extname(imageUrl.split('?')[0]) || '.tmp';
+    const filenameHint =
+      path.basename(imageUrl.split('?')[0]) || `image-${generateUuid()}${extension}`;
+    const downloadedPath = path.join(tempDir, `mcp-download-${generateUuid()}${extension}`);
+
+    let bytes = 0;
+    response.data.on('data', (chunk) => {
+      bytes += chunk.length;
+      if (bytes > DOWNLOAD_CAP_BYTES) {
+        response.data.destroy(new Error(`Image exceeds ${DOWNLOAD_CAP_BYTES} byte limit`));
+      }
+    });
+
+    const writer = fs.createWriteStream(downloadedPath);
+    response.data.pipe(writer);
+    await new Promise((resolve, reject) => {
+      writer.on('finish', resolve);
+      writer.on('error', reject);
+      response.data.on('error', reject);
+    });
+    return { acquiredPath: downloadedPath, filenameHint, source: 'url' };
+  }
+
+  if (localPath) {
+    const resolved = await resolveLocalImagePath(localPath);
+    return { acquiredPath: resolved, filenameHint: path.basename(resolved), source: 'path' };
+  }
+
+  if (imageBase64) {
+    const decodedPath = await decodeBase64ToTempFile(imageBase64, mimeType);
+    return {
+      acquiredPath: decodedPath,
+      filenameHint: path.basename(decodedPath),
+      source: 'base64',
+    };
+  }
+
+  throw new Error('No image input provided'); // unreachable — schema enforces one
+}
+
+/**
+ * Acquire → process → upload an image from a validated input. Owns its
+ * own temp-file lifecycle. Returns { uploadResult, filenameHint, finalAltText }.
+ * Does NOT delete the caller's imagePath file.
+ */
+async function performImageUpload(data) {
+  await loadServices();
+
+  let acquiredPath = null;
+  let processedPath = null;
+
+  try {
+    const acquired = await acquireImageForUpload(data);
+    acquiredPath = acquired.acquiredPath;
+    if (acquired.source !== 'path') trackTempFile(acquiredPath);
+
+    processedPath = await imageProcessingService.processImage(
+      acquiredPath,
+      os.tmpdir(),
+      data.purpose ? { purpose: data.purpose } : {}
+    );
+    if (processedPath !== acquiredPath) trackTempFile(processedPath);
+
+    const uploadOpts = {};
+    if (data.purpose) uploadOpts.purpose = data.purpose;
+    if (data.ref) uploadOpts.ref = data.ref;
+    else if (acquired.filenameHint) uploadOpts.ref = acquired.filenameHint.slice(0, 200);
+
+    const uploadResult = await ghostService.uploadImage(processedPath, uploadOpts);
+    const finalAltText = data.alt || getDefaultAltText(acquired.filenameHint);
+
+    return { uploadResult, filenameHint: acquired.filenameHint, finalAltText };
+  } finally {
+    const toClean = [];
+    if (acquiredPath && !data.imagePath) toClean.push(acquiredPath);
+    if (processedPath && processedPath !== acquiredPath) toClean.push(processedPath);
+    if (toClean.length > 0) await cleanupTempFiles(toClean, console);
+  }
+}
+
+/**
+ * Runs the standard tool-input validation then the XOR image-input check.
+ * Returns { success: true, data } or { success: false, errorResponse }
+ * so both image tools can collapse their validation prelude to one call.
+ */
+function validateAndXorImageInput(schema, rawInput, toolName) {
+  const validation = validateToolInput(schema, rawInput, toolName);
+  if (!validation.success) return validation;
+  const xorError = validateImageInputXor(validation.data);
+  if (xorError) {
+    return {
+      success: false,
+      errorResponse: { content: [{ type: 'text', text: xorError }], isError: true },
+    };
+  }
+  return validation;
+}
+
+// Upload Image Tool
 server.registerTool(
   'ghost_upload_image',
   {
     description:
-      'Downloads an image from a URL, processes it, uploads it to Ghost CMS, and returns the final Ghost image URL and alt text.',
+      'Uploads an image to Ghost CMS. Accepts a remote URL, a local file path (when GHOST_MCP_IMAGE_ROOT is configured), or a base64 payload. Returns the Ghost image URL, alt text, and ref (when Ghost echoes it).',
     inputSchema: uploadImageSchema,
   },
   async (rawInput) => {
-    const validation = validateToolInput(uploadImageSchema, rawInput, 'ghost_upload_image');
-    if (!validation.success) {
-      return validation.errorResponse;
-    }
-    const { imageUrl, alt } = validation.data;
-
-    console.error(`Executing tool: ghost_upload_image for URL: ${imageUrl}`);
-    let downloadedPath = null;
-    let processedPath = null;
+    const validation = validateAndXorImageInput(uploadImageSchema, rawInput, 'ghost_upload_image');
+    if (!validation.success) return validation.errorResponse;
 
     try {
-      await loadServices();
-
-      // 1. Validate URL for SSRF protection
-      const urlValidation = urlValidator.validateImageUrl(imageUrl);
-      if (!urlValidation.isValid) {
-        throw new Error(`Invalid image URL: ${urlValidation.error}`);
-      }
-
-      // 2. Download the image with security controls
-      const axiosConfig = urlValidator.createSecureAxiosConfig(urlValidation.sanitizedUrl);
-      const response = await axios(axiosConfig);
-      const tempDir = os.tmpdir();
-      const extension = path.extname(imageUrl.split('?')[0]) || '.tmp';
-      const originalFilenameHint =
-        path.basename(imageUrl.split('?')[0]) || `image-${generateUuid()}${extension}`;
-      downloadedPath = path.join(tempDir, `mcp-download-${generateUuid()}${extension}`);
-
-      const writer = fs.createWriteStream(downloadedPath);
-      response.data.pipe(writer);
-
-      await new Promise((resolve, reject) => {
-        writer.on('finish', resolve);
-        writer.on('error', reject);
-      });
-      // Track temp file for cleanup on process exit
-      trackTempFile(downloadedPath);
-      console.error(`Downloaded image to temporary path: ${downloadedPath}`);
-
-      // 3. Process the image
-      processedPath = await imageProcessingService.processImage(downloadedPath, tempDir);
-      // Track processed file for cleanup on process exit
-      if (processedPath !== downloadedPath) {
-        trackTempFile(processedPath);
-      }
-      console.error(`Processed image path: ${processedPath}`);
-
-      // 4. Determine Alt Text
-      const defaultAlt = getDefaultAltText(originalFilenameHint);
-      const finalAltText = alt || defaultAlt;
-      console.error(`Using alt text: "${finalAltText}"`);
-
-      // 5. Upload processed image to Ghost
-      const uploadResult = await ghostService.uploadImage(processedPath);
-      console.error(`Uploaded processed image to Ghost: ${uploadResult.url}`);
-
-      // 6. Return result
-      const result = {
-        url: uploadResult.url,
-        alt: finalAltText,
-      };
-
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-      };
+      const { uploadResult, finalAltText } = await performImageUpload(validation.data);
+      const result = { url: uploadResult.url, alt: finalAltText };
+      if (uploadResult.ref) result.ref = uploadResult.ref;
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (error) {
       console.error(`Error in ghost_upload_image:`, error);
       return {
         content: [{ type: 'text', text: `Error uploading image: ${error.message}` }],
         isError: true,
       };
-    } finally {
-      // Cleanup temporary files with proper async/await
-      await cleanupTempFiles([downloadedPath, processedPath], console);
+    }
+  }
+);
+
+// --- Set Feature Image Tool ---
+// Combined upload-and-assign flow. Ghost has no delete-image endpoint,
+// so when the post/page update fails after a successful upload, the
+// image is orphaned in Ghost's storage — we surface its URL in the
+// error response so the caller can reuse or record it.
+const setFeatureImageSchema = uploadImageSchema.extend({
+  type: z.enum(['post', 'page']).meta({
+    description: 'Which resource to attach the feature image to.',
+  }),
+  id: ghostIdSchema.meta({ description: 'ID of the post or page.' }),
+  caption: z.string().max(5000).optional().meta({
+    description: 'Optional HTML caption for the feature image (max 5000 chars).',
+  }),
+});
+
+server.registerTool(
+  'ghost_set_feature_image',
+  {
+    description:
+      'Uploads an image and assigns it as the feature image of a post or page (with optional alt text and caption) in one call. Accepts the same imageUrl/imagePath/imageBase64 input modes as ghost_upload_image. Returns the updated resource. If the update fails after the upload, the error response includes the orphaned image URL.',
+    inputSchema: setFeatureImageSchema,
+  },
+  async (rawInput) => {
+    const validation = validateAndXorImageInput(
+      setFeatureImageSchema,
+      rawInput,
+      'ghost_set_feature_image'
+    );
+    if (!validation.success) return validation.errorResponse;
+
+    const { type, id, caption } = validation.data;
+
+    let uploadedUrl;
+    let uploadedRef;
+    let altText;
+    try {
+      const { uploadResult, finalAltText } = await performImageUpload(validation.data);
+      uploadedUrl = uploadResult.url;
+      uploadedRef = uploadResult.ref;
+      altText = finalAltText;
+    } catch (error) {
+      console.error(`ghost_set_feature_image: upload failed`, error);
+      return {
+        content: [{ type: 'text', text: `Upload failed: ${error.message}` }],
+        isError: true,
+      };
+    }
+
+    const updatePayload = {
+      feature_image: uploadedUrl,
+      feature_image_alt: altText,
+    };
+    if (caption !== undefined) updatePayload.feature_image_caption = caption;
+
+    try {
+      const updated =
+        type === 'post'
+          ? await ghostService.updatePost(id, updatePayload)
+          : await ghostService.updatePage(id, updatePayload);
+      console.error(`ghost_set_feature_image: ${type} ${id} updated with ${uploadedUrl}`);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              { uploaded: { url: uploadedUrl, ref: uploadedRef, alt: altText }, [type]: updated },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    } catch (error) {
+      console.error(`ghost_set_feature_image: update failed (orphaned ${uploadedUrl})`, error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                error: `Upload succeeded but ${type} update failed: ${error.message}`,
+                orphanedImage: { url: uploadedUrl, ref: uploadedRef, alt: altText },
+                hint: 'Ghost does not expose a delete-image endpoint; reuse this URL or leave it orphaned.',
+              },
+              null,
+              2
+            ),
+          },
+        ],
+        isError: true,
+      };
     }
   }
 );

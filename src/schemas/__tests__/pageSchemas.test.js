@@ -115,14 +115,23 @@ describe('Page Schemas', () => {
       expect(() => createPageSchema.parse(invalidPage)).toThrow();
     });
 
-    it('should reject page with too long feature_image_caption', () => {
+    it('should reject page with too long feature_image_caption (>5000)', () => {
       const invalidPage = {
         title: 'Page',
         html: '<p>Content</p>',
-        feature_image_caption: 'A'.repeat(501),
+        feature_image_caption: 'A'.repeat(5001),
       };
 
       expect(() => createPageSchema.parse(invalidPage)).toThrow();
+    });
+
+    it('should accept a 5000-char feature_image_caption', () => {
+      const page = {
+        title: 'Page',
+        html: '<p>Content</p>',
+        feature_image_caption: 'A'.repeat(5000),
+      };
+      expect(() => createPageSchema.parse(page)).not.toThrow();
     });
 
     it('should reject page with too long og_title', () => {

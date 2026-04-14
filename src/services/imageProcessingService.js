@@ -1,96 +1,140 @@
 import sharp from 'sharp';
 import path from 'path';
-import fs from 'fs';
-import Joi from 'joi';
+import fsp from 'fs/promises';
+import { z } from 'zod';
 import { createContextLogger } from '../utils/logger.js';
 
-// Define processing parameters (e.g., max width)
 const MAX_WIDTH = 1200;
-const OUTPUT_QUALITY = 80; // JPEG quality
+const JPEG_QUALITY = 80;
 
-/**
- * Processes an image: resizes if too large, ensures JPEG format (configurable).
- * @param {string} inputPath - Path to the original uploaded image.
- * @param {string} outputDir - Directory to save the processed image.
- * @returns {Promise<string>} Path to the processed image.
- */
-// Validation schema for processing parameters
-const processImageSchema = Joi.object({
-  inputPath: Joi.string().required(),
-  outputDir: Joi.string().required(),
+// Formats we re-encode via sharp when the image is oversized.
+// Everything else is passed through untouched to preserve fidelity
+// (SVG vectors, GIF animation, ICO, exotic formats).
+const RESIZABLE_FORMATS = new Set(['jpeg', 'png', 'webp']);
+
+const EXT_BY_FORMAT = {
+  jpeg: '.jpg',
+  png: '.png',
+  webp: '.webp',
+  gif: '.gif',
+  svg: '.svg',
+  // ICO has no sharp `format` name; detected by extension.
+};
+
+const processImageParamsSchema = z.object({
+  inputPath: z.string().min(1),
+  outputDir: z.string().min(1),
 });
 
-const processImage = async (inputPath, outputDir) => {
+const processImageOptsSchema = z
+  .object({
+    purpose: z.enum(['image', 'profile_image', 'icon']).optional(),
+  })
+  .optional();
+
+/**
+ * Process an image for upload to Ghost.
+ *
+ * Preserves the original format. Resizes (preserving format) only for
+ * raster formats sharp can safely re-encode — JPEG, PNG, WEBP — when
+ * wider than MAX_WIDTH. SVG, GIF, ICO, and unrecognized formats are
+ * copied byte-for-byte so vectors, animation frames, and icon metadata
+ * survive the round trip.
+ *
+ * @param {string} inputPath - Absolute path to the source image.
+ * @param {string} outputDir - Directory to write the processed file into.
+ * @param {{ purpose?: 'image'|'profile_image'|'icon' }} [opts]
+ * @returns {Promise<string>} Absolute path to the processed (or copied) file.
+ */
+export async function processImage(inputPath, outputDir, opts = {}) {
   const logger = createContextLogger('image-processing');
 
-  // Validate inputs to prevent path injection
-  const { error } = processImageSchema.validate({ inputPath, outputDir });
-  if (error) {
-    logger.error('Invalid processing parameters', {
-      error: error.details[0].message,
-      inputPath: inputPath ? path.basename(inputPath) : 'undefined',
-      outputDir: outputDir ? path.basename(outputDir) : 'undefined',
-    });
+  const params = processImageParamsSchema.safeParse({ inputPath, outputDir });
+  if (!params.success) {
     throw new Error('Invalid processing parameters');
   }
+  processImageOptsSchema.parse(opts);
 
-  // Ensure paths are safe
-  const resolvedInputPath = path.resolve(inputPath);
+  const resolvedInput = path.resolve(inputPath);
   const resolvedOutputDir = path.resolve(outputDir);
 
-  // Verify input file exists
-  if (!fs.existsSync(resolvedInputPath)) {
+  try {
+    await fsp.access(resolvedInput);
+  } catch {
     throw new Error('Input file does not exist');
   }
 
-  const filename = path.basename(resolvedInputPath);
-  const nameWithoutExt = filename.split('.').slice(0, -1).join('.');
-  // Use timestamp for unique output filename
+  const inputExt = path.extname(resolvedInput).toLowerCase();
+  const baseName = path.basename(resolvedInput, path.extname(resolvedInput));
   const timestamp = Date.now();
-  const outputFilename = `processed-${timestamp}-${nameWithoutExt}.jpg`;
-  const outputPath = path.join(resolvedOutputDir, outputFilename);
 
   try {
-    logger.info('Processing image', {
-      inputFile: path.basename(inputPath),
-      outputDir: path.basename(outputDir),
-    });
-    const image = sharp(inputPath);
-    const metadata = await image.metadata();
-
-    let processedImage = image;
-
-    // Resize if wider than MAX_WIDTH
-    if (metadata.width && metadata.width > MAX_WIDTH) {
-      logger.info('Resizing image', {
-        originalWidth: metadata.width,
-        targetWidth: MAX_WIDTH,
-        inputFile: path.basename(inputPath),
-      });
-      processedImage = processedImage.resize({ width: MAX_WIDTH });
+    // Non-raster passthrough: SVG and ICO are never handed to sharp.
+    // (sharp can read SVG but would rasterize it, destroying the vector.)
+    if (inputExt === '.svg' || inputExt === '.ico') {
+      return await passthrough(resolvedInput, resolvedOutputDir, baseName, timestamp, inputExt);
     }
 
-    // Convert to JPEG with specified quality
-    // You could add options for PNG/WebP etc. if needed
-    await processedImage.jpeg({ quality: OUTPUT_QUALITY }).toFile(outputPath);
+    const image = sharp(resolvedInput);
+    const metadata = await image.metadata();
+    const format = metadata.format; // 'jpeg' | 'png' | 'webp' | 'gif' | 'svg' | ...
 
-    logger.info('Image processing completed', {
+    // GIF: never re-encode — sharp would drop animation frames.
+    // SVG (if it slipped through by extension mismatch): also passthrough.
+    if (format === 'gif' || format === 'svg') {
+      const ext = EXT_BY_FORMAT[format] || inputExt || '';
+      return await passthrough(resolvedInput, resolvedOutputDir, baseName, timestamp, ext);
+    }
+
+    // Unknown / unsupported format: safest is passthrough.
+    if (!RESIZABLE_FORMATS.has(format)) {
+      logger.info('Unknown format, passing through', {
+        format,
+        inputFile: path.basename(inputPath),
+      });
+      return await passthrough(resolvedInput, resolvedOutputDir, baseName, timestamp, inputExt);
+    }
+
+    const ext = EXT_BY_FORMAT[format];
+    const outputPath = path.join(resolvedOutputDir, `processed-${timestamp}-${baseName}${ext}`);
+
+    // Passthrough when no resize is needed — avoids generation loss.
+    if (!metadata.width || metadata.width <= MAX_WIDTH) {
+      await fsp.copyFile(resolvedInput, outputPath);
+      logger.info('Image within size limits, passthrough copy', {
+        format,
+        width: metadata.width,
+        inputFile: path.basename(inputPath),
+      });
+      return outputPath;
+    }
+
+    logger.info('Resizing image', {
+      format,
+      originalWidth: metadata.width,
+      targetWidth: MAX_WIDTH,
       inputFile: path.basename(inputPath),
-      outputFile: path.basename(outputPath),
-      originalSize: metadata.size,
-      quality: OUTPUT_QUALITY,
     });
+
+    // sharp picks the encoder from outputPath extension (EXT_BY_FORMAT),
+    // so only JPEG needs the explicit call here to set quality. PNG/WEBP
+    // would be redundant.
+    let pipeline = image.resize({ width: MAX_WIDTH });
+    if (format === 'jpeg') pipeline = pipeline.jpeg({ quality: JPEG_QUALITY });
+
+    await pipeline.toFile(outputPath);
     return outputPath;
   } catch (error) {
     logger.error('Image processing failed', {
       inputFile: path.basename(inputPath),
       error: error.message,
-      stack: error.stack,
     });
-    // If processing fails, maybe fall back to using the original?
-    // Or throw the error to fail the upload.
     throw new Error('Image processing failed: ' + error.message, { cause: error });
   }
-};
+}
 
-export { processImage };
+async function passthrough(inputPath, outputDir, baseName, timestamp, ext) {
+  const outputPath = path.join(outputDir, `processed-${timestamp}-${baseName}${ext}`);
+  await fsp.copyFile(inputPath, outputPath);
+  return outputPath;
+}

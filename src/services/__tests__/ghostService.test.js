@@ -20,7 +20,6 @@ import {
   createTag,
   getTags,
   getSiteInfo,
-  uploadImage,
   handleApiRequest,
   api,
 } from '../ghostService.js';
@@ -206,24 +205,6 @@ describe('ghostService', () => {
 
       expect(result).toEqual(expectedSite);
       expect(api.site.read).toHaveBeenCalled();
-    });
-  });
-
-  describe('uploadImage', () => {
-    it('should throw error when image path is missing', async () => {
-      await expect(uploadImage()).rejects.toThrow('Image path is required for upload');
-      await expect(uploadImage('')).rejects.toThrow('Image path is required for upload');
-    });
-
-    it('should successfully upload image with valid path', async () => {
-      const imagePath = '/path/to/image.jpg';
-      const expectedResult = { url: 'https://example.com/uploaded-image.jpg' };
-      api.images.upload.mockResolvedValue(expectedResult);
-
-      const result = await uploadImage(imagePath);
-
-      expect(result).toEqual(expectedResult);
-      expect(api.images.upload).toHaveBeenCalledWith({ file: imagePath });
     });
   });
 

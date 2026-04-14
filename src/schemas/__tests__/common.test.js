@@ -336,12 +336,12 @@ describe('Common Schemas', () => {
   describe('featureImageAltSchema', () => {
     it('should accept valid alt text', () => {
       expect(() => featureImageAltSchema.parse('Image description')).not.toThrow();
-      expect(() => featureImageAltSchema.parse('A'.repeat(125))).not.toThrow();
+      expect(() => featureImageAltSchema.parse('A'.repeat(191))).not.toThrow();
       expect(() => featureImageAltSchema.parse(undefined)).not.toThrow();
     });
 
-    it('should reject too long alt text', () => {
-      expect(() => featureImageAltSchema.parse('A'.repeat(126))).toThrow();
+    it('should reject too long alt text (>191, matches Ghost varchar(191))', () => {
+      expect(() => featureImageAltSchema.parse('A'.repeat(192))).toThrow();
     });
   });
 

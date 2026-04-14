@@ -41,8 +41,8 @@ const pageInputSchema = Joi.object({
   published_at: Joi.string().isoDate().optional(),
   // NO tags field - pages don't support tags
   feature_image: Joi.string().uri().optional(),
-  feature_image_alt: Joi.string().max(255).optional(),
-  feature_image_caption: Joi.string().max(500).optional(),
+  feature_image_alt: Joi.string().max(191).optional(),
+  feature_image_caption: Joi.string().max(5000).optional(),
   meta_title: Joi.string().max(70).optional(),
   meta_description: Joi.string().max(160).optional(),
 });
