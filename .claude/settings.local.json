@@ -13,7 +13,8 @@
       "mcp__claude_ai_Context7__query-docs",
       "Bash(rtk npx:*)",
       "Bash(./node_modules/.bin/vitest run:*)",
-      "Bash(rtk npm:*)"
+      "Bash(rtk npm:*)",
+      "Bash(rtk wc:*)"
     ]
   }
 }

@@ -311,6 +311,11 @@ function validateImageInputXor(data) {
   return null;
 }
 
+// Axios does not enforce `maxContentLength` for responseType: 'stream',
+// so we cap downloads here by watching bytes on the response stream and
+// destroying it on overflow. Mirrors the config value in urlValidator.js.
+const DOWNLOAD_CAP_BYTES = 50 * 1024 * 1024;
+
 async function acquireImageForUpload({ imageUrl, imagePath: localPath, imageBase64, mimeType }) {
   const tempDir = os.tmpdir();
 
@@ -321,15 +326,34 @@ async function acquireImageForUpload({ imageUrl, imagePath: localPath, imageBase
     }
     const axiosConfig = urlValidator.createSecureAxiosConfig(urlValidation.sanitizedUrl);
     const response = await axios(axiosConfig);
+
+    const declared = Number(response.headers['content-length']);
+    if (Number.isFinite(declared) && declared > DOWNLOAD_CAP_BYTES) {
+      response.data.destroy();
+      throw new Error(
+        `Image exceeds ${DOWNLOAD_CAP_BYTES} byte limit (server declared ${declared})`
+      );
+    }
+
     const extension = path.extname(imageUrl.split('?')[0]) || '.tmp';
     const filenameHint =
       path.basename(imageUrl.split('?')[0]) || `image-${generateUuid()}${extension}`;
     const downloadedPath = path.join(tempDir, `mcp-download-${generateUuid()}${extension}`);
+
+    let bytes = 0;
+    response.data.on('data', (chunk) => {
+      bytes += chunk.length;
+      if (bytes > DOWNLOAD_CAP_BYTES) {
+        response.data.destroy(new Error(`Image exceeds ${DOWNLOAD_CAP_BYTES} byte limit`));
+      }
+    });
+
     const writer = fs.createWriteStream(downloadedPath);
     response.data.pipe(writer);
     await new Promise((resolve, reject) => {
       writer.on('finish', resolve);
       writer.on('error', reject);
+      response.data.on('error', reject);
     });
     return { acquiredPath: downloadedPath, filenameHint, source: 'url' };
   }
