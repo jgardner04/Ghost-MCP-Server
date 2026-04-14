@@ -60,6 +60,38 @@ describe('sanitizeErrorPayload', () => {
     expect(out.error.message).toContain('[REDACTED]');
   });
 
+  it('redacts every value in a multi-value Cookie header', () => {
+    const out = sanitizeErrorPayload({
+      error: { message: 'Cookie: a=first; b=SECRET_SESSION; c=third' },
+    });
+    expect(out.error.message).not.toContain('SECRET_SESSION');
+    expect(out.error.message).not.toContain('a=first');
+    expect(out.error.message).not.toContain('c=third');
+    expect(out.error.message).toContain('Cookie: [REDACTED]');
+  });
+
+  it('redacts Set-Cookie value but preserves attributes (HttpOnly, Secure, Path)', () => {
+    const out = sanitizeErrorPayload({
+      error: { message: 'Set-Cookie: sess=TOKEN_XYZ; HttpOnly; Secure; Path=/' },
+    });
+    expect(out.error.message).not.toContain('TOKEN_XYZ');
+    expect(out.error.message).toContain('Set-Cookie: [REDACTED]');
+    expect(out.error.message).toContain('HttpOnly');
+    expect(out.error.message).toContain('Secure');
+  });
+
+  it('redacts secrets inside string elements of arrays (truncation flag no longer needed)', () => {
+    const out = sanitizeErrorPayload({
+      ghost: {
+        originalMessage: ['https://x/y?key=LEAKED_1', 'https://x/y?token=LEAKED_2'],
+      },
+    });
+    expect(JSON.stringify(out)).not.toContain('LEAKED_1');
+    expect(JSON.stringify(out)).not.toContain('LEAKED_2');
+    expect(out.ghost.originalMessage[0]).toContain('key=[REDACTED]');
+    expect(out.ghost.originalMessage[1]).toContain('token=[REDACTED]');
+  });
+
   it('leaves benign content untouched', () => {
     const input = {
       error: { message: 'Title is required', code: 'GHOST_VALIDATION_ERROR', statusCode: 400 },

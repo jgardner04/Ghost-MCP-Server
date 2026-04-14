@@ -172,17 +172,22 @@ router.post(
 ### MCP Tool with Error Handling
 
 ```javascript
-const tool = new Tool({
-  name: 'create_post',
-  implementation: async (input) => {
+import { formatErrorResponse } from './utils/formatErrorResponse.js';
+
+server.registerTool(
+  'ghost_create_post',
+  { description: '...', inputSchema: createPostSchema },
+  async (input) => {
     try {
       return await createPost(input);
     } catch (error) {
-      return ErrorHandler.formatMCPError(error, 'create_post');
+      return formatErrorResponse(error, 'ghost_create_post');
     }
-  },
-});
+  }
+);
 ```
+
+See the "MCP Error Response Format" section below for the envelope shape and redaction guarantees.
 
 ## Configuration
 
@@ -307,15 +312,20 @@ const data = validation.data;
 
 **Zod Error Response Format:**
 
+Zod validation errors are surfaced via `formatErrorResponse`, which emits a human-readable summary line followed by a fenced JSON block with the canonical envelope. See "MCP Error Response Format" below for the full shape. For a Zod failure, the JSON block looks like:
+
 ```json
 {
-  "content": [
-    {
-      "type": "text",
-      "text": "{\"error\":\"ValidationError\",\"message\":\"Invalid input for ghost_create_post\",\"details\":[{\"field\":\"title\",\"message\":\"Title cannot be empty\"},{\"field\":\"html\",\"message\":\"HTML content cannot be empty\"}]}"
-    }
-  ],
-  "isError": true
+  "error": {
+    "name": "ValidationError",
+    "code": "VALIDATION_ERROR",
+    "message": "ghost_create_post: Validation failed",
+    "statusCode": 400,
+    "errors": [
+      { "field": "title", "message": "Title cannot be empty", "type": "too_small" },
+      { "field": "html", "message": "HTML content cannot be empty", "type": "too_small" }
+    ]
+  }
 }
 ```
 
