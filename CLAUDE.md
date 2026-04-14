@@ -196,6 +196,7 @@ Follow these principles when writing code:
    - `memberService.js`: Member/subscriber management
    - `tierService.js`: Membership tier management
    - `newsletterService.js`: Newsletter management
+   - `images.js`: Image upload to Ghost CMS (single path for all upload modes; used by imageController and MCP tools)
    - `imageProcessingService.js`: Image optimization and processing (preserves original format; does not convert to JPEG)
 
    **Service Import Pattern:** Services in the MCP server use lazy loading to avoid Node.js ESM compatibility issues. Always use the lazy-loaded service variables from `loadServices()`. Never add inline dynamic imports. See [docs/SERVICE_PATTERNS.md](docs/SERVICE_PATTERNS.md) for detailed guidelines.
