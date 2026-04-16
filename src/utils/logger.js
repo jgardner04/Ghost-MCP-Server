@@ -43,15 +43,21 @@ const logger = winston.createLogger({
     pid: process.pid,
   },
   transports: [
-    // Console output
+    // Console output — route all levels to stderr so stdio MCP transport
+    // (which uses stdout for JSON-RPC frames) is not corrupted by log lines.
     new winston.transports.Console({
       level: isDevelopment ? 'debug' : 'info',
+      stderrLevels: ['error', 'warn', 'info', 'debug'],
     }),
   ],
   // Handle uncaught exceptions
-  exceptionHandlers: [new winston.transports.Console()],
+  exceptionHandlers: [
+    new winston.transports.Console({ stderrLevels: ['error', 'warn', 'info', 'debug'] }),
+  ],
   // Handle unhandled promise rejections
-  rejectionHandlers: [new winston.transports.Console()],
+  rejectionHandlers: [
+    new winston.transports.Console({ stderrLevels: ['error', 'warn', 'info', 'debug'] }),
+  ],
 });
 
 // Add file logging in production
