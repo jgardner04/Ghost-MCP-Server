@@ -2,7 +2,6 @@
  * Validation utilities for MCP tool handlers
  * Provides explicit Zod validation to ensure input is validated at handler entry points.
  */
-import { ValidationError } from '../errors/index.js';
 import { formatErrorResponse } from './formatErrorResponse.js';
 
 /**
@@ -16,10 +15,11 @@ import { formatErrorResponse } from './formatErrorResponse.js';
 export const validateToolInput = (schema, input, toolName) => {
   const result = schema.safeParse(input);
   if (!result.success) {
-    const error = ValidationError.fromZod(result.error, toolName);
+    // formatErrorResponse duck-types ZodError and coerces it to ValidationError,
+    // so pass the raw ZodError through — it owns the single coercion path.
     return {
       success: false,
-      errorResponse: formatErrorResponse(error, toolName),
+      errorResponse: formatErrorResponse(result.error, toolName),
     };
   }
   return { success: true, data: result.data };

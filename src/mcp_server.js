@@ -76,9 +76,6 @@ const loadServices = async () => {
   }
 };
 
-// Generate UUID without external dependency
-const generateUuid = () => crypto.randomUUID();
-
 // Helper function for default alt text
 const getDefaultAltText = (filePath) => {
   try {
@@ -223,9 +220,6 @@ server.registerTool(
     const options = {};
     if (input.include !== undefined) options.include = input.include;
 
-    if (!input.id && !input.slug) {
-      throw new Error('Either id or slug is required');
-    }
     const identifier = input.id || `slug/${input.slug}`;
 
     const tag = await ghostService.getTag(identifier, options);
@@ -345,8 +339,8 @@ async function acquireImageForUpload({ imageUrl, imagePath: localPath, imageBase
 
     const extension = path.extname(imageUrl.split('?')[0]) || '.tmp';
     const filenameHint =
-      path.basename(imageUrl.split('?')[0]) || `image-${generateUuid()}${extension}`;
-    const downloadedPath = path.join(tempDir, `mcp-download-${generateUuid()}${extension}`);
+      path.basename(imageUrl.split('?')[0]) || `image-${crypto.randomUUID()}${extension}`;
+    const downloadedPath = path.join(tempDir, `mcp-download-${crypto.randomUUID()}${extension}`);
 
     let bytes = 0;
     response.data.on('data', (chunk) => {
@@ -640,10 +634,7 @@ server.registerTool(
     const options = {};
     if (input.include !== undefined) options.include = input.include;
 
-    // Determine identifier (prefer ID over slug)
-    if (!input.id && !input.slug) {
-      throw new Error('Either id or slug is required');
-    }
+    // Prefer ID over slug. The schema's .refine() guarantees one is present.
     const identifier = input.id || `slug/${input.slug}`;
 
     const post = await ghostService.getPost(identifier, options);
@@ -798,9 +789,6 @@ server.registerTool(
     const options = {};
     if (input.include !== undefined) options.include = input.include;
 
-    if (!input.id && !input.slug) {
-      throw new Error('Either id or slug is required');
-    }
     const identifier = input.id || `slug/${input.slug}`;
 
     const page = await ghostService.getPage(identifier, options);

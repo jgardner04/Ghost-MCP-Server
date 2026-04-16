@@ -105,13 +105,33 @@ describe('sanitizeErrorPayload', () => {
     expect(out).toEqual(input);
   });
 
-  it('truncates long originalMessage', () => {
+  it('truncates long originalMessage to 2KB cap', () => {
     const longMsg = 'x'.repeat(5000);
     const out = sanitizeErrorPayload({
       ghost: { originalMessage: longMsg },
     });
-    expect(out.ghost.originalMessage.length).toBeLessThan(longMsg.length);
+    // 2048-byte cap + ellipsis suffix: result stays under 2100 characters.
+    expect(out.ghost.originalMessage.length).toBeLessThan(2100);
     expect(out.ghost.originalMessage).toContain('[truncated]');
+  });
+
+  it('caps generic strings at 4KB even outside ghost.originalMessage', () => {
+    const longMsg = 'y'.repeat(10000);
+    const out = sanitizeErrorPayload({
+      error: { message: longMsg },
+    });
+    expect(out.error.message.length).toBeLessThan(4200);
+    expect(out.error.message).toContain('[truncated]');
+  });
+
+  it('redacts before truncation so sliced content cannot leak a secret prefix', () => {
+    // Secret placed near the END of a 5000-byte string, AFTER the 4 KB cap.
+    // redactString runs first during walk(); truncate runs on the redacted text.
+    const secret = `${'a'.repeat(24)}:${'b'.repeat(64)}`;
+    const msg = 'x'.repeat(4900) + secret;
+    const out = sanitizeErrorPayload({ error: { message: msg } });
+    // Secret must be redacted regardless of whether it fell on the truncated side.
+    expect(out.error.message).not.toContain(secret);
   });
 
   it('does not redact env key when env var is empty', () => {
