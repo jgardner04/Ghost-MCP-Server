@@ -7,12 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **JSON Schema regression tests for MCP tool schemas** - Added tests verifying every registered tool produces non-empty JSON Schema `properties` via the same `zod/v4-mini` conversion path the MCP SDK uses. Includes targeted assertions that `ghost_create_post` and `ghost_create_page` declare `title` and `html` as required. Prevents a regression where empty schemas caused MCP clients to strip arguments. ([JON-103](https://linear.app/jonathangardner/issue/JON-103/declare-input-schema-for-ghost-create-post-tool))
+
+### Removed
+
+- **Redundant `.response` assignment on 404 GhostAPIError mocks** - Removed manual `error404.response = { status: 404 }` assignments from 4 test files (posts, pages, tags, members). `GhostAPIError` already sets `this.statusCode = 404`, and `fromGhostError` falls back to `error.statusCode` when `error.response?.status` is absent. ([JON-80](https://linear.app/jonathangardner/issue/JON-80/remove-redundant-response-assignment-on-404-ghostapierror-mocks))
+
 ### Changed
 
 - **Extracted `expectRejection` test helper** - Consolidated repeated double `.rejects` assertion pattern (`.toBeInstanceOf` + `.toThrow`) into a shared `expectRejection()` helper in `testUtils.js`, reducing verbosity across 4 test files (11 call sites). ([JON-82](https://linear.app/jonathangardner/issue/JON-82/extract-test-helper-for-double-rejects-assertion-pattern))
-
+- **Extract shared CRUD resource factory** - Introduced `createResourceService()` factory to eliminate duplicated CRUD patterns (create/update/delete/getOne/getList) across 6 domain service modules. Posts, Pages, Members, Newsletters, and Tiers now delegate common operations to the factory while preserving domain-specific logic as config hooks. ([JON-36](https://linear.app/jonathangardner/issue/JON-36/extract-shared-crud-resource-factory-to-eliminate-postpage-duplication), [#144](https://github.com/jgardner04/Ghost-MCP-Server/pull/144))
+- **Split ghostServiceImproved.js by domain** - Decomposed the 1295-line monolithic service file into 9 focused modules (`ghostApiClient.js`, `validators.js`, `posts.js`, `pages.js`, `tags.js`, `members.js`, `newsletters.js`, `tiers.js`, `images.js`) with a barrel re-export for backward compatibility. ([JON-37](https://linear.app/jonathangardner/issue/JON-37/split-1160-line-ghostserviceimprovedjs-by-domain), [#143](https://github.com/jgardner04/Ghost-MCP-Server/pull/143))
+- **Dual schema passing comment** - Added explanatory comment to `withErrorHandling` JSDoc clarifying why each `registerTool` call passes the schema twice (MCP protocol metadata vs. runtime validation). ([JON-83](https://linear.app/jonathangardner/issue/JON-83/add-comment-explaining-why-schema-is-passed-twice-in-registertool), [#142](https://github.com/jgardner04/Ghost-MCP-Server/pull/142))
 - **Standardized tool error handling** - Extracted `withErrorHandling` higher-order function to eliminate ~735 lines of duplicated try/catch blocks across 33 tool handlers. Error messages now use a consistent `Error in <tool_name>: <message>` format. ([JON-17](https://linear.app/jonathangardner/issue/JON-17/extract-error-handler-hof-in-mcp-serverjs-to-reduce-duplication), [#138](https://github.com/jgardner04/Ghost-MCP-Server/pull/138))
 - **JSDoc documentation, validation helper extraction, and export cleanup** - Added `@param`/`@returns`/`@throws` JSDoc to ~32 functions, extracted `validators.requireId()` shared helper replacing 10+ inline ID checks, and removed unused `handleApiRequest` backward-compat export. ([JON-18](https://linear.app/jonathangardner/issue/JON-18/jsdoc-gaps-unused-export-cleanup-and-validation-helper-extraction), [#141](https://github.com/jgardner04/Ghost-MCP-Server/pull/141))
+- **Shared test mock factory for Ghost Admin API** - Extracted duplicated `vi.mock('@tryghost/admin-api')` blocks from 6 test files into a single `mockGhostApi.js` helper with `createMockGhostApi()`, `createMockGhostApiConstructor()`, and `mockGhostApiModule()` exports. Fixes silent inconsistency where the pages test was missing the `members` resource. ([JON-38](https://linear.app/jonathangardner/issue/JON-38/extract-shared-test-mock-factory-for-ghost-admin-api), [#127](https://github.com/jgardner04/Ghost-MCP-Server/pull/127))
 
 ### Fixed
 

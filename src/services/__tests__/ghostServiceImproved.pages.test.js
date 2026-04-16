@@ -276,7 +276,6 @@ describe('ghostServiceImproved - Pages', () => {
 
     it('should handle page not found (404)', async () => {
       const error404 = new GhostAPIError('pages.read', 'Page not found', 404);
-      error404.response = { status: 404 };
       api.pages.read.mockRejectedValue(error404);
 
       await expectRejection(
@@ -391,7 +390,6 @@ describe('ghostServiceImproved - Pages', () => {
 
     it('should handle page not found (404)', async () => {
       const error404 = new GhostAPIError('pages.delete', 'Page not found', 404);
-      error404.response = { status: 404 };
       api.pages.delete.mockRejectedValue(error404);
 
       await expectRejection(deletePage('nonexistent-id'), NotFoundError, 'Page not found');
@@ -439,7 +437,6 @@ describe('ghostServiceImproved - Pages', () => {
 
     it('should handle page not found (404)', async () => {
       const error404 = new GhostAPIError('pages.read', 'Page not found', 404);
-      error404.response = { status: 404 };
       api.pages.read.mockRejectedValue(error404);
 
       await expectRejection(getPage('nonexistent-id'), NotFoundError, 'Page not found');
