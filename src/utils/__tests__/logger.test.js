@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { LEVEL, MESSAGE } from 'triple-beam';
 import { createContextLogger } from '../logger.js';
 import logger from '../logger.js';
 
@@ -18,6 +19,62 @@ describe('logger', () => {
       expect(logger).toHaveProperty('warn');
       expect(logger).toHaveProperty('debug');
       expect(logger).toHaveProperty('log');
+    });
+  });
+
+  describe('transport routing', () => {
+    // stdio MCP transport uses stdout for JSON-RPC frames; all log output must
+    // land on stderr so a log line cannot corrupt the protocol channel.
+    let stdoutSpy;
+    let stderrSpy;
+
+    beforeEach(() => {
+      // Winston writes to console._stdout/_stderr (Node aliases for
+      // process.stdout/stderr, captured at logger construction). Spy on the
+      // same references winston uses so the hook lines up with the write.
+      // These are Node internals — fail loudly if they ever disappear so the
+      // test cannot silently turn into a no-op when the assumption breaks.
+      if (!console._stdout || !console._stderr) {
+        throw new Error(
+          'console._stdout/_stderr unavailable; logger transport-routing test ' +
+            'assumptions broken — winston uses these refs for its Console transport.'
+        );
+      }
+      stdoutSpy = vi.spyOn(console._stdout, 'write').mockImplementation(() => true);
+      stderrSpy = vi.spyOn(console._stderr, 'write').mockImplementation(() => true);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('configures the Console transport with stderrLevels covering every level', () => {
+      const consoleTransport = logger.transports.find((t) => t.name === 'console');
+      expect(consoleTransport).toBeDefined();
+      expect(consoleTransport.stderrLevels).toMatchObject({
+        error: true,
+        warn: true,
+        info: true,
+        debug: true,
+      });
+    });
+
+    // Drive the Console transport's log() directly. Winston's writable-stream
+    // pipeline can defer writes across ticks, so routing the message through
+    // logger.info() makes the test flaky. The transport's routing logic is
+    // synchronous, so calling log() with a winston-shaped info object covers it.
+    const makeInfo = (level, message) => ({
+      level,
+      message,
+      [LEVEL]: level,
+      [MESSAGE]: `formatted: ${message}`,
+    });
+
+    it.each([['error'], ['warn'], ['info'], ['debug']])('routes %s level to stderr', (level) => {
+      const transport = logger.transports.find((t) => t.name === 'console');
+      transport.log(makeInfo(level, `${level}-test`), () => {});
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining(`${level}-test`));
+      expect(stdoutSpy).not.toHaveBeenCalled();
     });
   });
 

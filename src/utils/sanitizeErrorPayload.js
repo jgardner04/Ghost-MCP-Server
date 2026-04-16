@@ -14,6 +14,10 @@ const AUTH_HEADER_PATTERN = /(Authorization|Set-Cookie)\s*[:=]\s*[^\r\n,;]+/gi;
 // the `Cookie` substring inside `Set-Cookie:` (handled by AUTH_HEADER_PATTERN).
 const COOKIE_HEADER_PATTERN = /(?<!Set-)(Cookie)\s*[:=]\s*[^\r\n]+/gi;
 const REDACTED = '[REDACTED]';
+// Upper bound on any string value in the envelope (guards against pathological
+// Ghost responses bloating the MCP reply).
+const GENERIC_MAX_BYTES = 4096;
+// Tighter cap on `ghost.originalMessage` specifically.
 const ORIGINAL_MESSAGE_MAX_BYTES = 2048;
 
 function redactString(value, envKey) {
@@ -38,16 +42,12 @@ function truncate(value, maxBytes) {
 
 function walk(node, envKey) {
   if (node === null || node === undefined) return node;
-  if (typeof node === 'string') return redactString(node, envKey);
+  if (typeof node === 'string') return truncate(redactString(node, envKey), GENERIC_MAX_BYTES);
   if (Array.isArray(node)) return node.map((item) => walk(item, envKey));
   if (typeof node === 'object') {
     const result = {};
     for (const [k, v] of Object.entries(node)) {
-      const walked = walk(v, envKey);
-      result[k] =
-        k === 'originalMessage' && typeof walked === 'string'
-          ? truncate(walked, ORIGINAL_MESSAGE_MAX_BYTES)
-          : walked;
+      result[k] = walk(v, envKey);
     }
     return result;
   }
@@ -63,5 +63,15 @@ function walk(node, envKey) {
  */
 export function sanitizeErrorPayload(envelope) {
   const envKey = process.env.GHOST_ADMIN_API_KEY || '';
-  return walk(envelope, envKey);
+  const sanitized = walk(envelope, envKey);
+  // Tighter cap for ghost.originalMessage specifically. walk() already applied
+  // the 4 KB generic cap; this narrows it further on the field most likely to
+  // receive a verbose Ghost response body.
+  if (sanitized?.ghost && typeof sanitized.ghost.originalMessage === 'string') {
+    sanitized.ghost.originalMessage = truncate(
+      sanitized.ghost.originalMessage,
+      ORIGINAL_MESSAGE_MAX_BYTES
+    );
+  }
+  return sanitized;
 }

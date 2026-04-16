@@ -36,15 +36,14 @@ export function formatErrorResponse(error, toolName, extra) {
     envelope.ghost = {
       operation: normalized.operation,
       statusCode: normalized.ghostStatusCode,
-      // normalized.originalError is already a string (coerced by ExternalServiceError constructor);
-      // coerce again defensively so the sanitizer always receives a string, not an Error object.
-      originalMessage:
-        typeof normalized.originalError === 'string'
-          ? normalized.originalError
-          : (normalized.originalError?.message ?? String(normalized.originalError)),
+      // ExternalServiceError's constructor coerces originalError to a string;
+      // String() handles any surprise non-string value without branching.
+      originalMessage: String(normalized.originalError ?? ''),
     };
   }
 
+  // Guard against non-object `extra`: Object.keys(string) returns per-char
+  // indices and would silently set envelope.extra to that string.
   if (extra && typeof extra === 'object' && Object.keys(extra).length > 0) {
     envelope.extra = extra;
   }
