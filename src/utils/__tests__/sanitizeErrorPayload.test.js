@@ -124,14 +124,25 @@ describe('sanitizeErrorPayload', () => {
     expect(out.error.message).toContain('[truncated]');
   });
 
-  it('redacts before truncation so sliced content cannot leak a secret prefix', () => {
-    // Secret placed near the END of a 5000-byte string, AFTER the 4 KB cap.
-    // redactString runs first during walk(); truncate runs on the redacted text.
-    const secret = `${'a'.repeat(24)}:${'b'.repeat(64)}`;
-    const msg = 'x'.repeat(4900) + secret;
+  it('redacts BEFORE truncating so secrets spanning the cap boundary cannot leak a prefix', () => {
+    // Place a 89-byte Ghost-shaped admin key so it STRADDLES the 4096-byte
+    // generic cap (starts at 4050, ends at 4139). The ordering matters only
+    // for boundary-spanning values:
+    //   redact-first → full pattern matches, entire secret becomes [REDACTED]
+    //     before truncation; no prefix of the secret remains in the output.
+    //   truncate-first → first 4096 bytes keep a 46-byte PREFIX of the secret;
+    //     GHOST_KEY_PATTERN requires the full 89 chars to match, so the
+    //     partial prefix slips past redaction and leaks.
+    const secret = `${'a'.repeat(24)}:${'b'.repeat(64)}`; // 89 bytes
+    const msg = 'x'.repeat(4050) + secret; // 4139 bytes — boundary at 4096 cuts the secret
     const out = sanitizeErrorPayload({ error: { message: msg } });
-    // Secret must be redacted regardless of whether it fell on the truncated side.
     expect(out.error.message).not.toContain(secret);
+    // The partial prefix that truncate-first would leave behind. If this
+    // appears in the output, redaction ran AFTER truncation on a string the
+    // pattern no longer matches.
+    const leakedPrefix = `${'a'.repeat(24)}:${'b'.repeat(21)}`;
+    expect(out.error.message).not.toContain(leakedPrefix);
+    expect(out.error.message).toContain('[REDACTED]');
   });
 
   it('does not redact env key when env var is empty', () => {

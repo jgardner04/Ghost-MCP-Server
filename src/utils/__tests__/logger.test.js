@@ -32,6 +32,14 @@ describe('logger', () => {
       // Winston writes to console._stdout/_stderr (Node aliases for
       // process.stdout/stderr, captured at logger construction). Spy on the
       // same references winston uses so the hook lines up with the write.
+      // These are Node internals — fail loudly if they ever disappear so the
+      // test cannot silently turn into a no-op when the assumption breaks.
+      if (!console._stdout || !console._stderr) {
+        throw new Error(
+          'console._stdout/_stderr unavailable; logger transport-routing test ' +
+            'assumptions broken — winston uses these refs for its Console transport.'
+        );
+      }
       stdoutSpy = vi.spyOn(console._stdout, 'write').mockImplementation(() => true);
       stderrSpy = vi.spyOn(console._stderr, 'write').mockImplementation(() => true);
     });

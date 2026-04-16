@@ -9,6 +9,11 @@ const __dirname = path.dirname(__filename);
 const logLevel = process.env.LOG_LEVEL || 'info';
 const isDevelopment = process.env.NODE_ENV === 'development';
 
+// Every level winston emits must route to stderr — the stdio MCP transport
+// reserves stdout for JSON-RPC frames. Single source of truth so adding a new
+// level later can't silently leave one transport routing to stdout.
+const ALL_LEVELS_TO_STDERR = ['error', 'warn', 'info', 'debug'];
+
 // Define custom log format
 const logFormat = winston.format.combine(
   winston.format.timestamp({
@@ -47,17 +52,13 @@ const logger = winston.createLogger({
     // (which uses stdout for JSON-RPC frames) is not corrupted by log lines.
     new winston.transports.Console({
       level: isDevelopment ? 'debug' : 'info',
-      stderrLevels: ['error', 'warn', 'info', 'debug'],
+      stderrLevels: ALL_LEVELS_TO_STDERR,
     }),
   ],
   // Handle uncaught exceptions
-  exceptionHandlers: [
-    new winston.transports.Console({ stderrLevels: ['error', 'warn', 'info', 'debug'] }),
-  ],
+  exceptionHandlers: [new winston.transports.Console({ stderrLevels: ALL_LEVELS_TO_STDERR })],
   // Handle unhandled promise rejections
-  rejectionHandlers: [
-    new winston.transports.Console({ stderrLevels: ['error', 'warn', 'info', 'debug'] }),
-  ],
+  rejectionHandlers: [new winston.transports.Console({ stderrLevels: ALL_LEVELS_TO_STDERR })],
 });
 
 // Add file logging in production

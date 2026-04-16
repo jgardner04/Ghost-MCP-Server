@@ -42,7 +42,9 @@ export function formatErrorResponse(error, toolName, extra) {
     };
   }
 
-  if (extra && Object.keys(extra).length > 0) {
+  // Guard against non-object `extra`: Object.keys(string) returns per-char
+  // indices and would silently set envelope.extra to that string.
+  if (extra && typeof extra === 'object' && Object.keys(extra).length > 0) {
     envelope.extra = extra;
   }
 
