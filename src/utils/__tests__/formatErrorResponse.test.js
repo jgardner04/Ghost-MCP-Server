@@ -131,6 +131,26 @@ describe('formatErrorResponse', () => {
     });
   });
 
+  describe('XOR image-input error pass-through', () => {
+    it('renders the XOR error through the sanitized envelope shape', () => {
+      // Mirror the call shape `validateAndXorImageInput` uses when the caller
+      // supplied more than one of imageUrl/imagePath/imageBase64.
+      const xorError = new Error('Provide exactly one of imageUrl, imagePath, or imageBase64.');
+      const response = formatErrorResponse(xorError, 'ghost_upload_image');
+
+      expect(response.isError).toBe(true);
+      expect(response.content[0].type).toBe('text');
+      expect(response.content[0].text).toContain('Error in ghost_upload_image:');
+
+      const envelope = parseJsonBlock(response.content[0].text);
+      expect(envelope.error).toBeDefined();
+      expect(envelope.error.message).toBe(
+        'Provide exactly one of imageUrl, imagePath, or imageBase64.'
+      );
+      expect(envelope).not.toHaveProperty('ghost');
+    });
+  });
+
   describe('ZodError coercion', () => {
     it('coerces ZodError-shaped input to VALIDATION_ERROR / 400 envelope', () => {
       const zodLike = Object.assign(new Error('zod'), {

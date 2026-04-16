@@ -119,7 +119,6 @@ const escapeNqlValue = (value) => {
  */
 const withErrorHandling = (toolName, schema, handler) => {
   return async (rawInput) => {
-    console.error(`Executing tool: ${toolName}`);
     const validation = validateToolInput(schema, rawInput, toolName);
     if (!validation.success) {
       return validation.errorResponse;
@@ -188,7 +187,7 @@ server.registerTool(
     }
 
     const tags = await ghostService.getTags(options);
-    console.error(`Retrieved ${tags.length} tags from Ghost.`);
+    mcpLogger.info(`Retrieved ${tags.length} tags from Ghost.`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(tags, null, 2) }],
@@ -205,7 +204,7 @@ server.registerTool(
   },
   withErrorHandling('ghost_create_tag', createTagSchema, async (input) => {
     const createdTag = await ghostService.createTag(input);
-    console.error(`Tag created successfully. Tag ID: ${createdTag.id}`);
+    mcpLogger.info(`Tag created successfully. Tag ID: ${createdTag.id}`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(createdTag, null, 2) }],
@@ -230,7 +229,7 @@ server.registerTool(
     const identifier = input.id || `slug/${input.slug}`;
 
     const tag = await ghostService.getTag(identifier, options);
-    console.error(`Retrieved tag: ${tag.name} (ID: ${tag.id})`);
+    mcpLogger.info(`Retrieved tag: ${tag.name} (ID: ${tag.id})`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(tag, null, 2) }],
@@ -248,7 +247,7 @@ server.registerTool(
   withErrorHandling('ghost_update_tag', updateTagInputSchema, async (input) => {
     const { id, ...updateData } = input;
     const updatedTag = await ghostService.updateTag(id, updateData);
-    console.error(`Tag updated successfully. Tag ID: ${updatedTag.id}`);
+    mcpLogger.info(`Tag updated successfully. Tag ID: ${updatedTag.id}`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(updatedTag, null, 2) }],
@@ -267,7 +266,7 @@ server.registerTool(
   withErrorHandling('ghost_delete_tag', deleteTagSchema, async (input) => {
     const { id } = input;
     await ghostService.deleteTag(id);
-    console.error(`Tag deleted successfully. Tag ID: ${id}`);
+    mcpLogger.info(`Tag deleted successfully. Tag ID: ${id}`);
 
     return {
       content: [{ type: 'text', text: `Tag ${id} has been successfully deleted.` }],
@@ -436,7 +435,7 @@ function validateAndXorImageInput(schema, rawInput, toolName) {
   if (xorError) {
     return {
       success: false,
-      errorResponse: { content: [{ type: 'text', text: xorError }], isError: true },
+      errorResponse: formatErrorResponse(new Error(xorError), toolName),
     };
   }
   return validation;
@@ -522,7 +521,7 @@ server.registerTool(
         type === 'post'
           ? await ghostService.updatePost(id, updatePayload)
           : await ghostService.updatePage(id, updatePayload);
-      console.error(`ghost_set_feature_image: ${type} ${id} updated with ${uploadedUrl}`);
+      mcpLogger.info(`ghost_set_feature_image: ${type} ${id} updated with ${uploadedUrl}`);
       return {
         content: [
           {
@@ -592,7 +591,7 @@ server.registerTool(
   },
   withErrorHandling('ghost_create_post', createPostSchema, async (input) => {
     const createdPost = await postService.createPostService(input);
-    console.error(`Post created successfully. Post ID: ${createdPost.id}`);
+    mcpLogger.info(`Post created successfully. Post ID: ${createdPost.id}`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(createdPost, null, 2) }],
@@ -621,7 +620,7 @@ server.registerTool(
     if (input.formats !== undefined) options.formats = input.formats;
 
     const posts = await ghostService.getPosts(options);
-    console.error(`Retrieved ${posts.length} posts from Ghost.`);
+    mcpLogger.info(`Retrieved ${posts.length} posts from Ghost.`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(posts, null, 2) }],
@@ -648,7 +647,7 @@ server.registerTool(
     const identifier = input.id || `slug/${input.slug}`;
 
     const post = await ghostService.getPost(identifier, options);
-    console.error(`Retrieved post: ${post.title} (ID: ${post.id})`);
+    mcpLogger.info(`Retrieved post: ${post.title} (ID: ${post.id})`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(post, null, 2) }],
@@ -670,7 +669,7 @@ server.registerTool(
     if (input.limit !== undefined) options.limit = input.limit;
 
     const posts = await ghostService.searchPosts(input.query, options);
-    console.error(`Found ${posts.length} posts matching "${input.query}".`);
+    mcpLogger.info(`Found ${posts.length} posts matching "${input.query}".`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(posts, null, 2) }],
@@ -691,7 +690,7 @@ server.registerTool(
     const { id, ...updateData } = input;
 
     const updatedPost = await ghostService.updatePost(id, updateData);
-    console.error(`Post updated successfully. Post ID: ${updatedPost.id}`);
+    mcpLogger.info(`Post updated successfully. Post ID: ${updatedPost.id}`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(updatedPost, null, 2) }],
@@ -710,7 +709,7 @@ server.registerTool(
   withErrorHandling('ghost_delete_post', deletePostSchema, async (input) => {
     const { id } = input;
     await ghostService.deletePost(id);
-    console.error(`Post deleted successfully. Post ID: ${id}`);
+    mcpLogger.info(`Post deleted successfully. Post ID: ${id}`);
 
     return {
       content: [{ type: 'text', text: `Post ${id} has been successfully deleted.` }],
@@ -780,7 +779,7 @@ server.registerTool(
     if (input.order !== undefined) options.order = input.order;
 
     const pages = await ghostService.getPages(options);
-    console.error(`Retrieved ${pages.length} pages from Ghost.`);
+    mcpLogger.info(`Retrieved ${pages.length} pages from Ghost.`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(pages, null, 2) }],
@@ -805,7 +804,7 @@ server.registerTool(
     const identifier = input.id || `slug/${input.slug}`;
 
     const page = await ghostService.getPage(identifier, options);
-    console.error(`Retrieved page: ${page.title} (ID: ${page.id})`);
+    mcpLogger.info(`Retrieved page: ${page.title} (ID: ${page.id})`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(page, null, 2) }],
@@ -823,7 +822,7 @@ server.registerTool(
   },
   withErrorHandling('ghost_create_page', createPageSchema, async (input) => {
     const createdPage = await pageService.createPageService(input);
-    console.error(`Page created successfully. Page ID: ${createdPage.id}`);
+    mcpLogger.info(`Page created successfully. Page ID: ${createdPage.id}`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(createdPage, null, 2) }],
@@ -843,7 +842,7 @@ server.registerTool(
     const { id, ...updateData } = input;
 
     const updatedPage = await ghostService.updatePage(id, updateData);
-    console.error(`Page updated successfully. Page ID: ${updatedPage.id}`);
+    mcpLogger.info(`Page updated successfully. Page ID: ${updatedPage.id}`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(updatedPage, null, 2) }],
@@ -862,7 +861,7 @@ server.registerTool(
   withErrorHandling('ghost_delete_page', deletePageSchema, async (input) => {
     const { id } = input;
     await ghostService.deletePage(id);
-    console.error(`Page deleted successfully. Page ID: ${id}`);
+    mcpLogger.info(`Page deleted successfully. Page ID: ${id}`);
 
     return {
       content: [{ type: 'text', text: `Page ${id} has been successfully deleted.` }],
@@ -883,7 +882,7 @@ server.registerTool(
     if (input.limit !== undefined) options.limit = input.limit;
 
     const pages = await ghostService.searchPages(input.query, options);
-    console.error(`Found ${pages.length} pages matching "${input.query}".`);
+    mcpLogger.info(`Found ${pages.length} pages matching "${input.query}".`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(pages, null, 2) }],
@@ -931,7 +930,7 @@ server.registerTool(
   },
   withErrorHandling('ghost_create_member', createMemberSchema, async (input) => {
     const createdMember = await ghostService.createMember(input);
-    console.error(`Member created successfully. Member ID: ${createdMember.id}`);
+    mcpLogger.info(`Member created successfully. Member ID: ${createdMember.id}`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(createdMember, null, 2) }],
@@ -950,7 +949,7 @@ server.registerTool(
     const { id, ...updateData } = input;
 
     const updatedMember = await ghostService.updateMember(id, updateData);
-    console.error(`Member updated successfully. Member ID: ${updatedMember.id}`);
+    mcpLogger.info(`Member updated successfully. Member ID: ${updatedMember.id}`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(updatedMember, null, 2) }],
@@ -969,7 +968,7 @@ server.registerTool(
   withErrorHandling('ghost_delete_member', deleteMemberSchema, async (input) => {
     const { id } = input;
     await ghostService.deleteMember(id);
-    console.error(`Member deleted successfully. Member ID: ${id}`);
+    mcpLogger.info(`Member deleted successfully. Member ID: ${id}`);
 
     return {
       content: [{ type: 'text', text: `Member ${id} has been successfully deleted.` }],
@@ -994,7 +993,7 @@ server.registerTool(
     if (input.include !== undefined) options.include = input.include;
 
     const members = await ghostService.getMembers(options);
-    console.error(`Retrieved ${members.length} members from Ghost.`);
+    mcpLogger.info(`Retrieved ${members.length} members from Ghost.`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(members, null, 2) }],
@@ -1013,7 +1012,7 @@ server.registerTool(
   withErrorHandling('ghost_get_member', getMemberSchema, async (input) => {
     const { id, email } = input;
     const member = await ghostService.getMember({ id, email });
-    console.error(`Retrieved member: ${member.email} (ID: ${member.id})`);
+    mcpLogger.info(`Retrieved member: ${member.email} (ID: ${member.id})`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(member, null, 2) }],
@@ -1034,7 +1033,7 @@ server.registerTool(
     if (limit !== undefined) options.limit = limit;
 
     const members = await ghostService.searchMembers(query, options);
-    console.error(`Found ${members.length} members matching "${query}".`);
+    mcpLogger.info(`Found ${members.length} members matching "${query}".`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(members, null, 2) }],
@@ -1066,7 +1065,7 @@ server.registerTool(
     if (input.order !== undefined) options.order = input.order;
 
     const newsletters = await ghostService.getNewsletters(options);
-    console.error(`Retrieved ${newsletters.length} newsletters from Ghost.`);
+    mcpLogger.info(`Retrieved ${newsletters.length} newsletters from Ghost.`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(newsletters, null, 2) }],
@@ -1084,7 +1083,7 @@ server.registerTool(
   withErrorHandling('ghost_get_newsletter', getNewsletterSchema, async (input) => {
     const { id } = input;
     const newsletter = await ghostService.getNewsletter(id);
-    console.error(`Retrieved newsletter: ${newsletter.name} (ID: ${newsletter.id})`);
+    mcpLogger.info(`Retrieved newsletter: ${newsletter.name} (ID: ${newsletter.id})`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(newsletter, null, 2) }],
@@ -1102,7 +1101,7 @@ server.registerTool(
   },
   withErrorHandling('ghost_create_newsletter', createNewsletterSchema, async (input) => {
     const createdNewsletter = await newsletterService.createNewsletterService(input);
-    console.error(`Newsletter created successfully. Newsletter ID: ${createdNewsletter.id}`);
+    mcpLogger.info(`Newsletter created successfully. Newsletter ID: ${createdNewsletter.id}`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(createdNewsletter, null, 2) }],
@@ -1122,7 +1121,7 @@ server.registerTool(
     const { id, ...updateData } = input;
 
     const updatedNewsletter = await ghostService.updateNewsletter(id, updateData);
-    console.error(`Newsletter updated successfully. Newsletter ID: ${updatedNewsletter.id}`);
+    mcpLogger.info(`Newsletter updated successfully. Newsletter ID: ${updatedNewsletter.id}`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(updatedNewsletter, null, 2) }],
@@ -1141,7 +1140,7 @@ server.registerTool(
   withErrorHandling('ghost_delete_newsletter', deleteNewsletterSchema, async (input) => {
     const { id } = input;
     await ghostService.deleteNewsletter(id);
-    console.error(`Newsletter deleted successfully. Newsletter ID: ${id}`);
+    mcpLogger.info(`Newsletter deleted successfully. Newsletter ID: ${id}`);
 
     return {
       content: [{ type: 'text', text: `Newsletter ${id} has been successfully deleted.` }],
@@ -1166,7 +1165,7 @@ server.registerTool(
   },
   withErrorHandling('ghost_get_tiers', tierQuerySchema, async (input) => {
     const tiers = await ghostService.getTiers(input);
-    console.error(`Retrieved ${tiers.length} tiers`);
+    mcpLogger.info(`Retrieved ${tiers.length} tiers`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(tiers, null, 2) }],
@@ -1184,7 +1183,7 @@ server.registerTool(
   withErrorHandling('ghost_get_tier', getTierSchema, async (input) => {
     const { id } = input;
     const tier = await ghostService.getTier(id);
-    console.error(`Tier retrieved successfully. Tier ID: ${tier.id}`);
+    mcpLogger.info(`Tier retrieved successfully. Tier ID: ${tier.id}`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(tier, null, 2) }],
@@ -1201,7 +1200,7 @@ server.registerTool(
   },
   withErrorHandling('ghost_create_tier', createTierSchema, async (input) => {
     const tier = await ghostService.createTier(input);
-    console.error(`Tier created successfully. Tier ID: ${tier.id}`);
+    mcpLogger.info(`Tier created successfully. Tier ID: ${tier.id}`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(tier, null, 2) }],
@@ -1221,7 +1220,7 @@ server.registerTool(
     const { id, ...updateData } = input;
 
     const updatedTier = await ghostService.updateTier(id, updateData);
-    console.error(`Tier updated successfully. Tier ID: ${updatedTier.id}`);
+    mcpLogger.info(`Tier updated successfully. Tier ID: ${updatedTier.id}`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(updatedTier, null, 2) }],
@@ -1240,7 +1239,7 @@ server.registerTool(
   withErrorHandling('ghost_delete_tier', deleteTierSchema, async (input) => {
     const { id } = input;
     await ghostService.deleteTier(id);
-    console.error(`Tier deleted successfully. Tier ID: ${id}`);
+    mcpLogger.info(`Tier deleted successfully. Tier ID: ${id}`);
 
     return {
       content: [{ type: 'text', text: `Tier ${id} has been successfully deleted.` }],
@@ -1258,7 +1257,7 @@ async function main() {
 
   console.error('Ghost MCP Server running on stdio transport');
   console.error(
-    'Available tools: ghost_get_tags, ghost_create_tag, ghost_get_tag, ghost_update_tag, ghost_delete_tag, ghost_upload_image, ' +
+    'Available tools: ghost_get_tags, ghost_create_tag, ghost_get_tag, ghost_update_tag, ghost_delete_tag, ghost_upload_image, ghost_set_feature_image, ' +
       'ghost_create_post, ghost_get_posts, ghost_get_post, ghost_search_posts, ghost_update_post, ghost_delete_post, ' +
       'ghost_get_pages, ghost_get_page, ghost_create_page, ghost_update_page, ghost_delete_page, ghost_search_pages, ' +
       'ghost_create_member, ghost_update_member, ghost_delete_member, ghost_get_members, ghost_get_member, ghost_search_members, ' +
