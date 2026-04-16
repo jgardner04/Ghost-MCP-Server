@@ -362,7 +362,8 @@ Before the envelope reaches any MCP client, `sanitizeErrorPayload` deep-walks ev
 - The value of `GHOST_ADMIN_API_KEY` (if present in the process environment)
 - Ghost-shaped admin key patterns (`<id>:<secret>` hex strings)
 - `key` and `token` query parameters in URLs
-- `Authorization` header values
+- `Authorization` and `Set-Cookie` header values
+- Bare `Cookie` header values (all `name=value` pairs, which may be session tokens)
 
 `sanitizeErrorPayload` is called internally by `formatErrorResponse`. Do not call it directly or construct your own error envelope — always use `formatErrorResponse`.
 
@@ -378,7 +379,7 @@ try {
 }
 ```
 
-### 5. XSS Prevention
+### 4. XSS Prevention
 
 HTML sanitization is integrated into the Zod schema layer for defense-in-depth:
 
@@ -392,7 +393,7 @@ const sanitizedHtml = htmlContentSchema.parse(userProvidedHtml);
 
 The `htmlContentSchema` uses `sanitize-html` with a strict allowlist of safe tags and attributes. See [Schema Validation](./SCHEMA_VALIDATION.md) for details.
 
-### 6. Rate Limiting
+### 5. Rate Limiting
 
 Prevents abuse and DOS attacks:
 
@@ -502,9 +503,11 @@ router.get(
 ### Unit Tests
 
 ```javascript
+import { describe, it, expect, vi } from 'vitest';
+
 describe('Error Handling', () => {
   it('should retry on transient failures', async () => {
-    const operation = jest
+    const operation = vi
       .fn()
       .mockRejectedValueOnce(new Error('Network error'))
       .mockResolvedValueOnce({ success: true });
