@@ -78,7 +78,7 @@ git checkout -b <type>/issue-<number>-<description>
 2. **Make changes** on the feature branch
 3. **Commit** with clear, descriptive messages
 4. **Push** to remote and create a pull request
-5. **Never commit directly to `main`** - branch protection on the remote enforces this, plus a SessionStart hook (`.claude/hooks/session-start-branch-check.sh`) and a PreToolUse hook (`.claude/hooks/block-main-branch-edits.sh`) catch the situation locally before any tokens are spent.
+5. **Never commit directly to `main`** - branch protection on the remote enforces this. Local-only Claude Code hooks (gitignored, not tracked) also catch it before tokens are spent: `session-start-branch-check.sh` warns at session start; `block-main-branch-edits.sh` blocks edits and commits while on `main`.
 
 ## Project Overview
 
@@ -150,6 +150,11 @@ Follow these principles when writing code:
    - Add comments only when the "why" isn't obvious from the code
    - Keep functions small and focused on a single responsibility
 
+5. **Use `logger`, never `console.*`, in service/util/controller code**
+   - `no-console: error` is enforced by ESLint for `src/services/**`, `src/utils/**`, `src/controllers/**`
+   - MCP server entrypoints (`src/mcp_server*.js`) may use `console.error`/`console.warn` (stderr-safe) but not `console.log`/`info`/`debug` (stdout = JSON-RPC channel)
+   - Import `createContextLogger` from `src/utils/logger.js` and use the returned context logger
+
 ### Code Quality Commands
 
 - `npm run lint` - Check code for linting errors
@@ -168,7 +173,7 @@ Follow these principles when writing code:
    - Implements Model Context Protocol specification with Zod validation
    - Exposes Ghost CMS functionality as 35 MCP tools across 7 domain types
    - Domain types: Posts, Pages, Tags, Members, Newsletters, Tiers, Images
-   - **Note:** This server provides tools only, not MCP protocol resources. A PreToolUse hook (`.claude/hooks/block-mcp-resources.sh`) refuses edits to `src/mcp_server*.js` that try to register resources.
+   - **Note:** This server provides tools only, not MCP protocol resources. A local-only Claude Code hook (`block-mcp-resources.sh`, gitignored) refuses edits to `src/mcp_server*.js` that try to register resources.
    - Tools by domain:
      - **Posts** (6): `ghost_create_post`, `ghost_get_posts`, `ghost_get_post`, `ghost_search_posts`, `ghost_update_post`, `ghost_delete_post`
      - **Pages** (6): `ghost_create_page`, `ghost_get_pages`, `ghost_get_page`, `ghost_search_pages`, `ghost_update_page`, `ghost_delete_page`
