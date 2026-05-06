@@ -94,9 +94,12 @@ export default [
     files: ['src/utils/logger.js'],
     rules: { 'no-restricted-syntax': 'off' },
   },
-  // Strict no-console for service/util/controller code: must use logger.
+  // Strict no-console for service/util/controller code and the Express
+  // entrypoint: must use logger. src/index.js shares the process with the
+  // MCP stdio transport, so a stray console.log there would corrupt the
+  // JSON-RPC channel — same risk class as the service layer.
   {
-    files: ['src/services/**/*.js', 'src/utils/**/*.js', 'src/controllers/**/*.js'],
+    files: ['src/services/**/*.js', 'src/utils/**/*.js', 'src/controllers/**/*.js', 'src/index.js'],
     ignores: ['**/__tests__/**'],
     rules: { 'no-console': 'error' },
   },
