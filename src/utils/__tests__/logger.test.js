@@ -48,16 +48,9 @@ describe('logger', () => {
       vi.restoreAllMocks();
     });
 
-    it('configures the Console transport with stderrLevels covering every level', () => {
-      const consoleTransport = logger.transports.find((t) => t.name === 'console');
-      expect(consoleTransport).toBeDefined();
-      expect(consoleTransport.stderrLevels).toMatchObject({
-        error: true,
-        warn: true,
-        info: true,
-        debug: true,
-      });
-    });
+    // The stderrLevels contract is pinned by the createSafeConsoleTransport
+    // suite below. Routing tests below verify the runtime side: every level's
+    // bytes actually land on stderr, not stdout.
 
     // Drive the Console transport's log() directly. Winston's writable-stream
     // pipeline can defer writes across ticks, so routing the message through
