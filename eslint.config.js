@@ -2,6 +2,17 @@ import js from '@eslint/js';
 import prettier from 'eslint-plugin-prettier';
 import prettierConfig from 'eslint-config-prettier';
 
+// Extracted so the logger.js override can keep this ban active while dropping
+// only the Console-transport ban it actually needs to disable. ESLint flat
+// config rule overrides replace the rule entirely, so the selector has to be
+// referenced in both places.
+const SERVICE_INLINE_IMPORT_BAN = {
+  selector:
+    'VariableDeclarator > AwaitExpression > ImportExpression[source.value=/\\.\\/services\\/(ghost|post|page|newsletter|member|tier|image)Service|\\.\\/services\\/(posts|pages|tags|members|newsletters|tiers|images)/]',
+  message:
+    'Use lazy-loaded service variable from loadServices() instead of inline dynamic import. See docs/SERVICE_PATTERNS.md',
+};
+
 export default [
   js.configs.recommended,
   prettierConfig,
@@ -68,14 +79,7 @@ export default [
           message:
             'Use createSafeConsoleTransport() from src/utils/logger.js — bare Console transports drop stderrLevels and corrupt MCP stdio.',
         },
-        // Service inline-dynamic-import bans. Lazy-load via loadServices() in
-        // src/mcp_server.js. See docs/SERVICE_PATTERNS.md.
-        {
-          selector:
-            'VariableDeclarator > AwaitExpression > ImportExpression[source.value=/\\.\\/services\\/(ghost|post|page|newsletter|member|tier|image)Service|\\.\\/services\\/(posts|pages|tags|members|newsletters|tiers|images)/]',
-          message:
-            'Use lazy-loaded service variable from loadServices() instead of inline dynamic import. See docs/SERVICE_PATTERNS.md',
-        },
+        SERVICE_INLINE_IMPORT_BAN,
       ],
     },
   },
@@ -89,10 +93,12 @@ export default [
     ],
     rules: { 'no-restricted-imports': 'off' },
   },
-  // logger.js owns the only Console transport construction.
+  // logger.js owns the only Console transport construction. We drop only
+  // that ban here; the service-inline-import ban stays active so a future
+  // rogue dynamic import in this file would still be caught.
   {
     files: ['src/utils/logger.js'],
-    rules: { 'no-restricted-syntax': 'off' },
+    rules: { 'no-restricted-syntax': ['error', SERVICE_INLINE_IMPORT_BAN] },
   },
   // Strict no-console for service/util/controller code and the Express
   // entrypoint: must use logger. src/index.js shares the process with the
