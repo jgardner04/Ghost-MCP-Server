@@ -78,7 +78,18 @@ git checkout -b <type>/issue-<number>-<description>
 2. **Make changes** on the feature branch
 3. **Commit** with clear, descriptive messages
 4. **Push** to remote and create a pull request
-5. **Never commit directly to `main`** - branch protection on the remote enforces this. Local-only Claude Code hooks (gitignored, not tracked) also catch it before tokens are spent: `session-start-branch-check.sh` warns at session start; `block-main-branch-edits.sh` blocks edits and commits while on `main`.
+5. **Never commit directly to `main`** - branch protection on the remote enforces this. Claude Code hooks under `.claude/hooks/` also catch it before tokens are spent: `session-start-branch-check.sh` warns at session start; `block-main-branch-edits.sh` blocks edits and commits while on `main`.
+
+### Claude Code hook setup
+
+The four scripts under `.claude/hooks/` are tracked in git so they survive a fresh clone or new machine:
+
+- `session-start-branch-check.sh` (SessionStart): warns when HEAD is `main`.
+- `block-dangerous-git.sh` (PreToolUse / Bash): refuses `git commit/push --no-verify` and `git push --force` (allows `--force-with-lease`).
+- `block-main-branch-edits.sh` (PreToolUse / Edit | Write | Bash): refuses mutating actions while HEAD is `main`.
+- `block-mcp-resources.sh` (PreToolUse / Edit | Write): refuses MCP resource registration in `src/mcp_server*.js`.
+
+Per-user state is split out: `.claude/settings.local.json` (permission allowlist) and `.claude/plans/` (planning artifacts) stay gitignored. Hook bypass for legitimate exceptions: set `GHOST_MCP_HOOK_BYPASS=1` (logged to stderr).
 
 ## Project Overview
 
@@ -173,7 +184,7 @@ Follow these principles when writing code:
    - Implements Model Context Protocol specification with Zod validation
    - Exposes Ghost CMS functionality as 35 MCP tools across 7 domain types
    - Domain types: Posts, Pages, Tags, Members, Newsletters, Tiers, Images
-   - **Note:** This server provides tools only, not MCP protocol resources. A local-only Claude Code hook (`block-mcp-resources.sh`, gitignored) refuses edits to `src/mcp_server*.js` that try to register resources.
+   - **Note:** This server provides tools only, not MCP protocol resources. A Claude Code hook (`.claude/hooks/block-mcp-resources.sh`) refuses edits to `src/mcp_server*.js` that try to register resources.
    - Tools by domain:
      - **Posts** (6): `ghost_create_post`, `ghost_get_posts`, `ghost_get_post`, `ghost_search_posts`, `ghost_update_post`, `ghost_delete_post`
      - **Pages** (6): `ghost_create_page`, `ghost_get_pages`, `ghost_get_page`, `ghost_search_pages`, `ghost_update_page`, `ghost_delete_page`
