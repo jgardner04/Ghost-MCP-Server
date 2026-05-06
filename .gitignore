@@ -31,8 +31,12 @@ tasks/
 # AI working directories
 thoughts/
 
-# Claude Code per-user settings (shared settings.json stays tracked)
+# Claude Code per-user settings. Hook scripts under .claude/hooks/ are
+# tracked (cross-machine continuity for hooks Claude Code uses); only the
+# user-specific permission state and per-user plans/worktrees are ignored.
 .claude/settings.local.json
+.claude/plans/
+.claude/worktrees/
 
 # Test coverage
 coverage/

@@ -14,6 +14,13 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 // level later can't silently leave one transport routing to stdout.
 const ALL_LEVELS_TO_STDERR = ['error', 'warn', 'info', 'debug'];
 
+// Factory for Console transports. Always forces stderrLevels for all npm
+// levels — caller cannot narrow it. Bare `new winston.transports.Console(...)`
+// is forbidden by ESLint outside this module so this factory is the only way
+// to construct a Console transport in the project.
+const createSafeConsoleTransport = (options = {}) =>
+  new winston.transports.Console({ ...options, stderrLevels: ALL_LEVELS_TO_STDERR });
+
 // Define custom log format
 const logFormat = winston.format.combine(
   winston.format.timestamp({
@@ -47,18 +54,9 @@ const logger = winston.createLogger({
     service: 'ghost-mcp-server',
     pid: process.pid,
   },
-  transports: [
-    // Console output — route all levels to stderr so stdio MCP transport
-    // (which uses stdout for JSON-RPC frames) is not corrupted by log lines.
-    new winston.transports.Console({
-      level: isDevelopment ? 'debug' : 'info',
-      stderrLevels: ALL_LEVELS_TO_STDERR,
-    }),
-  ],
-  // Handle uncaught exceptions
-  exceptionHandlers: [new winston.transports.Console({ stderrLevels: ALL_LEVELS_TO_STDERR })],
-  // Handle unhandled promise rejections
-  rejectionHandlers: [new winston.transports.Console({ stderrLevels: ALL_LEVELS_TO_STDERR })],
+  transports: [createSafeConsoleTransport({ level: isDevelopment ? 'debug' : 'info' })],
+  exceptionHandlers: [createSafeConsoleTransport()],
+  rejectionHandlers: [createSafeConsoleTransport()],
 });
 
 // Add file logging in production
@@ -157,4 +155,4 @@ const createContextLogger = (context) => {
 };
 
 export default logger;
-export { createContextLogger };
+export { createContextLogger, createSafeConsoleTransport };

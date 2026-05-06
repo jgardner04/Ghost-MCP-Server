@@ -33,7 +33,7 @@ const api = new GhostAdminAPI({
 const handleApiRequest = async (resource, action, data = {}, options = {}, retries = 3) => {
   if (!api[resource] || typeof api[resource][action] !== 'function') {
     const errorMsg = `Invalid Ghost API resource or action: ${resource}.${action}`;
-    console.error(errorMsg);
+    logger.error(errorMsg);
     throw new Error(errorMsg);
   }
 
@@ -116,14 +116,6 @@ const handleApiRequest = async (resource, action, data = {}, options = {}, retri
 // Example function (will be expanded later)
 const getSiteInfo = async () => {
   return handleApiRequest('site', 'read');
-  // try {
-  //   const site = await api.site.read();
-  //   console.log("Connected to Ghost site:", site.title);
-  //   return site;
-  // } catch (error) {
-  //   console.error("Error connecting to Ghost Admin API:", error);
-  //   throw error; // Re-throw the error for handling upstream
-  // }
 };
 
 /**
