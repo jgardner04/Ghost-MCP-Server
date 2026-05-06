@@ -33,6 +33,9 @@ thoughts/
 
 # Claude Code per-user settings (shared settings.json stays tracked)
 .claude/settings.local.json
+.claude/hooks/
+.claude/plans/
+.claude/worktrees/
 
 # Test coverage
 coverage/

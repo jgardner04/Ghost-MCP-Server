@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { LEVEL, MESSAGE } from 'triple-beam';
-import { createContextLogger } from '../logger.js';
+import { createContextLogger, createSafeConsoleTransport } from '../logger.js';
 import logger from '../logger.js';
 
 describe('logger', () => {
@@ -75,6 +75,45 @@ describe('logger', () => {
       transport.log(makeInfo(level, `${level}-test`), () => {});
       expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining(`${level}-test`));
       expect(stdoutSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('createSafeConsoleTransport', () => {
+    // Factory exists so the stderrLevels invariant cannot drift away from any
+    // future Console transport. Bare `new winston.transports.Console(...)` is
+    // forbidden by ESLint outside this module; this test pins the contract.
+
+    it('returns a winston Console transport', () => {
+      const t = createSafeConsoleTransport();
+      expect(t).toBeDefined();
+      expect(t.name).toBe('console');
+    });
+
+    it('always sets stderrLevels for every level', () => {
+      const t = createSafeConsoleTransport();
+      expect(t.stderrLevels).toMatchObject({
+        error: true,
+        warn: true,
+        info: true,
+        debug: true,
+      });
+    });
+
+    it('preserves caller-supplied options like level', () => {
+      const t = createSafeConsoleTransport({ level: 'warn' });
+      expect(t.level).toBe('warn');
+    });
+
+    it('forces stderrLevels even if caller tries to override it', () => {
+      // Defense in depth: a caller cannot accidentally narrow stderrLevels
+      // by passing their own array. This is the whole point of the factory.
+      const t = createSafeConsoleTransport({ stderrLevels: ['error'] });
+      expect(t.stderrLevels).toMatchObject({
+        error: true,
+        warn: true,
+        info: true,
+        debug: true,
+      });
     });
   });
 

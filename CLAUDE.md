@@ -52,7 +52,7 @@ All code written for this project MUST follow OWASP security best practices to p
 - `express-rate-limit` - Rate limiting
 - `crypto` - Secure random generation and comparisons
 - `helmet` - HTTP security headers
-- `joi` - Legacy validation (used in some REST endpoints; do not use for new code — prefer Zod schemas)
+- `joi` - Legacy validation, allowlisted in 4 specific files only. New `joi` imports are blocked by ESLint `no-restricted-imports` — see `eslint.config.js`. Use Zod schemas under `src/schemas/`.
 
 ## Git Workflow (Required)
 
@@ -78,7 +78,7 @@ git checkout -b <type>/issue-<number>-<description>
 2. **Make changes** on the feature branch
 3. **Commit** with clear, descriptive messages
 4. **Push** to remote and create a pull request
-5. **Never commit directly to `main`** - all changes must go through PRs
+5. **Never commit directly to `main`** - branch protection on the remote enforces this, plus a SessionStart hook (`.claude/hooks/session-start-branch-check.sh`) and a PreToolUse hook (`.claude/hooks/block-main-branch-edits.sh`) catch the situation locally before any tokens are spent.
 
 ## Project Overview
 
@@ -168,7 +168,7 @@ Follow these principles when writing code:
    - Implements Model Context Protocol specification with Zod validation
    - Exposes Ghost CMS functionality as 35 MCP tools across 7 domain types
    - Domain types: Posts, Pages, Tags, Members, Newsletters, Tiers, Images
-   - **Note:** This server provides tools only, not MCP protocol resources
+   - **Note:** This server provides tools only, not MCP protocol resources. A PreToolUse hook (`.claude/hooks/block-mcp-resources.sh`) refuses edits to `src/mcp_server*.js` that try to register resources.
    - Tools by domain:
      - **Posts** (6): `ghost_create_post`, `ghost_get_posts`, `ghost_get_post`, `ghost_search_posts`, `ghost_update_post`, `ghost_delete_post`
      - **Pages** (6): `ghost_create_page`, `ghost_get_pages`, `ghost_get_page`, `ghost_search_pages`, `ghost_update_page`, `ghost_delete_page`
@@ -199,7 +199,7 @@ Follow these principles when writing code:
    - `images.js`: Image upload to Ghost CMS (single path for all upload modes; used by imageController and MCP tools)
    - `imageProcessingService.js`: Image optimization and processing (preserves original format; does not convert to JPEG)
 
-   **Service Import Pattern:** Services in the MCP server use lazy loading to avoid Node.js ESM compatibility issues. Always use the lazy-loaded service variables from `loadServices()`. Never add inline dynamic imports. See [docs/SERVICE_PATTERNS.md](docs/SERVICE_PATTERNS.md) for detailed guidelines.
+   **Service Import Pattern:** Services in the MCP server use lazy loading via `loadServices()` to avoid Node.js ESM compatibility issues. Inline dynamic imports of any service module are blocked by ESLint `no-restricted-syntax` — see `eslint.config.js`. Detailed guidelines: [docs/SERVICE_PATTERNS.md](docs/SERVICE_PATTERNS.md).
 
 5. **Controllers** (`src/controllers/`):
    - Handle HTTP requests for posts, images, and tags
@@ -219,7 +219,7 @@ Follow these principles when writing code:
    - `validation.js`: MCP tool input validation helper (`validateToolInput`)
    - `tempFileManager.js`: Temp file tracking and cleanup with process exit handlers
    - `urlValidator.js`: SSRF-safe URL validation for image downloads
-   - `logger.js`: Context-aware logging with request correlation
+   - `logger.js`: Context-aware logging with request correlation. Console transports must come from `createSafeConsoleTransport()` (which always sets `stderrLevels` so stdout stays clean for MCP stdio JSON-RPC frames). Bare `new winston.transports.Console(...)` outside this file is blocked by ESLint `no-restricted-syntax`.
    - `nqlSanitizer.js`: NQL query sanitization (consolidated from memberService and tierService)
    - `imageInputResolver.js`: Resolves image input from URL, local file path (with containment check against `GHOST_MCP_IMAGE_ROOT`), or base64 data
    - `formatErrorResponse.js`: Builds a consistent `{error, ghost?, extra?}` envelope for all MCP tool error responses. The optional `extra` arg is an arbitrary caller-supplied context object; if non-empty it is merged under a top-level `extra` key and sanitized alongside the rest. **MUST be used for every new MCP error path** — it is the only route through `sanitizeErrorPayload` and therefore the only way error text is guaranteed to be redacted before reaching MCP clients.

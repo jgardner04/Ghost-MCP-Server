@@ -33,7 +33,7 @@ const api = new GhostAdminAPI({
 const handleApiRequest = async (resource, action, data = {}, options = {}, retries = 3) => {
   if (!api[resource] || typeof api[resource][action] !== 'function') {
     const errorMsg = `Invalid Ghost API resource or action: ${resource}.${action}`;
-    console.error(errorMsg);
+    logger.error(errorMsg);
     throw new Error(errorMsg);
   }
 
