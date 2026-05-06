@@ -8,7 +8,7 @@ import prettierConfig from 'eslint-config-prettier';
 // referenced in both places.
 const SERVICE_INLINE_IMPORT_BAN = {
   selector:
-    'VariableDeclarator > AwaitExpression > ImportExpression[source.value=/\\.\\/services\\/(ghost|post|page|newsletter|member|tier|image)Service|\\.\\/services\\/(posts|pages|tags|members|newsletters|tiers|images)/]',
+    'VariableDeclarator > AwaitExpression > ImportExpression[source.value=/\\.\\/services\\/(ghost|post|page|newsletter|member|tier|imageProcessing|image)Service|\\.\\/services\\/(posts|pages|tags|members|newsletters|tiers|images)/]',
   message:
     'Use lazy-loaded service variable from loadServices() instead of inline dynamic import. See docs/SERVICE_PATTERNS.md',
 };
@@ -83,7 +83,9 @@ export default [
       ],
     },
   },
-  // Allowlist legacy joi importers. Migrating these to Zod is out of scope here.
+  // Allowlist legacy joi importers. urlValidator.js migration tracked in
+  // https://linear.app/jonathangardner/issue/JON-151 (SSRF parse-disagreement).
+  // The other three are data-shape validation, lower priority.
   {
     files: [
       'src/utils/urlValidator.js',
