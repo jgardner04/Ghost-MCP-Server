@@ -116,14 +116,6 @@ const handleApiRequest = async (resource, action, data = {}, options = {}, retri
 // Example function (will be expanded later)
 const getSiteInfo = async () => {
   return handleApiRequest('site', 'read');
-  // try {
-  //   const site = await api.site.read();
-  //   console.log("Connected to Ghost site:", site.title);
-  //   return site;
-  // } catch (error) {
-  //   console.error("Error connecting to Ghost Admin API:", error);
-  //   throw error; // Re-throw the error for handling upstream
-  // }
 };
 
 /**
