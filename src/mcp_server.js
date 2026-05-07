@@ -163,10 +163,13 @@ server.registerTool(
     if (input.include !== undefined) options.include = input.include;
 
     // Build filter string from individual filter parameters
+    // Note: `slug` has no schema regex (see src/schemas/tagSchemas.js), so it is the
+    // primary NQL injection surface here. `name` has an allowlist that pre-rejects
+    // `\` and `"`. `visibility` is an enum, no escaping needed.
     const filters = [];
     if (input.name) filters.push(`name:'${sanitizeNqlValue(input.name)}'`);
     if (input.slug) filters.push(`slug:'${sanitizeNqlValue(input.slug)}'`);
-    if (input.visibility) filters.push(`visibility:'${input.visibility}'`); // visibility is enum-validated, no escaping needed
+    if (input.visibility) filters.push(`visibility:'${input.visibility}'`);
     if (input.filter) filters.push(input.filter);
 
     if (filters.length > 0) {
