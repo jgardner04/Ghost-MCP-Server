@@ -13,6 +13,7 @@ import { formatErrorResponse } from './utils/formatErrorResponse.js';
 import { createContextLogger } from './utils/logger.js';
 import { trackTempFile, cleanupTempFiles } from './utils/tempFileManager.js';
 import { resolveLocalImagePath, decodeBase64ToTempFile } from './utils/imageInputResolver.js';
+import { sanitizeNqlValue } from './utils/nqlSanitizer.js';
 import {
   createTagSchema,
   updateTagSchema,
@@ -90,17 +91,6 @@ const getDefaultAltText = (filePath) => {
 };
 
 /**
- * Escapes single quotes in NQL filter values by doubling them.
- * This prevents filter injection attacks when building NQL query strings.
- * Example: "O'Reilly" becomes "O''Reilly" for use in name:'O''Reilly'
- * @param {string} value - The value to escape
- * @returns {string} The escaped value safe for NQL filter strings
- */
-const escapeNqlValue = (value) => {
-  return value.replace(/'/g, "''");
-};
-
-/**
  * Higher-order function that wraps a tool handler with standardized
  * input validation, service loading, and error handling.
  *
@@ -174,8 +164,8 @@ server.registerTool(
 
     // Build filter string from individual filter parameters
     const filters = [];
-    if (input.name) filters.push(`name:'${escapeNqlValue(input.name)}'`);
-    if (input.slug) filters.push(`slug:'${escapeNqlValue(input.slug)}'`);
+    if (input.name) filters.push(`name:'${sanitizeNqlValue(input.name)}'`);
+    if (input.slug) filters.push(`slug:'${sanitizeNqlValue(input.slug)}'`);
     if (input.visibility) filters.push(`visibility:'${input.visibility}'`); // visibility is enum-validated, no escaping needed
     if (input.filter) filters.push(input.filter);
 

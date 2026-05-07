@@ -577,7 +577,7 @@ describe('mcp_server - ghost_get_tags tool', () => {
 
     expect(mockGetTags).toHaveBeenCalledWith(
       expect.objectContaining({
-        filter: "name:'O''Reilly'",
+        filter: "name:'O\\'Reilly'",
       })
     );
   });
@@ -591,7 +591,24 @@ describe('mcp_server - ghost_get_tags tool', () => {
 
     expect(mockGetTags).toHaveBeenCalledWith(
       expect.objectContaining({
-        filter: "slug:'test''slug'",
+        filter: "slug:'test\\'slug'",
+      })
+    );
+  });
+
+  // Note: `name` has a schema regex allowlist (letters/digits/space/-/_/') so `\` and `"`
+  // are rejected at validation. `slug` has no such restriction, so it's the actual surface
+  // where backslash/double-quote can flow into the NQL filter — exercise it here.
+  it('should backslash-escape single quotes, double quotes, and backslashes in slug parameter', async () => {
+    const mockTags = [{ id: '1', name: 'Test', slug: 'a\'b\\"c' }];
+    mockGetTags.mockResolvedValue(mockTags);
+
+    const tool = mockTools.get('ghost_get_tags');
+    await tool.handler({ slug: 'a\'b\\"c' });
+
+    expect(mockGetTags).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter: "slug:'a\\'b\\\\\\\"c'",
       })
     );
   });
