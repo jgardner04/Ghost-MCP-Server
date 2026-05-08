@@ -568,7 +568,7 @@ describe('mcp_server - ghost_get_tags tool', () => {
     );
   });
 
-  it('should escape single quotes in name parameter', async () => {
+  it('should backslash-escape single quotes in name parameter', async () => {
     const mockTags = [{ id: '1', name: "O'Reilly", slug: 'oreilly' }];
     mockGetTags.mockResolvedValue(mockTags);
 
@@ -577,12 +577,12 @@ describe('mcp_server - ghost_get_tags tool', () => {
 
     expect(mockGetTags).toHaveBeenCalledWith(
       expect.objectContaining({
-        filter: "name:'O''Reilly'",
+        filter: "name:'O\\'Reilly'",
       })
     );
   });
 
-  it('should escape single quotes in slug parameter', async () => {
+  it('should backslash-escape single quotes in slug parameter', async () => {
     const mockTags = [{ id: '1', name: 'Test', slug: "test'slug" }];
     mockGetTags.mockResolvedValue(mockTags);
 
@@ -591,7 +591,28 @@ describe('mcp_server - ghost_get_tags tool', () => {
 
     expect(mockGetTags).toHaveBeenCalledWith(
       expect.objectContaining({
-        filter: "slug:'test''slug'",
+        filter: "slug:'test\\'slug'",
+      })
+    );
+  });
+
+  // `name` has a schema regex allowlist (letters/digits/space/-/_/') so `\` and `"` are
+  // rejected at validation. `slug` has no such restriction, so it's the actual surface
+  // where backslash/double-quote can flow into the NQL filter — exercise it here.
+  it('should backslash-escape single quotes, double quotes, and backslashes in slug parameter', async () => {
+    // Input bytes:    a  '  b  \  "  c   (6 chars)
+    // After sanitize: a  \' b  \\ \" c   (9 chars)
+    // Filter string:  slug:'a\'b\\\"c'
+    const slug = 'a\'b\\"c';
+    // Mock return value is irrelevant — this test only asserts what mockGetTags was called with.
+    mockGetTags.mockResolvedValue([{ id: '1', name: 'Test', slug: 'test' }]);
+
+    const tool = mockTools.get('ghost_get_tags');
+    await tool.handler({ slug });
+
+    expect(mockGetTags).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter: "slug:'a\\'b\\\\\\\"c'",
       })
     );
   });
