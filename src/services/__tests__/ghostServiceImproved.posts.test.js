@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createMockContextLogger } from '../../__tests__/helpers/mockLogger.js';
-import { mockDotenv } from '../../__tests__/helpers/testUtils.js';
+import { mockDotenv, expectRejection } from '../../__tests__/helpers/testUtils.js';
 import { mockGhostApiModule } from '../../__tests__/helpers/mockGhostApi.js';
 
 // Mock the Ghost Admin API using shared mock factory
@@ -95,9 +95,11 @@ describe('ghostServiceImproved - Posts (updatePost)', () => {
       const error404 = new GhostAPIError('posts.read', 'Post not found', 404);
       api.posts.read.mockRejectedValue(error404);
 
-      const rejection = updatePost('nonexistent-id', { title: 'Updated' });
-      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
-      await expect(rejection).rejects.toThrow('Post not found');
+      await expectRejection(
+        updatePost('nonexistent-id', { title: 'Updated' }),
+        NotFoundError,
+        'Post not found'
+      );
     });
 
     it('should throw ValidationError when updating to scheduled without published_at', async () => {

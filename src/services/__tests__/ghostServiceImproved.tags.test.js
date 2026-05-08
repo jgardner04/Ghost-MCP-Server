@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createMockContextLogger } from '../../__tests__/helpers/mockLogger.js';
-import { mockDotenv } from '../../__tests__/helpers/testUtils.js';
+import { mockDotenv, expectRejection } from '../../__tests__/helpers/testUtils.js';
 import { mockGhostApiModule } from '../../__tests__/helpers/mockGhostApi.js';
 
 // Mock the Ghost Admin API using shared mock factory
@@ -254,9 +254,7 @@ describe('ghostServiceImproved - Tags', () => {
       const error404 = new GhostAPIError('tags.read', 'Tag not found', 404);
       api.tags.read.mockRejectedValue(error404);
 
-      const rejection = getTag('non-existent');
-      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
-      await expect(rejection).rejects.toThrow('Tag not found');
+      await expectRejection(getTag('non-existent'), NotFoundError, 'Tag not found');
     });
   });
 
@@ -412,9 +410,11 @@ describe('ghostServiceImproved - Tags', () => {
       const error404 = new GhostAPIError('tags.read', 'Tag not found', 404);
       api.tags.read.mockRejectedValue(error404);
 
-      const rejection = updateTag('non-existent', { name: 'Test' });
-      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
-      await expect(rejection).rejects.toThrow('Tag not found');
+      await expectRejection(
+        updateTag('non-existent', { name: 'Test' }),
+        NotFoundError,
+        'Tag not found'
+      );
     });
   });
 
@@ -438,9 +438,7 @@ describe('ghostServiceImproved - Tags', () => {
       const error404 = new GhostAPIError('tags.delete', 'Tag not found', 404);
       api.tags.delete.mockRejectedValue(error404);
 
-      const rejection = deleteTag('non-existent');
-      await expect(rejection).rejects.toBeInstanceOf(NotFoundError);
-      await expect(rejection).rejects.toThrow('Tag not found');
+      await expectRejection(deleteTag('non-existent'), NotFoundError, 'Tag not found');
     });
   });
 });
