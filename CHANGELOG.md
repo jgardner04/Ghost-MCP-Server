@@ -27,6 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Cleared production dependency vulnerabilities blocking CI audit gate** — refreshed `package-lock.json` via `npm audit fix` to clear all 7 advisories flagged by `npm audit --omit=dev --audit-level=high`. No `package.json` manifest changes required; existing semver ranges already permitted the patched versions. Supersedes PRs #173 and #175. ([JON-152](https://linear.app/jonathangardner/issue/JON-152/fix-npm-audit-failures-blocking-ci-axios-fast-uri-high-severity))
+  - `axios` → 1.16.1 — clears 13 advisories including [GHSA-w9j2-pvgh-6h63](https://github.com/advisories/GHSA-w9j2-pvgh-6h63) (HIGH, prototype-pollution auth bypass)
+  - `sanitize-html` → 2.17.4 — clears [GHSA-rpr9-rxv7-x643](https://github.com/advisories/GHSA-rpr9-rxv7-x643) (**CRITICAL**, XSS via `xmp` raw-text passthrough)
+  - `hono` → 4.12.19 (transitive via `@modelcontextprotocol/sdk`) — clears [GHSA-9vqf-7f2p-gf9v](https://github.com/advisories/GHSA-9vqf-7f2p-gf9v) (`bodyLimit` bypass) and [GHSA-69xw-7hcm-h432](https://github.com/advisories/GHSA-69xw-7hcm-h432) (JSX HTML injection)
+  - `express-rate-limit` → 8.5.2 — clears transitive `ip-address` [GHSA-v2v4-37r5-5v8g](https://github.com/advisories/GHSA-v2v4-37r5-5v8g) XSS
+  - `postcss` → ≥ 8.5.10 (transitive) — clears [GHSA-qx2v-qp2m-jg93](https://github.com/advisories/GHSA-qx2v-qp2m-jg93) XSS via unescaped `</style>`
+  - `@tryghost/admin-api` → 1.14.9 (transitive bump pulls in patched axios internally)
 - **Defensive check for slug/undefined identifier pattern** - Added runtime assertions in `ghost_get_tag`, `ghost_get_post`, and `ghost_get_page` handlers to prevent `slug/undefined` identifier construction when neither `id` nor `slug` is provided. The Zod schema `.refine()` already validates at the schema layer; this adds belt-and-suspenders safety. ([JON-84](https://linear.app/jonathangardner/issue/JON-84/add-defensive-check-for-slugundefined-identifier-pattern), [#138](https://github.com/jgardner04/Ghost-MCP-Server/pull/138))
 - **Scheduled status validation on published_at-only updates** - `updatePost` and `updatePage` now validate scheduled-date constraints when only `published_at` changes (without `status` in the update payload). Previously, a scheduled post/page could have its publish date set to the past without triggering validation. ([JON-19](https://linear.app/jonathangardner/issue/JON-19/edge-case-validatescheduledstatus-skipped-when-only-published-at), [#136](https://github.com/jgardner04/Ghost-MCP-Server/pull/136))
 
