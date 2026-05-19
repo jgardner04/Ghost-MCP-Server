@@ -83,12 +83,11 @@ export default [
       ],
     },
   },
-  // Allowlist legacy joi importers. urlValidator.js migration tracked in
-  // https://linear.app/jonathangardner/issue/JON-151 (SSRF parse-disagreement).
-  // The other three are data-shape validation, lower priority.
+  // Allowlist legacy joi importers. These three validate data shape, not a
+  // security boundary, and can be migrated to Zod separately. urlValidator.js
+  // was migrated in JON-151 (SSRF parse-disagreement) and is no longer here.
   {
     files: [
-      'src/utils/urlValidator.js',
       'src/controllers/imageController.js',
       'src/services/pageService.js',
       'src/services/newsletterService.js',

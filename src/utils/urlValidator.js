@@ -1,4 +1,4 @@
-import Joi from 'joi';
+import { z } from 'zod';
 import { URL } from 'url';
 
 // Configure allowed domains for image downloads
@@ -69,6 +69,25 @@ const isSafeHost = (hostname) => {
   );
 };
 
+// Single-parser URL schema. z.string().url() uses the WHATWG URL parser
+// (same engine as new URL() below), so the schema check and the subsequent
+// hostname extraction cannot disagree on edge cases like embedded
+// credentials, IDN/Unicode, or IPv6 zone IDs. See JON-151.
+const urlSchema = z
+  .string()
+  .url()
+  .refine(
+    (s) => {
+      try {
+        const proto = new URL(s).protocol;
+        return proto === 'http:' || proto === 'https:';
+      } catch {
+        return false;
+      }
+    },
+    { message: 'must use http or https scheme' }
+  );
+
 /**
  * Validates and sanitizes a URL for safe external requests
  * @param {string} url - The URL to validate
@@ -76,19 +95,11 @@ const isSafeHost = (hostname) => {
  */
 const validateImageUrl = (url) => {
   try {
-    // Basic URL validation with Joi
-    const urlSchema = Joi.string()
-      .uri({
-        scheme: ['http', 'https'],
-        allowRelative: false,
-      })
-      .required();
-
-    const validation = urlSchema.validate(url);
-    if (validation.error) {
+    const result = urlSchema.safeParse(url);
+    if (!result.success) {
       return {
         isValid: false,
-        error: `Invalid URL format: ${validation.error.details[0].message}`,
+        error: `Invalid URL format: ${result.error.issues[0].message}`,
       };
     }
 

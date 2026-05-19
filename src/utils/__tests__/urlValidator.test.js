@@ -377,6 +377,40 @@ describe('urlValidator', () => {
         expect(result.isValid).toBe(true);
       });
     });
+
+    // Regression tests for JON-151: the previous two-parser sequence
+    // (Joi.uri() + new URL()) could disagree on these edge cases, opening a
+    // path-around-isSafeHost SSRF window. The single-parser pipeline must
+    // either reject these or canonicalize them consistently with new URL().
+    describe('parse-disagreement regressions (JON-151)', () => {
+      it('should reject credentials-prefixed URL whose true host is private (127.0.0.1)', () => {
+        // WHATWG: hostname is 127.0.0.1. A naive parser that split on '@' the
+        // wrong way could see "imgur.com" and let this through. isSafeHost
+        // must see 127.0.0.1 and reject.
+        const result = validateImageUrl('https://imgur.com@127.0.0.1/image.jpg');
+        expect(result.isValid).toBe(false);
+      });
+
+      it('should reject Unicode hostname not on the allowlist', () => {
+        // new URL('https://☃.com/') canonicalizes the host to xn--n3h.com
+        // (Punycode). Either form must be rejected — neither is allowlisted.
+        const result = validateImageUrl('https://☃.com/image.jpg');
+        expect(result.isValid).toBe(false);
+      });
+
+      it('should reject Punycode hostname not on the allowlist', () => {
+        const result = validateImageUrl('https://xn--n3h.com/image.jpg');
+        expect(result.isValid).toBe(false);
+      });
+
+      it('should reject IPv6 loopback with zone ID', () => {
+        // [::1%25eth0] is the percent-encoded form of [::1%eth0]. The host is
+        // still ::1 — the SSRF guard must catch it regardless of whether the
+        // parser accepts the zone-ID syntax or rejects the URL outright.
+        const result = validateImageUrl('http://[::1%25eth0]/image.jpg');
+        expect(result.isValid).toBe(false);
+      });
+    });
   });
 
   describe('createSecureAxiosConfig', () => {
