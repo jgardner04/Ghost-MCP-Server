@@ -20,7 +20,7 @@ jobs:
           test "$mode" = "100755" || { echo "src/mcp_server.js must be tracked as 100755 (current: $mode)"; exit 1; }
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 'lts/*'
           cache: 'npm'
